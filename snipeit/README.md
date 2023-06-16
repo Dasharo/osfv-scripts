@@ -48,43 +48,43 @@ some examples:
 - List all used assets:
 
   ```shell
-  snipeit.py list_used
+  snipeit_cli list_used
   ```
 
 - List all unused assets:
 
   ```shell
-  snipeit.py list_unused
+  snipeit_cli list_unused
   ```
 
 - List all assets:
 
   ```shell
-  snipeit.py list_all
+  snipeit_cli list_all
   ```
 
 - Check out an asset (by asset ID):
 
   ```shell
-  snipeit.py check_out --asset_id 123
+  snipeit_cli check_out --asset_id 123
   ```
 
 - Check in an asset (by asset ID):
 
   ```shell
-  snipeit.py check_in --asset_id 123
+  snipeit_cli check_in --asset_id 123
   ```
 
 - Check out an asset (by RTE IP):
 
   ```bash
-  snipeit check_out --rte_ip <rte_ip_address>
+  snipeit_cli check_out --rte_ip <rte_ip_address>
   ```
 
 - Check out an asset (by RTE IP):
 
   ```bash
-  snipeit check_out --rte_ip <rte_ip_address>
+  snipeit_cli check_out --rte_ip <rte_ip_address>
   ```
 
   > Replace `<rte_ip_address>` with the actual RTE IP address of the asset you
@@ -96,6 +96,6 @@ some examples:
 - For more command options, you can use the `--help` flag:
 
   ```shell
-  snipeit.py --help
+  snipeit_cli --help
   ```
 

@@ -2,10 +2,10 @@ CONFIG_FILE = $(HOME)/.osfv/snipeit.yml
 PACKAGE_NAME = snipeit_cli
 
 build:
-	python setup.py sdist
+	poetry build
 
 install: build
-	pip install .
+	poetry install
 	test -f $(CONFIG_FILE) || install -D -m 644 config.yml $(CONFIG_FILE)
 
 uninstall:
@@ -14,6 +14,6 @@ uninstall:
 clean:
 	rm -rf dist build $(PACKAGE_NAME).egg-info
 
-all: build
+all: build install
 
-.PHONY: install uninstall build clean install_config
+.PHONY: install uninstall build clean

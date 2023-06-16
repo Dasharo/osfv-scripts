@@ -1,6 +1,19 @@
-INSTALL_PATH = /usr/local/bin/snipeit
 CONFIG_FILE = $(HOME)/.osfv/snipeit.yml
+PACKAGE_NAME = snipeit_cli
 
-install:
-	sudo install -m 755 snipeit.py /usr/local/bin/snipeit
-	test -f $(HOME)/.osfv/snipeit.yml || install -D -m 644 config.yml $(HOME)/.osfv/snipeit.yml
+build:
+	python setup.py sdist
+
+install: build
+	pip install .
+	test -f $(CONFIG_FILE) || install -D -m 644 config.yml $(CONFIG_FILE)
+
+uninstall:
+	pip uninstall -y $(PACKAGE_NAME)
+
+clean:
+	rm -rf dist build $(PACKAGE_NAME).egg-info
+
+all: build
+
+.PHONY: install uninstall build clean install_config

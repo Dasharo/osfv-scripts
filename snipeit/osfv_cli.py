@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 
-from rtectrl_api import RTE
+from rte import RTE
 import snipeit_api 
 import argparse
+import pexpect
+import json
 
 # List used assets
 def list_used_assets():
@@ -72,13 +74,35 @@ def print_asset_details_for_zabbix(asset):
                     output[key] = field_value
                     print(f'{key}: {output[key]}')
 
+def relay_toggle(rte, args):
+    state_str = rte.relay_get()
+    if state_str == "low":
+        new_state_str = "high"
+    else:
+        new_state_str = "low"
+    rte.relay_set(new_state_str)
+    state = rte.relay_get()
+    print(f"Relay state toggled. New state: {state}")
+
+def relay_set(rte, args):
+    rte.relay_set()
+    state = rte.relay_get()
+    print(f"Relay state set to {state}")
+
+def relay_get(rte, args):
+    state = rte.relay_get()
+    print(f"Relay state: {state}")
+
 def power_on(rte, args):
+    print(f"Powering on...")
     rte.power_on(args.time)
 
 def power_off(rte, args):
+    print(f"Powering off...")
     rte.power_off(args.time)
 
 def reset(rte, args):
+    print(f"Pressing reset button...")
     rte.reset(args.time)
 
 def gpio_get(rte, args):
@@ -87,20 +111,30 @@ def gpio_get(rte, args):
 
 def gpio_set(rte, args):
     rte.gpio_set(args.gpio_no, args.state)
-    print(f"GPIO {args.gpio_no} state set to {args.state}")
+    state = rte.gpio_get(args.gpio_no)
+    print(f"GPIO {args.gpio_no} state set to {state}")
 
-def relay_toggle(rte, args):
-    rte.relay_toggle()
-    state = rte.relay_get()
-    print(f"Relay state toggled. New state: {state}")
+def gpio_list(rte, args):
+    response = json.dumps(rte.gpio_list(), indent=4)
+    print(f"GPIO list")
+    print(response)
 
-def relay_set(rte, args):
-    rte.relay_set(args.state)
-    print(f"Relay state set to {args.state}")
+def rte_status(rte, args):
+    rte.gpio_set(args.gpio_no, args.state)
+    state = rte.gpio_get(args.gpio_no)
+    print(f"GPIO {args.gpio_no} state set to {state}")
 
-def relay_get(rte, args):
-    state = rte.relay_get()
-    print(f"Relay state: {state}")
+def open_dut_serial(rte, args):
+    host = args.rte_ip
+    port = 13541
+
+    print(f"Opening telnet session with: {host}:{port}")
+    print(f"Press Ctrl+] to exit")
+    # Connect to the Telnet server
+    tn = pexpect.spawn(f'telnet {host} {port}')
+    
+    # Enter the interactive shell
+    tn.interact()
 
 # Main function
 def main():
@@ -126,8 +160,7 @@ def main():
 
     check_out_parser = snipeit_subparsers.add_parser('check_out', help='Check out an asset by providing the Asset ID or RTE IP')
     check_out_group = check_out_parser.add_mutually_exclusive_group(required=True)
-    check_out_group.add_argument('--asset_id', type=int, help='Asset ID')
-    check_out_group.add_argument('--rte_ip', type=str, help='RTE IP')
+    check_out_group.add_argument('--tte_ip', type=str, help='RTE IP')
 
     check_in_parser = snipeit_subparsers.add_parser('check_in', help='Check in an asset by providing the Asset ID or RTE IP')
     check_in_group = check_in_parser.add_mutually_exclusive_group(required=True)
@@ -140,6 +173,7 @@ def main():
     rel_parser = rte_subparsers.add_parser('rel', help='Control RTE relay')
     gpio_parser = rte_subparsers.add_parser('gpio', help='Control RTE GPIO')
     pwr_parser = rte_subparsers.add_parser('pwr', help='Control DUT power via RTE')
+    serial_parser = rte_subparsers.add_parser('serial', help='Open DUT serial via telnet')
 
     # Power subcommands
     pwr_subparsers = pwr_parser.add_subparsers(title="subcommands", dest="pwr_cmd")
@@ -157,6 +191,7 @@ def main():
     set_gpio_parser = gpio_subparsers.add_parser("set", help="Set GPIO state")
     set_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
     set_gpio_parser.add_argument("state", choices=["high", "low", "high-z"], help="GPIO state")
+    set_gpio_parser = gpio_subparsers.add_parser("list", help="List GPIO states")
 
     # Relay subcommands
     rel_subparsers = rel_parser.add_subparsers(title="subcommands", dest="rel_cmd")
@@ -212,6 +247,8 @@ def main():
                 gpio_get(rte, args)
             elif args.gpio_cmd == "set":
                 gpio_set(rte, args)
+            elif args.gpio_cmd == "list":
+                gpio_list(rte, args)
         elif args.rte_cmd == 'pwr':
             # Handle RTE power related commands
             if args.pwr_cmd == "on":
@@ -220,6 +257,8 @@ def main():
                 power_off(rte, args)
             elif args.pwr_cmd == "reset":
                 reset(rte, args)
+        elif args.rte_cmd == 'serial':
+            open_dut_serial(rte, args)
     else:
         parser.print_help()
 

@@ -1,28 +1,23 @@
 import requests
-import time
 
 BASE_URL_TEMPLATE = "http://{rte_ip}:8000/api/v1"
 
-GPIO_MIN = 0
-GPIO_MAX = 19
-
-GPIO_SPI_ON = 1
-GPIO_SPI_VOLTAGE = 2
-GPIO_SPI_VCC = 3
-
-GPIO_RELAY = 0
-GPIO_RESET = 8
-GPIO_POWER = 9
-
 headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
+class rtectrl:
+    GPIO_MIN = 0
+    GPIO_MAX = 19
 
-class RTE:
     def __init__(self, rte_ip):
         self.rte_ip = rte_ip
+        self.rte_power
+
+    def gpio_list(self):
+        response = self._get_request(f"/gpio").json()
+        return response
 
     def gpio_get(self, gpio_no):
-        if not GPIO_MIN <= gpio_no <= GPIO_MAX:
+        if not self.GPIO_MIN <= gpio_no <= self.GPIO_MAX:
             raise GPIOWrongNumberError("Wrong GPIO number")
 
         # GPIOS:
@@ -44,7 +39,7 @@ class RTE:
         return state_str
 
     def gpio_set(self, gpio_no, state_str, sleep=0):
-        if not GPIO_MIN <= gpio_no <= GPIO_MAX:
+        if not self.GPIO_MIN <= gpio_no <= self.GPIO_MAX:
             raise GPIOWrongNumberError("Wrong GPIO number")
 
         # GPIOS:
@@ -70,32 +65,6 @@ class RTE:
         response = self._patch_request(f"/gpio/{gpio_no}", message)
         if response.status_code != 200:
             raise RuntimeError("Failed to set GPIO state")
-
-    def power_on(self, sleep=1):
-        self.gpio_set(GPIO_POWER, "low", sleep)
-        time.sleep(sleep)
-
-    def power_off(self, sleep=5):
-        self.gpio_set(GPIO_POWER, "low", sleep)
-        time.sleep(sleep)
-
-    def reset(self, sleep=1):
-        self.gpio_set(GPIO_RESET, "low", sleep)
-        time.sleep(sleep)
-
-    def relay_get(self):
-        return self.gpio_get(GPIO_RELAY) 
-
-    def relay_set(self, state):
-        self.gpio_set(GPIO_RELAY, state)
-
-    def relay_toggle(self):
-        state_str = self.relay_get()
-        if state_str == "low":
-            new_state_str = "high"
-        else:
-            new_state_str = "low"
-        self.relay_set(new_state_str)
 
     def _get_request(self, endpoint):
         url = BASE_URL_TEMPLATE.format(rte_ip=self.rte_ip)

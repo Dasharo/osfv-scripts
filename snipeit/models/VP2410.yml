@@ -1,0 +1,16 @@
+---
+flash_chip:
+  # flash chip model to be used by flashrom (optional - if not given, no chip 
+  # parameter will be explicitelt added to flashrom)
+  model: "MX25U6435E/F" 
+    # flash chip voltage (required)
+  voltage: "1.8V"
+
+pwr_ctrl:
+  # whether power is controlled via Sonoff plug (required)
+  sonoff: false
+  # whether power is controller via on-board RTE relay (required)
+  relay: true
+
+# whether CMOS reset is required after flashing (optional - defaults to false)
+reset_cmos: true

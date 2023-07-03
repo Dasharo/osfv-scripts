@@ -103,3 +103,15 @@ def check_in_asset(asset_id):
     else:
         print(f'Error checking in asset {asset_id}. Status code: {response.status_code}')
         print(response.json())
+
+def get_asset_model_name(asset_id):
+    response = requests.get(f'{api_url}/hardware/{asset_id}', headers=headers, timeout=10)
+    if response.status_code == 200:
+        data = response.json()
+        model_name = data['model']['name']
+    else:
+        print(f'Error retrieving assets. Status code: {response.status_code}')
+        print(response.json())
+        model_name = None
+
+    return model_name

@@ -1,6 +1,8 @@
 from rtectrl_api import rtectrl 
 import time
 import paramiko
+import yaml
+import os
 
 class RTE(rtectrl):
     GPIO_SPI_ON = 1
@@ -24,6 +26,24 @@ class RTE(rtectrl):
     def __init__(self, rte_ip, dut_model):
         self.rte_ip = rte_ip
         self.dut_model = dut_model 
+        self.dut_data = self.load_model_data()
+
+    def load_model_data(self):
+        # Specify the file path
+        file_path = f"models/{self.dut_model}.yml"
+
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            raise UnsupportedDUTModel("The given model is not yet supported")
+
+        # Load the YAML file
+        with open(file_path, "r") as file:
+            data = yaml.safe_load(file)
+
+        # print(data)
+
+        # Return the loaded data
+        return data
 
     def power_on(self, sleep=1):
         self.gpio_set(self.GPIO_POWER, "low", sleep)
@@ -48,7 +68,13 @@ class RTE(rtectrl):
         time.sleep(10)
         self.gpio_set(self.GPIO_CMOS, "high-z")
 
-    def spi_enable(self, voltage):
+    def spi_enable(self):
+        if "flash_chip" in self.dut_data:
+            if "voltage" in self.dut_data["flash_chip"]:
+                voltage = self.dut_data["flash_chip"]["voltage"]
+            else:
+                raise IncompleteModelData("Flash chip voltage is missing in model data")
+
         if voltage == "1.8V":
             state = "high-z"
         elif voltage == "3.3V":
@@ -56,7 +82,7 @@ class RTE(rtectrl):
         else:
             raise SPIWrongVoltage
 
-        self.gpio_set(self.GPIO_SPI_VOLTAGE, "high-z")
+        self.gpio_set(self.GPIO_SPI_VOLTAGE, state)
         self.gpio_set(self.GPIO_SPI_VCC, "low")
         self.gpio_set(self.GPIO_SPI_ON, "low")
 
@@ -64,7 +90,23 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
 
+    def pwr_ctrl_before_flash(self):
+        try:
+            if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+                # Handling Sonoff via API is to be implemented
+                pass
+            if self.dut_data["pwr_ctrl"]["relay"] is True:
+                state = self.relay_get()
+                if state != "low":
+                    self.relay_set("low")
+                    time.sleep(5)
+        except:
+            raise IncompleteModelData("pwr_ctrl is missing or incomplete in model data")
+
     def flash_cmd(self, args, read_file=None, write_file=None):
+        self.pwr_ctrl_before_flash()
+        self.spi_enable()
+
         # Create SSH client
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -98,21 +140,43 @@ class RTE(rtectrl):
         finally:
             # Close the SSH connection
             ssh.close()
+            self.spi_disable()
 
-    def flash_probe(self, args):
+    def flash_create_args(self, extra_args=" "):
+        args = ""
+
+        # Set chip explicitely, if defined in model configuration
+        if "flash_chip" in self.dut_data:
+            if "model" in self.dut_data["flash_chip"]:
+                args = " ".join(['-c', self.dut_data["flash_chip"]["model"], extra_args])
+
+        return args
+
+    def flash_probe(self):
+        args = self.flash_create_args()
         self.flash_cmd(args)
 
-    def flash_read(self, args, read_file):
-        args = " ".join([args , '-r', self.FW_PATH_READ]) 
+    def flash_read(self, read_file):
+        args = self.flash_create_args(f'-r {self.FW_PATH_READ}') 
         self.flash_cmd(args, read_file=read_file)
 
-    def flash_erase(self, args):
+    def flash_erase(self):
         args = " ".join([args , '-E']) 
         self.flash_cmd(args)
 
-    def flash_write(self, args, write_file):
-        args = " ".join([args , '-w', self.FW_PATH_WRITE]) 
+    def flash_write(self, write_file):
+        args = self.flash_create_args(f'-w {self.FW_PATH_WRITE}') 
         self.flash_cmd(args, write_file=write_file)
+        time.sleep(2)
+        if 'reset_cmos' in self.dut_data:
+            if self.dut_data['reset_cmos'] == True:
+                self.reset_cmos()
+
+class IncompleteModelData(Exception):
+    pass
+
+class UnsupportedDUTModel(Exception):
+    pass
 
 class SPIWrongVoltage(Exception):
     pass

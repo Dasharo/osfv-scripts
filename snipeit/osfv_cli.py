@@ -137,30 +137,30 @@ def open_dut_serial(rte, args):
     tn.interact()
 
 def spi_on(rte, args):
-    print(f"Enabling SPI with voltage: {args.voltage}")
-    rte.spi_enable(args.voltage)
+    print(f"Enabling SPI...")
+    rte.spi_enable()
 
 def spi_off(rte, args):
-    print(f"Disabling SPI")
+    print(f"Disabling SPI...")
     rte.spi_disable()
 
 def flash_probe(rte, args):
     print(f"Probing flash...")
-    rte.flash_probe('-c "MX25U6435E/F"')
+    rte.flash_probe()
 
 def flash_read(rte, args):
     print(f"Reading from flash...")
-    rte.flash_read('-c "MX25U6435E/F"', args.rom)
+    rte.flash_read(args.rom)
     print(f"Read flash content saved to {args.rom}")
 
 def flash_write(rte, args):
     print(f"Writing {args.rom} to flash...")
-    rte.flash_write('-c "MX25U6435E/F"', args.rom)
+    rte.flash_write(args.rom)
     print(f"Flash written")
 
 def flash_erase(rte, args):
     print(f"Erasing DUT flash...")
-    rte.flash_erase('-c "MX25U6435E/F"')
+    rte.flash_erase()
     print(f"Flash erased")
 
 # Main function
@@ -275,7 +275,10 @@ def main():
                     print(f'No asset found with RTE IP: {args.rte_ip}')
 
     elif args.command == 'rte':
-        rte = RTE(args.rte_ip, "VP2410")
+        asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
+        dut_model_name = snipeit_api.get_asset_model_name(asset_id)
+        print(f"DUT model retreived from snipeit: {dut_model_name}")
+        rte = RTE(args.rte_ip, dut_model_name)
 
         if args.rte_cmd == 'rel':
             # Handle RTE relay related commands

@@ -1,0 +1,12 @@
+---
+flash_chip:
+  voltage: "3.3V"
+
+pwr_ctrl:
+  # whether power is controlled via Sonoff plug (required)
+  sonoff: false
+  # whether power is controller via on-board RTE relay (required)
+  relay: true
+
+# whether CMOS reset is required after flashing (optional - defaults to false)
+reset_cmos: true

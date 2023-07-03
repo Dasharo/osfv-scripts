@@ -187,7 +187,8 @@ def main():
 
     check_out_parser = snipeit_subparsers.add_parser('check_out', help='Check out an asset by providing the Asset ID or RTE IP')
     check_out_group = check_out_parser.add_mutually_exclusive_group(required=True)
-    check_out_group.add_argument('--tte_ip', type=str, help='RTE IP')
+    check_out_group.add_argument('--asset_id', type=int, help='Asset ID')
+    check_out_group.add_argument('--rte_ip', type=str, help='RTE IP')
 
     check_in_parser = snipeit_subparsers.add_parser('check_in', help='Check in an asset by providing the Asset ID or RTE IP')
     check_in_group = check_in_parser.add_mutually_exclusive_group(required=True)

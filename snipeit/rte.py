@@ -83,8 +83,11 @@ class RTE(rtectrl):
             raise SPIWrongVoltage
 
         self.gpio_set(self.GPIO_SPI_VOLTAGE, state)
+        time.sleep(2)
         self.gpio_set(self.GPIO_SPI_VCC, "low")
+        time.sleep(2)
         self.gpio_set(self.GPIO_SPI_ON, "low")
+        time.sleep(2)
 
     def spi_disable(self):
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
@@ -122,6 +125,7 @@ class RTE(rtectrl):
     
             # Execute the flashrom command
             command = self.FLASHROM_CMD.format(programmer=self.PROGRAMMER, args=args)
+            print(f'Executing command: {command}')
     
             channel = ssh.get_transport().open_session()
             channel.exec_command(command)
@@ -142,13 +146,16 @@ class RTE(rtectrl):
             ssh.close()
             self.spi_disable()
 
-    def flash_create_args(self, extra_args=" "):
+    def flash_create_args(self, extra_args=""):
         args = ""
 
         # Set chip explicitely, if defined in model configuration
         if "flash_chip" in self.dut_data:
             if "model" in self.dut_data["flash_chip"]:
-                args = " ".join(['-c', self.dut_data["flash_chip"]["model"], extra_args])
+                args = " ".join(['-c', self.dut_data["flash_chip"]["model"]])
+
+        if extra_args:
+            args = " ".join([args, extra_args])
 
         return args
 
@@ -161,7 +168,7 @@ class RTE(rtectrl):
         self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
-        args = " ".join([args , '-E']) 
+        args = self.flash_create_args(f'-E') 
         self.flash_cmd(args)
 
     def flash_write(self, write_file):

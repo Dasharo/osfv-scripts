@@ -10,7 +10,6 @@ class rtectrl:
 
     def __init__(self, rte_ip):
         self.rte_ip = rte_ip
-        self.rte_power
 
     def gpio_list(self):
         response = self._get_request(f"/gpio").json()

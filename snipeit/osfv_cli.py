@@ -144,6 +144,25 @@ def spi_off(rte, args):
     print(f"Disabling SPI")
     rte.spi_disable()
 
+def flash_probe(rte, args):
+    print(f"Probing flash...")
+    rte.flash_probe('-c "MX25U6435E/F"')
+
+def flash_read(rte, args):
+    print(f"Reading from flash...")
+    rte.flash_read('-c "MX25U6435E/F"', args.rom)
+    print(f"Read flash content saved to {args.rom}")
+
+def flash_write(rte, args):
+    print(f"Writing {args.rom} to flash...")
+    rte.flash_write('-c "MX25U6435E/F"', args.rom)
+    print(f"Flash written")
+
+def flash_erase(rte, args):
+    print(f"Erasing DUT flash...")
+    rte.flash_erase('-c "MX25U6435E/F"')
+    print(f"Flash erased")
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(description='Snipe-IT Asset Retrieval')
@@ -183,6 +202,7 @@ def main():
     pwr_parser = rte_subparsers.add_parser('pwr', help='Control DUT power via RTE')
     spi_parser = rte_subparsers.add_parser('spi', help='Control SPI lines of RTE')
     serial_parser = rte_subparsers.add_parser('serial', help='Open DUT serial via telnet')
+    flash_parser = rte_subparsers.add_parser('flash', help='DUT flash operations')
 
     # Power subcommands
     pwr_subparsers = pwr_parser.add_subparsers(title="subcommands", dest="pwr_cmd")
@@ -215,6 +235,15 @@ def main():
     spi_on_parser.add_argument("--voltage", type=str, default="1.8V", help="SPI voltage (default: 1.8V)")
     spi_off_parser = spi_subparsers.add_parser("off", help="Disable SPI lines")
 
+    # RTE flash subcommands
+    flash_subparsers = flash_parser.add_subparsers(title="subcommands", dest="flash_cmd")
+    flash_probe_parser = flash_subparsers.add_parser("probe", help="Flash proble with flashrom")
+    flash_read_parser = flash_subparsers.add_parser("read", help="Read from DUT flash with flashrom")
+    flash_read_parser.add_argument("--rom", type=str, default="read.rom", help="Path to read firmware file (default: read.rom)")
+    flash_write_parser = flash_subparsers.add_parser("write", help="Write to DUT flash with flashrom")
+    flash_write_parser.add_argument("--rom", type=str, default="write.rom", help="Path to read firmware file (default: write.rom)")
+    flash_erase_parser = flash_subparsers.add_parser("erase", help="Erase DUT flash with flashrom")
+
     args = parser.parse_args()
 
     if args.command == 'snipeit':
@@ -246,7 +275,7 @@ def main():
                     print(f'No asset found with RTE IP: {args.rte_ip}')
 
     elif args.command == 'rte':
-        rte = RTE(args.rte_ip)
+        rte = RTE(args.rte_ip, "VP2410")
 
         if args.rte_cmd == 'rel':
             # Handle RTE relay related commands
@@ -279,6 +308,15 @@ def main():
                 spi_on(rte, args)
             elif args.spi_cmd == "off":
                 spi_off(rte, args)
+        elif args.rte_cmd == 'flash':
+            if args.flash_cmd == "probe":
+                flash_probe(rte, args)
+            elif args.flash_cmd == "read":
+                flash_read(rte, args)
+            elif args.flash_cmd == "write":
+                flash_write(rte, args)
+            elif args.flash_cmd == "erase":
+                flash_erase(rte, args)
     else:
         parser.print_help()
 

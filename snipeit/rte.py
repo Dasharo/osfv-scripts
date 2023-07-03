@@ -10,6 +10,8 @@ class RTE(rtectrl):
     GPIO_RESET = 8
     GPIO_POWER = 9
 
+    GPIO_CMOS = 12
+
     def __init__(self, rte_ip):
         self.rte_ip = rte_ip
 
@@ -30,6 +32,11 @@ class RTE(rtectrl):
 
     def relay_set(self, state):
         self.gpio_set(self.GPIO_RELAY, state)
+
+    def reset_cmos(self):
+        self.gpio_set(self.GPIO_CMOS, "low")
+        time.sleep(10)
+        self.gpio_set(self.GPIO_CMOS, "high-z")
 
     def spi_enable(self, voltage):
         if voltage == "1.8V":

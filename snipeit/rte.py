@@ -30,3 +30,22 @@ class RTE(rtectrl):
 
     def relay_set(self, state):
         self.gpio_set(self.GPIO_RELAY, state)
+
+    def spi_enable(self, voltage):
+        if voltage == "1.8V":
+            state = "high-z"
+        elif voltage == "3.3V":
+            state = "low"
+        else:
+            raise SPIWrongVoltage
+
+        self.gpio_set(self.GPIO_SPI_VOLTAGE, "high-z")
+        self.gpio_set(self.GPIO_SPI_VCC, "low")
+        self.gpio_set(self.GPIO_SPI_ON, "low")
+
+    def spi_disable(self):
+        self.gpio_set(self.GPIO_SPI_VCC, "high-z")
+        self.gpio_set(self.GPIO_SPI_ON, "high-z")
+
+class SPIWrongVoltage(Exception):
+    pass

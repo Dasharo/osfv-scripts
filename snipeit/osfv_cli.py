@@ -85,7 +85,7 @@ def relay_toggle(rte, args):
     print(f"Relay state toggled. New state: {state}")
 
 def relay_set(rte, args):
-    rte.relay_set()
+    rte.relay_set(args.state)
     state = rte.relay_get()
     print(f"Relay state set to {state}")
 
@@ -136,6 +136,14 @@ def open_dut_serial(rte, args):
     # Enter the interactive shell
     tn.interact()
 
+def spi_on(rte, args):
+    print(f"Enabling SPI with voltage: {args.voltage}")
+    rte.spi_enable(args.voltage)
+
+def spi_off(rte, args):
+    print(f"Disabling SPI")
+    rte.spi_disable()
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(description='Snipe-IT Asset Retrieval')
@@ -173,6 +181,7 @@ def main():
     rel_parser = rte_subparsers.add_parser('rel', help='Control RTE relay')
     gpio_parser = rte_subparsers.add_parser('gpio', help='Control RTE GPIO')
     pwr_parser = rte_subparsers.add_parser('pwr', help='Control DUT power via RTE')
+    spi_parser = rte_subparsers.add_parser('spi', help='Control SPI lines of RTE')
     serial_parser = rte_subparsers.add_parser('serial', help='Open DUT serial via telnet')
 
     # Power subcommands
@@ -199,6 +208,12 @@ def main():
     get_rel_parser = rel_subparsers.add_parser("get", help="Get relay state")
     set_rel_parser = rel_subparsers.add_parser("set", help="Set relay state")
     set_rel_parser.add_argument("state", choices=["high", "low",], help="Relay state")
+
+    # RTE SPI subcommands
+    spi_subparsers = spi_parser.add_subparsers(title="subcommands", dest="spi_cmd")
+    spi_on_parser = spi_subparsers.add_parser("on", help="Enable SPI lines")
+    spi_on_parser.add_argument("--voltage", type=str, default="1.8V", help="SPI voltage (default: 1.8V)")
+    spi_off_parser = spi_subparsers.add_parser("off", help="Disable SPI lines")
 
     args = parser.parse_args()
 
@@ -259,6 +274,11 @@ def main():
                 reset(rte, args)
         elif args.rte_cmd == 'serial':
             open_dut_serial(rte, args)
+        elif args.rte_cmd == 'spi':
+            if args.spi_cmd == "on":
+                spi_on(rte, args)
+            elif args.spi_cmd == "off":
+                spi_off(rte, args)
     else:
         parser.print_help()
 

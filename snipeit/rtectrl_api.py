@@ -21,7 +21,7 @@ class rtectrl:
             raise GPIOWrongNumberError("Wrong GPIO number")
 
         # GPIOS:
-        #   0 - relay
+        #   0 - relay (regular GPIO)
         #   1 - 12 - OC GPIOs
         #   13 - 19 - regular GPIOs
         state = self._get_request(f"/gpio/{gpio_no}").json()["state"] % 2
@@ -43,7 +43,7 @@ class rtectrl:
             raise GPIOWrongNumberError("Wrong GPIO number")
 
         # GPIOS:
-        #   0 - relay
+        #   0 - relay (regular GPIO)
         #   1 - 12 - OC GPIOs
         #   13 - 19 - regular GPIOs
         if 1 <= gpio_no <= 12:

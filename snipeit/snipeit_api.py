@@ -210,6 +210,7 @@ def user_add(first_name, last_name, company_name):
         'password_confirmation': password,
         'company_id': company_id ,
         'groups': group_id,
+        'activated': True,
     }
     print(data)
 

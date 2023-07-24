@@ -189,6 +189,10 @@ def main():
     check_out_group = check_out_parser.add_mutually_exclusive_group(required=True)
     check_out_group.add_argument('--asset_id', type=int, help='Asset ID')
     check_out_group.add_argument('--rte_ip', type=str, help='RTE IP')
+    check_out_parser = snipeit_subparsers.add_parser('user_add', help='Add a new user by providing user First Name and Last Name')
+    check_out_parser.add_argument("--first-name", type=str, help="User First Name", required=True)
+    check_out_parser.add_argument("--last-name", type=str, help="User Last Name", required=True)
+    check_out_parser.add_argument("--company-name", type=str, default="3mdeb", help="Company Name")
 
     check_in_parser = snipeit_subparsers.add_parser('check_in', help='Check in an asset by providing the Asset ID or RTE IP')
     check_in_group = check_in_parser.add_mutually_exclusive_group(required=True)
@@ -274,6 +278,11 @@ def main():
                     snipeit_api.check_in_asset(asset_id)
                 else:
                     print(f'No asset found with RTE IP: {args.rte_ip}')
+        elif args.snipeit_cmd == 'user_add':
+            print(args)
+            snipeit_api.user_add(args.first_name, args.last_name, args.company_name)
+        elif args.snipeit_cmd == 'user_del':
+            print("NOT IMPLEMENTED")
 
     elif args.command == 'rte':
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)

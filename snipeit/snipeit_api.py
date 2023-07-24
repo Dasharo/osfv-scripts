@@ -2,6 +2,10 @@ import requests
 import yaml
 import os
 import sys
+import string
+import secrets
+import unidecode
+import json
 
 CONFIG_FILE_PATH = os.path.expanduser('~/.osfv/snipeit.yml')
 
@@ -115,3 +119,108 @@ def get_asset_model_name(asset_id):
         model_name = None
 
     return model_name
+
+def check_in_asset(asset_id):
+    response = requests.post(f'{api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
+
+    if response.status_code == 200:
+        print(f'Asset {asset_id} successfully checked in.')
+    else:
+        print(f'Error checking in asset {asset_id}. Status code: {response.status_code}')
+        print(response.json())
+
+def get_company_id(company_name):
+    response = requests.get(f'{api_url}/companies', headers=headers, timeout=10)
+    if response.status_code == 200:
+        companies_data = response.json()
+        for company in companies_data["rows"]:
+            if company["name"] == company_name:
+                return company["id"]
+        return None
+    else:
+        print(f"Error retrieving companies. Status code: {response.status_code}")
+        print(response.json())
+        return None
+
+def get_group_id(group_name):
+    response = requests.get(f'{api_url}/groups', headers=headers, timeout=10)
+    if response.status_code == 200:
+        groups_data = response.json()
+        for group in groups_data["rows"]:
+            if group["name"] == group_name:
+                return group["id"]
+        return None
+    else:
+        print(f"Error retrieving user groups. Status code: {response.status_code}")
+        print(response.json())
+        return None
+
+def generate_password(length=16):
+    characters = string.ascii_letters + string.digits + string.punctuation
+    password = ''.join(secrets.choice(characters) for i in range(length))
+    return password
+
+def get_users():
+    page = 1
+    users = []
+
+    while True:
+        response = requests.get(f'{api_url}/users', headers=headers, params={'limit': 50, 'offset': (page - 1) * 50}, timeout=10)
+        # print(response.json())
+        if response.status_code == 200:
+            data = response.json()
+            users.extend(data['rows'])
+            if 'total' not in data or data['total'] <= page:
+                break
+            page += 1
+        else:
+            print(f"Error retrieving users. Status code: {response.status_code}")
+            print(response.json())
+            break
+
+        return users
+
+def user_add(first_name, last_name, company_name):
+    email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+    username = f"{first_name[0].lower()}{last_name.lower()}"
+    password = generate_password()
+
+    users = get_users()
+    for user in users:
+        if user["username"] == username:
+            print(f"User with username '{username}' already exists.")
+            return
+
+    group_id = get_group_id("Users")
+    if group_id is None:
+        print("Group 'Users' not found in Snipe-IT.")
+        return
+
+    company_id = get_company_id(company_name)
+    if company_id is None:
+        print(f"Company {company_name} not found in Snipe-IT.")
+        return
+
+    data = {
+        'first_name': first_name,
+        'last_name': last_name,
+        'username': username,
+        'email': email,
+        'password': password,
+        'password_confirmation': password,
+        'company_id': company_id ,
+        'groups': group_id,
+    }
+    print(data)
+
+    response = requests.post(f'{api_url}/users', headers=headers, json=data, timeout=10)
+    if response.status_code == 200:
+        user_info = response.json()['payload']
+        user_id = user_info["id"]
+        print(f"User created successfully!")
+        print(f"Username: {username}")
+        print(f"Password: {password}")
+        print(f"User ID: {user_id}")
+    else:
+        print(f"Failed to create user. Status code: {response.status_code}")
+        print(response.json())

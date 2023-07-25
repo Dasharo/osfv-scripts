@@ -28,6 +28,8 @@ def load_api_config():
 
     if not api_url or not api_token:
         raise ValueError('Incomplete API configuration in the YAML file')
+    if not isinstance(user_id, int):
+        raise ValueError(f'User ID configuration in the YAML file should be int: {user_id}')
 
     return api_url, api_token, user_id
 

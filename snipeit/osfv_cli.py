@@ -6,6 +6,26 @@ import argparse
 import pexpect
 import json
 
+# Check out an asset
+def check_out_asset(asset_id):
+    success, data = snipeit_api.check_out_asset(asset_id)
+
+    if success:
+        print(f'Asset {asset_id} successfully checked out.')
+    else:
+        print(f'Error checking out asset {asset_id}')
+        print(f'Response data: {data}')
+
+# Check in an asset
+def check_in_asset(asset_id):
+    success, data = snipeit_api.check_in_asset(asset_id)
+
+    if success:
+        print(f'Asset {asset_id} successfully checked in.')
+    else:
+        print(f'Error checking in asset {asset_id}')
+        print(f'Response data: {data}')
+
 # List used assets
 def list_used_assets():
     all_assets = snipeit_api.get_all_assets()
@@ -262,20 +282,20 @@ def main():
             list_for_zabbix()
         elif args.snipeit_cmd == 'check_out':
             if args.asset_id:
-                snipeit_api.check_out_asset(args.asset_id)
+                check_out_asset(args.asset_id)
             elif args.rte_ip:
                 asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
                 if asset_id:
-                    snipeit_api.check_out_asset(asset_id)
+                    check_out_asset(asset_id)
                 else:
                     print(f'No asset found with RTE IP: {args.rte_ip}')
         elif args.snipeit_cmd == 'check_in':
             if args.asset_id:
-                snipeit_api.check_in_asset(args.asset_id)
+                check_in_asset(args.asset_id)
             elif args.rte_ip:
                 asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
                 if asset_id:
-                    snipeit_api.check_in_asset(asset_id)
+                    check_in_asset(asset_id)
                 else:
                     print(f'No asset found with RTE IP: {args.rte_ip}')
         elif args.snipeit_cmd == 'user_add':

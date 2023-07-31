@@ -93,22 +93,23 @@ def check_out_asset(asset_id):
         'checkout_to_type': 'user'
     }
     response = requests.post(f'{api_url}/hardware/{asset_id}/checkout', headers=headers, json=data, timeout=10)
+    response_json = response.json()
 
-    if response.status_code == 200 and response.json().get('status') != 'error':
-        print(f'Asset {asset_id} successfully checked out to {user_id} user.')
+    if response.status_code == 200 and response_json.get('status') != 'error':
+        return True, response_json
     else:
-        print(f'Error checking out asset {asset_id} to user {user_id}. Status code: {response.status_code}')
-        print(response.json())
+        return False, response_json
 
 # Check in an asset
 def check_in_asset(asset_id):
     response = requests.post(f'{api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
+    print(response)
+    response_json = response.json()
 
-    if response.status_code == 200 and response.json().get('status') != 'error':
-        print(f'Asset {asset_id} successfully checked in.')
+    if response.status_code == 200 and response_json.get('status') != 'error':
+        return True, response_json
     else:
-        print(f'Error checking in asset {asset_id}. Status code: {response.status_code}')
-        print(response.json())
+        return False, response_json
 
 def get_asset_model_name(asset_id):
     response = requests.get(f'{api_url}/hardware/{asset_id}', headers=headers, timeout=10)
@@ -121,15 +122,6 @@ def get_asset_model_name(asset_id):
         model_name = None
 
     return model_name
-
-def check_in_asset(asset_id):
-    response = requests.post(f'{api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
-
-    if response.status_code == 200:
-        print(f'Asset {asset_id} successfully checked in.')
-    else:
-        print(f'Error checking in asset {asset_id}. Status code: {response.status_code}')
-        print(response.json())
 
 def get_company_id(company_name):
     response = requests.get(f'{api_url}/companies', headers=headers, timeout=10)

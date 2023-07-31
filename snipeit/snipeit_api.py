@@ -94,7 +94,7 @@ def check_out_asset(asset_id):
     }
     response = requests.post(f'{api_url}/hardware/{asset_id}/checkout', headers=headers, json=data, timeout=10)
 
-    if response.status_code == 200:
+    if response.status_code == 200 and response.json().get('status') != 'error':
         print(f'Asset {asset_id} successfully checked out to {user_id} user.')
     else:
         print(f'Error checking out asset {asset_id} to user {user_id}. Status code: {response.status_code}')
@@ -104,7 +104,7 @@ def check_out_asset(asset_id):
 def check_in_asset(asset_id):
     response = requests.post(f'{api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
 
-    if response.status_code == 200:
+    if response.status_code == 200 and response.json().get('status') != 'error':
         print(f'Asset {asset_id} successfully checked in.')
     else:
         print(f'Error checking in asset {asset_id}. Status code: {response.status_code}')

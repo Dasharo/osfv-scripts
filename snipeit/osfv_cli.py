@@ -204,8 +204,7 @@ def sonoff_off(sonoff, args):
 def sonoff_get(sonoff, args):
     print("Getting Sonoff relay state...")
     try:
-        response = sonoff.get_state()
-        state = response.get('state')
+        state = sonoff.get_state()
         print(f"Sonoff relay state: {state}")
     except requests.exceptions.RequestException as e:
         print(f"Failed to get Sonoff relay state. Error: {e}")

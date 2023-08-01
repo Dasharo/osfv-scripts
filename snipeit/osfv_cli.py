@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 
 from rte import RTE
+from sonoff_api import SonoffDevice
 import snipeit_api 
 import argparse
 import pexpect
 import json
+import requests
 
 # Check out an asset
 def check_out_asset(asset_id):
@@ -183,6 +185,48 @@ def flash_erase(rte, args):
     rte.flash_erase()
     print(f"Flash erased")
 
+def sonoff_on(sonoff, args):
+    print("Turning on Sonoff relay...")
+    try:
+        response = sonoff.turn_on()
+        print(response)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to turn on Sonoff relay. Error: {e}")
+
+def sonoff_off(sonoff, args):
+    print("Turning off Sonoff relay...")
+    try:
+        response = sonoff.turn_off()
+        print(response)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to turn off Sonoff relay. Error: {e}")
+
+def sonoff_get(sonoff, args):
+    print("Getting Sonoff relay state...")
+    try:
+        response = sonoff.get_state()
+        state = response.get('state')
+        print(f"Sonoff relay state: {state}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to get Sonoff relay state. Error: {e}")
+
+def sonoff_tgl(sonoff, args):
+    print("Toggling Sonoff relay state...")
+    try:
+        response = sonoff.get_state()
+        current_state = response.get('state')
+
+        if current_state == 'ON':
+            response = sonoff.turn_off()
+            print("Sonoff relay state toggled off.")
+        elif current_state == 'OFF':
+            response = sonoff.turn_on()
+            print("Sonoff relay state toggled on.")
+        else:
+            print(f"Unexpected Sonoff relay state: {current_state}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to toggle Sonoff relay state. Error: {e}")
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(description='Snipe-IT Asset Retrieval')
@@ -190,7 +234,22 @@ def main():
     subparsers = parser.add_subparsers(title='commands', dest='command', help='Command to execute')
 
     snipeit_parser = subparsers.add_parser('snipeit', help='Snipe-IT commands')
+
     rte_parser = subparsers.add_parser('rte', help='RTE commands')
+    sonoff_parser = subparsers.add_parser('sonoff', help='Sonoff commands')
+
+
+    # Sonoff subcommands
+    sonoff_group = sonoff_parser.add_mutually_exclusive_group(required=True)
+    sonoff_group.add_argument('--sonoff_ip', type=str, help='Sonoff IP address')
+    sonoff_group.add_argument('--rte_ip', type=str, help='RTE IP address')
+    sonoff_subparsers = sonoff_parser.add_subparsers(title='subcommands', dest='sonoff_cmd',
+                                                       help='Sonoff subcommands')
+
+    list_used_parser = sonoff_subparsers.add_parser('on', help='Turn Sonoff ON')
+    list_used_parser = sonoff_subparsers.add_parser('off', help='Turn Sonoff OFF')
+    list_used_parser = sonoff_subparsers.add_parser('tgl', help='Toggle Sonoff state')
+    list_used_parser = sonoff_subparsers.add_parser('get', help='Get Sonoff state')
 
     # Snipe-IT subcommands
     snipeit_subparsers = snipeit_parser.add_subparsers(title='subcommands', dest='snipeit_cmd',
@@ -350,6 +409,27 @@ def main():
                 flash_write(rte, args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
+    elif args.command == 'sonoff':
+        sonoff_ip = ''
+
+        if args.sonoff_ip:
+            sonoff_ip = args.sonoff_ip
+        elif args.rte_ip:
+            sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(args.rte_ip)
+            if not sonoff_ip:
+                print(f'No Sonoff Device found with RTE IP: {args.rte_ip}')
+
+        sonoff = SonoffDevice(sonoff_ip)
+
+        if args.sonoff_cmd == 'on':
+            sonoff_on(sonoff, args)
+        if args.sonoff_cmd == 'off':
+            sonoff_off(sonoff, args)
+        if args.sonoff_cmd == 'get':
+            sonoff_get(sonoff, args)
+        if args.sonoff_cmd == 'tgl':
+            sonoff_tgl(sonoff, args)
+
     else:
         parser.print_help()
 

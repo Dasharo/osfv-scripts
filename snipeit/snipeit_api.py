@@ -85,6 +85,22 @@ def get_asset_id_by_rte_ip(rte_ip):
     # No asset found with matching RTE IP
     return None
 
+def get_sonoff_ip_by_rte_ip(rte_ip):
+    # Retrieve all assets
+    all_assets = get_all_assets()
+
+    # Search for asset with matching RTE IP
+    for asset in all_assets:
+        custom_fields = asset.get('custom_fields', {})
+        if custom_fields:
+            rte_ip_field = next((field_data['value'] for field_name, field_data in custom_fields.items() if field_name == 'RTE IP'), None)
+            if rte_ip_field == rte_ip:
+                if custom_fields['Sonoff IP']:
+                    return custom_fields['Sonoff IP']['value']
+
+    # No asset found with matching RTE IP
+    return None
+
 # Check out an asset
 def check_out_asset(asset_id):
     data = {

@@ -1,4 +1,6 @@
+from sonoff_api import SonoffDevice
 from rtectrl_api import rtectrl 
+import snipeit_api
 import time
 import paramiko
 import yaml
@@ -27,6 +29,7 @@ class RTE(rtectrl):
         self.rte_ip = rte_ip
         self.dut_model = dut_model 
         self.dut_data = self.load_model_data()
+        self.sonoff, self.sonoff_ip = self.init_sonoff()
 
     def load_model_data(self):
         # Specify the file path
@@ -40,10 +43,20 @@ class RTE(rtectrl):
         with open(file_path, "r") as file:
             data = yaml.safe_load(file)
 
-        # print(data)
-
         # Return the loaded data
         return data
+
+    def init_sonoff(self):
+        sonoff_ip = ''
+        sonoff = None
+
+        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+            sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
+            if not sonoff_ip:
+                raise SonoffNotFound(f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
+            sonoff = SonoffDevice(sonoff_ip)
+
+        return sonoff, sonoff_ip
 
     def power_on(self, sleep=1):
         self.gpio_set(self.GPIO_POWER, "low", sleep)
@@ -93,22 +106,51 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
 
-    def pwr_ctrl_before_flash(self):
-        try:
-            if self.dut_data["pwr_ctrl"]["sonoff"] is True:
-                # Handling Sonoff via API is to be implemented
-                pass
-            if self.dut_data["pwr_ctrl"]["relay"] is True:
-                state = self.relay_get()
-                if state != "low":
-                    self.relay_set("low")
-                    time.sleep(5)
-        except:
-            raise IncompleteModelData("pwr_ctrl is missing or incomplete in model data")
+    def pwr_ctrl_on(self):
+        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+            self.sonoff.turn_on()
+            state = self.sonoff.get_state()
+            if state != "ON":
+                raise Exception("Failed to power control ON")
+        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+            self.relay_set("high")
+            state = self.relay_get()
+            if state != "high":
+                raise Exception("Failed to power control ON")
+        time.sleep(5)
+
+    def pwr_ctrl_off(self):
+        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+            self.sonoff.turn_off()
+            state = self.sonoff.get_state()
+            if state != "OFF":
+                raise Exception("Failed to power control OFF")
+        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+            self.relay_set("low")
+            state = self.relay_get()
+            if state != "low":
+                raise Exception("Failed to power control OFF")
+        time.sleep(2)
 
     def flash_cmd(self, args, read_file=None, write_file=None):
-        self.pwr_ctrl_before_flash()
+        # 1. sonoff/relay ON
+        # 2. sleep 5
+        self.pwr_ctrl_on()
+
+        # 3. RTE POFF
+        # 4. sleep 3
+        self.power_off(3)
+
+        # 5. SPI ON
+        # 6. sleep 2
         self.spi_enable()
+        time.sleep(2)
+
+        # 7. sonoff/relay OFF
+        # 8. sleep 2
+        self.pwr_ctrl_off()
+
+        # 9. flashrom
 
         # Create SSH client
         ssh = paramiko.SSHClient()
@@ -144,7 +186,11 @@ class RTE(rtectrl):
         finally:
             # Close the SSH connection
             ssh.close()
+
+            # 10. SPI OFF
+            # 11. sleep 2
             self.spi_disable()
+            time.sleep(2)
 
     def flash_create_args(self, extra_args=""):
         args = ""
@@ -186,4 +232,7 @@ class UnsupportedDUTModel(Exception):
     pass
 
 class SPIWrongVoltage(Exception):
+    pass
+
+class SonoffNotFound(Exception):
     pass

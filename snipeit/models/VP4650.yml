@@ -8,9 +8,9 @@ flash_chip:
 
 pwr_ctrl:
   # whether power is controlled via Sonoff plug (required)
-  sonoff: false
+  sonoff: true
   # whether power is controller via on-board RTE relay (required)
-  relay: true
+  relay: false
 
 # whether CMOS reset is required after flashing (optional - defaults to false)
 reset_cmos: true

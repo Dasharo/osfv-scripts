@@ -135,7 +135,12 @@ class RTE(rtectrl):
     def flash_cmd(self, args, read_file=None, write_file=None):
         # 1. sonoff/relay ON
         # 2. sleep 5
-        self.pwr_ctrl_on()
+        # Some flash scripts started with power platform ON, but some others
+        # not (like FW4C).
+        if self.dut_data["pwr_ctrl"]["init_on"] is True:
+            self.pwr_ctrl_on()
+        else:
+            self.pwr_ctrl_off()
 
         # 3. RTE POFF
         # 4. sleep 3

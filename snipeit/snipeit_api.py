@@ -23,20 +23,20 @@ def load_api_config():
         raise ValueError(f'Empty configuration file')
         sys.exit(1)
 
-    api_url = config.get('api_url')
-    api_token = config.get('api_token')
-    user_id = config.get('user_id')
+    cfg_api_url = config.get('api_url')
+    cfg_api_token = config.get('api_token')
+    cfg_user_id = config.get('user_id')
 
-    if not api_url or not api_token:
+    if not cfg_api_url or not cfg_api_token:
         raise ValueError('Incomplete API configuration in the YAML file')
-    if not isinstance(user_id, int):
-        raise ValueError(f'User ID configuration in the YAML file should be int: {user_id}')
+    if not isinstance(cfg_user_id, int):
+        raise ValueError(f'User ID configuration in the YAML file should be int: {cfg_user_id}')
 
-    return api_url, api_token, user_id
+    return cfg_api_url, cfg_api_token, cfg_user_id
 
 try:
     # API endpoint and authentication token
-    api_url, api_token, user_id = load_api_config()
+    cfg_api_url, cfg_api_token, cfg_user_id = load_api_config()
 except FileNotFoundError as e:
     print(f'Configuration file not found at {CONFIG_FILE_PATH}: {e}')
     sys.exit(1)
@@ -47,7 +47,7 @@ except ValueError as e:
 # Headers for API requests
 headers = {
     'Accept': 'application/json',
-    'Authorization': f'Bearer {api_token}'
+    'Authorization': f'Bearer {cfg_api_token}'
 }
 
 # Retrieve all assets
@@ -56,7 +56,7 @@ def get_all_assets():
     all_assets = []
 
     while True:
-        response = requests.get(f'{api_url}/hardware', headers=headers, params={'limit': 500, 'offset': (page - 1) * 500}, timeout=10)
+        response = requests.get(f'{cfg_api_url}/hardware', headers=headers, params={'limit': 500, 'offset': (page - 1) * 500}, timeout=10)
         if response.status_code == 200:
             data = response.json()
             all_assets.extend(data['rows'])
@@ -105,10 +105,10 @@ def get_sonoff_ip_by_rte_ip(rte_ip):
 def check_out_asset(asset_id):
     data = {
         'asset_id': asset_id,
-        'assigned_user': user_id,
+        'assigned_user': cfg_user_id,
         'checkout_to_type': 'user'
     }
-    response = requests.post(f'{api_url}/hardware/{asset_id}/checkout', headers=headers, json=data, timeout=10)
+    response = requests.post(f'{cfg_api_url}/hardware/{asset_id}/checkout', headers=headers, json=data, timeout=10)
     response_json = response.json()
 
     if response.status_code == 200 and response_json.get('status') != 'error':
@@ -118,7 +118,7 @@ def check_out_asset(asset_id):
 
 # Check in an asset
 def check_in_asset(asset_id):
-    response = requests.post(f'{api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
+    response = requests.post(f'{cfg_api_url}/hardware/{asset_id}/checkin', headers=headers, timeout=10)
     print(response)
     response_json = response.json()
 
@@ -128,7 +128,7 @@ def check_in_asset(asset_id):
         return False, response_json
 
 def get_asset_model_name(asset_id):
-    response = requests.get(f'{api_url}/hardware/{asset_id}', headers=headers, timeout=10)
+    response = requests.get(f'{cfg_api_url}/hardware/{asset_id}', headers=headers, timeout=10)
     if response.status_code == 200:
         data = response.json()
         model_name = data['model']['name']
@@ -140,7 +140,7 @@ def get_asset_model_name(asset_id):
     return model_name
 
 def get_company_id(company_name):
-    response = requests.get(f'{api_url}/companies', headers=headers, timeout=10)
+    response = requests.get(f'{cfg_api_url}/companies', headers=headers, timeout=10)
     if response.status_code == 200:
         companies_data = response.json()
         for company in companies_data["rows"]:
@@ -153,7 +153,7 @@ def get_company_id(company_name):
         return None
 
 def get_group_id(group_name):
-    response = requests.get(f'{api_url}/groups', headers=headers, timeout=10)
+    response = requests.get(f'{cfg_api_url}/groups', headers=headers, timeout=10)
     if response.status_code == 200:
         groups_data = response.json()
         for group in groups_data["rows"]:
@@ -175,7 +175,7 @@ def get_users():
     users = []
 
     while True:
-        response = requests.get(f'{api_url}/users', headers=headers, params={'limit': 50, 'offset': (page - 1) * 50}, timeout=10)
+        response = requests.get(f'{cfg_api_url}/users', headers=headers, params={'limit': 50, 'offset': (page - 1) * 50}, timeout=10)
         # print(response.json())
         if response.status_code == 200:
             data = response.json()
@@ -190,9 +190,16 @@ def get_users():
 
         return users
 
+def get_user_id(username):
+    users = get_users()
+    for user in users:
+        if user["username"] == username:
+            return user["id"]
+    return None
+
 def user_add(first_name, last_name, company_name):
     email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-    username = f"{first_name[0].lower()}{last_name.lower()}"
+    username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
     password = generate_password()
 
     users = get_users()
@@ -211,6 +218,8 @@ def user_add(first_name, last_name, company_name):
         print(f"Company {company_name} not found in Snipe-IT.")
         return
 
+    # For some reason, with our SnipeIT instance the group IT assignment does
+    # not work and we still need to do this manually...
     data = {
         'first_name': first_name,
         'last_name': last_name,
@@ -224,8 +233,9 @@ def user_add(first_name, last_name, company_name):
     }
     print(data)
 
-    response = requests.post(f'{api_url}/users', headers=headers, json=data, timeout=10)
-    if response.status_code == 200:
+    response = requests.post(f'{cfg_api_url}/users', headers=headers, json=data, timeout=10)
+    response_json = response.json()
+    if response.status_code == 200 and response_json.get('status') != 'error':
         user_info = response.json()['payload']
         user_id = user_info["id"]
         print(f"User created successfully!")
@@ -234,4 +244,21 @@ def user_add(first_name, last_name, company_name):
         print(f"User ID: {user_id}")
     else:
         print(f"Failed to create user. Status code: {response.status_code}")
-        print(response.json())
+        print(response_json)
+
+def user_del(first_name, last_name):
+    email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+    username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+
+    user_id = get_user_id(username)
+    if not user_id:
+        print(f"Failed to find user with username: {username}")
+        return
+
+    response = requests.delete(f'{cfg_api_url}/users/{user_id}', headers=headers, timeout=10)
+    response_json = response.json()
+    if response.status_code == 200 and response_json.get('status') != 'error':
+        print(f"User {username} deleted successfully!")
+    else:
+        print(f"Failed to delete user {username}. Status code: {response.status_code}")
+        print(response_json)

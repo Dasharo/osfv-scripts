@@ -29,12 +29,6 @@ as such, may not fit for other needs.
    pip install -r requirements.txt
    ```
 
-1. Install the script and config file template:
-
-    ```shell
-    make install
-    ```
-
 1. Customize the configuration:
 
    - Open `~/.osfv/snipeit.yml` and provide your Snipe-IT API URL, API token,
@@ -55,43 +49,43 @@ some examples:
 - List all used assets:
 
   ```shell
-  snipeit_cli list_used
+  ./osfv_cli.py list_used
   ```
 
 - List all unused assets:
 
   ```shell
-  snipeit_cli list_unused
+  ./osfv_cli.py list_unused
   ```
 
 - List all assets:
 
   ```shell
-  snipeit_cli list_all
+  ./osfv_cli.py list_all
   ```
 
 - Check out an asset (by asset ID):
 
   ```shell
-  snipeit_cli check_out --asset_id 123
+  ./osfv_cli.py check_out --asset_id 123
   ```
 
 - Check in an asset (by asset ID):
 
   ```shell
-  snipeit_cli check_in --asset_id 123
+  ./osfv_cli.py check_in --asset_id 123
   ```
 
 - Check out an asset (by RTE IP):
 
   ```bash
-  snipeit_cli check_out --rte_ip <rte_ip_address>
+  ./osfv_cli.py check_out --rte_ip <rte_ip_address>
   ```
 
 - Check out an asset (by RTE IP):
 
   ```bash
-  snipeit_cli check_out --rte_ip <rte_ip_address>
+  ./osfv_cli.py check_out --rte_ip <rte_ip_address>
   ```
 
   > Replace `<rte_ip_address>` with the actual RTE IP address of the asset you
@@ -103,6 +97,6 @@ some examples:
 - For more command options, you can use the `--help` flag:
 
   ```shell
-  snipeit_cli --help
+  ./osfv_cli.py --help
   ```
 

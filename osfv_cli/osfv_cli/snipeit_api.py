@@ -128,6 +128,13 @@ def get_sonoff_ip_by_rte_ip(rte_ip):
 
 # Check out an asset
 def check_out_asset(asset_id):
+    asset_data = get_asset(asset_id)
+    assigned_to_id = asset_data["assigned_to"]["id"]
+
+    # Simply pass if asset is already checked out to the caller
+    if assigned_to_id == cfg_user_id:
+        return True, None
+
     data = {
         "asset_id": asset_id,
         "assigned_user": cfg_user_id,
@@ -161,18 +168,24 @@ def check_in_asset(asset_id):
         return False, response_json
 
 
-def get_asset_model_name(asset_id):
+def get_asset(asset_id):
     response = requests.get(
         f"{cfg_api_url}/hardware/{asset_id}", headers=headers, timeout=10
     )
+    data = {}
     if response.status_code == 200:
         data = response.json()
-        model_name = data["model"]["name"]
     else:
         print(f"Error retrieving assets. Status code: {response.status_code}")
         print(response.json())
-        model_name = None
+    return data
 
+
+def get_asset_model_name(asset_id):
+    data = get_asset(asset_id)
+    model_name = ""
+    if data:
+        model_name = data["model"]["name"]
     return model_name
 
 

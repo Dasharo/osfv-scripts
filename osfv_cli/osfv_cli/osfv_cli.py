@@ -262,7 +262,7 @@ def sonoff_tgl(sonoff, args):
 
 # Main function
 def main():
-    parser = argparse.ArgumentParser(description="Snipe-IT Asset Retrieval")
+    parser = argparse.ArgumentParser(description="Open Source Firmware Validation CLI")
 
     subparsers = parser.add_subparsers(
         title="commands", dest="command", help="Command to execute"
@@ -281,10 +281,10 @@ def main():
         title="subcommands", dest="sonoff_cmd", help="Sonoff subcommands"
     )
 
-    list_used_parser = sonoff_subparsers.add_parser("on", help="Turn Sonoff ON")
-    list_used_parser = sonoff_subparsers.add_parser("off", help="Turn Sonoff OFF")
-    list_used_parser = sonoff_subparsers.add_parser("tgl", help="Toggle Sonoff state")
-    list_used_parser = sonoff_subparsers.add_parser("get", help="Get Sonoff state")
+    sonoff_subparsers.add_parser("on", help="Turn Sonoff ON")
+    sonoff_subparsers.add_parser("off", help="Turn Sonoff OFF")
+    sonoff_subparsers.add_parser("tgl", help="Toggle Sonoff state")
+    sonoff_subparsers.add_parser("get", help="Get Sonoff state")
 
     # Snipe-IT subcommands
     snipeit_subparsers = snipeit_parser.add_subparsers(

@@ -5,7 +5,7 @@ Firmware Validation in some ways.
 
 ## Scripts
 
-* [snipeit](snipeit/README.md) - manage devices in SnipeIT via API
+* [osfv_cli](osfv_cli/README.md) - manage devices in OSFV lab
 
 ## Contributing
 

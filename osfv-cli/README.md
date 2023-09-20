@@ -35,11 +35,11 @@ as such, may not fit for other needs.
      and user ID
    - `api_url` - typically should be left unchanged, please make sure you have
      correct DNS configuration or entry in `/etc/hosts`,
-	 - `api_token` - login to Snipe-IT, click on user icon, choose `Manage API
+  + `api_token` - login to Snipe-IT, click on user icon, choose `Manage API
      Keys`, click `Create New Token`, use name `osfv-scripts`, use generated API
      token in config file
    - `user_id` is your Snipe-IT user id, which can be found by going to
-     http://snipeit/users and showing column ID
+     <http://snipeit/users> and showing column ID
 
 ## Usage
 
@@ -99,4 +99,3 @@ some examples:
   ```shell
   ./osfv_cli.py --help
   ```
-

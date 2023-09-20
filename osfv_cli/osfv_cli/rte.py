@@ -1,6 +1,6 @@
-from sonoff_api import SonoffDevice
-from rtectrl_api import rtectrl 
-import snipeit_api
+from .sonoff_api import SonoffDevice
+from .rtectrl_api import rtectrl 
+from . import snipeit_api
 import time
 import paramiko
 import yaml

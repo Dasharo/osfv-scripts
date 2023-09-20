@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 
-from rte import RTE
-from sonoff_api import SonoffDevice
-import snipeit_api 
+from .rte import RTE
+from .sonoff_api import SonoffDevice
+from . import snipeit_api 
 import argparse
 import pexpect
 import json

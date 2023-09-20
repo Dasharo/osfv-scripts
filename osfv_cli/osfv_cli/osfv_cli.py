@@ -85,6 +85,8 @@ def print_asset_details(asset):
         f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]}, Name: {asset["name"]}, Serial: {asset["serial"]}'
     )
 
+    print(f'Assigned to: {asset["assigned_to"]["name"]}')
+
     custom_fields = asset.get("custom_fields", {})
     if custom_fields:
         for field_name, field_data in custom_fields.items():

@@ -1,54 +1,61 @@
 #!/usr/bin/env python3
 
+import argparse
+import json
+
+import pexpect
+import requests
+
+from . import snipeit_api
 from .rte import RTE
 from .sonoff_api import SonoffDevice
-from . import snipeit_api 
-import argparse
-import pexpect
-import json
-import requests
+
 
 # Check out an asset
 def check_out_asset(asset_id):
     success, data = snipeit_api.check_out_asset(asset_id)
 
     if success:
-        print(f'Asset {asset_id} successfully checked out.')
+        print(f"Asset {asset_id} successfully checked out.")
     else:
-        print(f'Error checking out asset {asset_id}')
-        print(f'Response data: {data}')
+        print(f"Error checking out asset {asset_id}")
+        print(f"Response data: {data}")
+
 
 # Check in an asset
 def check_in_asset(asset_id):
     success, data = snipeit_api.check_in_asset(asset_id)
 
     if success:
-        print(f'Asset {asset_id} successfully checked in.')
+        print(f"Asset {asset_id} successfully checked in.")
     else:
-        print(f'Error checking in asset {asset_id}')
-        print(f'Response data: {data}')
+        print(f"Error checking in asset {asset_id}")
+        print(f"Response data: {data}")
+
 
 # List used assets
 def list_used_assets():
     all_assets = snipeit_api.get_all_assets()
-    used_assets = [asset for asset in all_assets if asset['assigned_to'] is not None]
+    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
 
     if used_assets:
         for asset in used_assets:
             print_asset_details(asset)
     else:
-        print('No used assets found.')
+        print("No used assets found.")
+
 
 # List unused assets
 def list_unused_assets():
     all_assets = snipeit_api.get_all_assets()
-    unused_assets = [asset for asset in all_assets if asset['assigned_to'] is None]
+    unused_assets = [asset for asset in all_assets if asset["assigned_to"] is None]
 
     if unused_assets:
         for asset in unused_assets:
             print_asset_details(asset)
     else:
-        print('No unused assets found.')
+        print("No unused assets found.")
+
 
 # List all assets
 def list_all_assets():
@@ -58,7 +65,8 @@ def list_all_assets():
         for asset in all_assets:
             print_asset_details(asset)
     else:
-        print('No assets found.')
+        print("No assets found.")
+
 
 # Print asset details as JSON with specific custom fields
 def list_for_zabbix():
@@ -68,33 +76,38 @@ def list_for_zabbix():
         for asset in all_assets:
             print_asset_details_for_zabbix(asset)
     else:
-        print('No assets found.')
+        print("No assets found.")
+
 
 # Print asset details including custom fields
 def print_asset_details(asset):
-    print(f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]}, Name: {asset["name"]}, Serial: {asset["serial"]}')
+    print(
+        f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]}, Name: {asset["name"]}, Serial: {asset["serial"]}'
+    )
 
-    custom_fields = asset.get('custom_fields', {})
+    custom_fields = asset.get("custom_fields", {})
     if custom_fields:
         for field_name, field_data in custom_fields.items():
-            field_value = field_data.get('value')
-            print(f'{field_name}: {field_value}')
+            field_value = field_data.get("value")
+            print(f"{field_name}: {field_value}")
 
     print()
+
 
 # Print asset details formatted as an input for Zabbix import script
 def print_asset_details_for_zabbix(asset):
     output = {}
 
-    custom_fields = asset.get('custom_fields', {})
+    custom_fields = asset.get("custom_fields", {})
     if custom_fields:
         for field_name, field_data in custom_fields.items():
             if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
-                field_value = field_data.get('value')
+                field_value = field_data.get("value")
                 if field_value:
-                    key = f'{asset["asset_tag"]}_{field_name}'.replace(' ', '_')
+                    key = f'{asset["asset_tag"]}_{field_name}'.replace(" ", "_")
                     output[key] = field_value
-                    print(f'{key}: {output[key]}')
+                    print(f"{key}: {output[key]}")
+
 
 def relay_toggle(rte, args):
     state_str = rte.relay_get()
@@ -106,45 +119,55 @@ def relay_toggle(rte, args):
     state = rte.relay_get()
     print(f"Relay state toggled. New state: {state}")
 
+
 def relay_set(rte, args):
     rte.relay_set(args.state)
     state = rte.relay_get()
     print(f"Relay state set to {state}")
 
+
 def relay_get(rte, args):
     state = rte.relay_get()
     print(f"Relay state: {state}")
+
 
 def power_on(rte, args):
     print(f"Powering on...")
     rte.power_on(args.time)
 
+
 def power_off(rte, args):
     print(f"Powering off...")
     rte.power_off(args.time)
+
 
 def reset(rte, args):
     print(f"Pressing reset button...")
     rte.reset(args.time)
 
+
 def gpio_get(rte, args):
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state: {state}")
+
 
 def gpio_set(rte, args):
     rte.gpio_set(args.gpio_no, args.state)
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state set to {state}")
 
+
 def gpio_list(rte, args):
     response = json.dumps(rte.gpio_list(), indent=4)
     print(f"GPIO list")
     print(response)
 
+
 def rte_status(rte, args):
     rte.gpio_set(args.gpio_no, args.state)
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state set to {state}")
+
 
 def open_dut_serial(rte, args):
     host = args.rte_ip
@@ -153,37 +176,44 @@ def open_dut_serial(rte, args):
     print(f"Opening telnet session with: {host}:{port}")
     print(f"Press Ctrl+] to exit")
     # Connect to the Telnet server
-    tn = pexpect.spawn(f'telnet {host} {port}')
-    
+    tn = pexpect.spawn(f"telnet {host} {port}")
+
     # Enter the interactive shell
     tn.interact()
+
 
 def spi_on(rte, args):
     print(f"Enabling SPI...")
     rte.spi_enable()
 
+
 def spi_off(rte, args):
     print(f"Disabling SPI...")
     rte.spi_disable()
 
+
 def flash_probe(rte, args):
     print(f"Probing flash...")
     rte.flash_probe()
+
 
 def flash_read(rte, args):
     print(f"Reading from flash...")
     rte.flash_read(args.rom)
     print(f"Read flash content saved to {args.rom}")
 
+
 def flash_write(rte, args):
     print(f"Writing {args.rom} to flash...")
     rte.flash_write(args.rom)
     print(f"Flash written")
 
+
 def flash_erase(rte, args):
     print(f"Erasing DUT flash...")
     rte.flash_erase()
     print(f"Flash erased")
+
 
 def sonoff_on(sonoff, args):
     print("Turning on Sonoff relay...")
@@ -193,6 +223,7 @@ def sonoff_on(sonoff, args):
     except requests.exceptions.RequestException as e:
         print(f"Failed to turn on Sonoff relay. Error: {e}")
 
+
 def sonoff_off(sonoff, args):
     print("Turning off Sonoff relay...")
     try:
@@ -200,6 +231,7 @@ def sonoff_off(sonoff, args):
         print(response)
     except requests.exceptions.RequestException as e:
         print(f"Failed to turn off Sonoff relay. Error: {e}")
+
 
 def sonoff_get(sonoff, args):
     print("Getting Sonoff relay state...")
@@ -209,16 +241,17 @@ def sonoff_get(sonoff, args):
     except requests.exceptions.RequestException as e:
         print(f"Failed to get Sonoff relay state. Error: {e}")
 
+
 def sonoff_tgl(sonoff, args):
     print("Toggling Sonoff relay state...")
     try:
         response = sonoff.get_state()
-        current_state = response.get('state')
+        current_state = response.get("state")
 
-        if current_state == 'ON':
+        if current_state == "ON":
             response = sonoff.turn_off()
             print("Sonoff relay state toggled off.")
-        elif current_state == 'OFF':
+        elif current_state == "OFF":
             response = sonoff.turn_on()
             print("Sonoff relay state toggled on.")
         else:
@@ -226,78 +259,125 @@ def sonoff_tgl(sonoff, args):
     except requests.exceptions.RequestException as e:
         print(f"Failed to toggle Sonoff relay state. Error: {e}")
 
+
 # Main function
 def main():
-    parser = argparse.ArgumentParser(description='Snipe-IT Asset Retrieval')
+    parser = argparse.ArgumentParser(description="Snipe-IT Asset Retrieval")
 
-    subparsers = parser.add_subparsers(title='commands', dest='command', help='Command to execute')
+    subparsers = parser.add_subparsers(
+        title="commands", dest="command", help="Command to execute"
+    )
 
-    snipeit_parser = subparsers.add_parser('snipeit', help='Snipe-IT commands')
+    snipeit_parser = subparsers.add_parser("snipeit", help="Snipe-IT commands")
 
-    rte_parser = subparsers.add_parser('rte', help='RTE commands')
-    sonoff_parser = subparsers.add_parser('sonoff', help='Sonoff commands')
-
+    rte_parser = subparsers.add_parser("rte", help="RTE commands")
+    sonoff_parser = subparsers.add_parser("sonoff", help="Sonoff commands")
 
     # Sonoff subcommands
     sonoff_group = sonoff_parser.add_mutually_exclusive_group(required=True)
-    sonoff_group.add_argument('--sonoff_ip', type=str, help='Sonoff IP address')
-    sonoff_group.add_argument('--rte_ip', type=str, help='RTE IP address')
-    sonoff_subparsers = sonoff_parser.add_subparsers(title='subcommands', dest='sonoff_cmd',
-                                                       help='Sonoff subcommands')
+    sonoff_group.add_argument("--sonoff_ip", type=str, help="Sonoff IP address")
+    sonoff_group.add_argument("--rte_ip", type=str, help="RTE IP address")
+    sonoff_subparsers = sonoff_parser.add_subparsers(
+        title="subcommands", dest="sonoff_cmd", help="Sonoff subcommands"
+    )
 
-    list_used_parser = sonoff_subparsers.add_parser('on', help='Turn Sonoff ON')
-    list_used_parser = sonoff_subparsers.add_parser('off', help='Turn Sonoff OFF')
-    list_used_parser = sonoff_subparsers.add_parser('tgl', help='Toggle Sonoff state')
-    list_used_parser = sonoff_subparsers.add_parser('get', help='Get Sonoff state')
+    list_used_parser = sonoff_subparsers.add_parser("on", help="Turn Sonoff ON")
+    list_used_parser = sonoff_subparsers.add_parser("off", help="Turn Sonoff OFF")
+    list_used_parser = sonoff_subparsers.add_parser("tgl", help="Toggle Sonoff state")
+    list_used_parser = sonoff_subparsers.add_parser("get", help="Get Sonoff state")
 
     # Snipe-IT subcommands
-    snipeit_subparsers = snipeit_parser.add_subparsers(title='subcommands', dest='snipeit_cmd',
-                                                       help='Snipe-IT subcommands')
+    snipeit_subparsers = snipeit_parser.add_subparsers(
+        title="subcommands", dest="snipeit_cmd", help="Snipe-IT subcommands"
+    )
 
-    list_used_parser = snipeit_subparsers.add_parser('list_used', help='List all already used assets')
+    list_used_parser = snipeit_subparsers.add_parser(
+        "list_used", help="List all already used assets"
+    )
 
-    list_unused_parser = snipeit_subparsers.add_parser('list_unused', help='List all unused assets')
+    list_unused_parser = snipeit_subparsers.add_parser(
+        "list_unused", help="List all unused assets"
+    )
 
-    list_all_parser = snipeit_subparsers.add_parser('list_all', help='List all assets')
+    list_all_parser = snipeit_subparsers.add_parser("list_all", help="List all assets")
 
-    list_zabbix_parser = snipeit_subparsers.add_parser('list_for_zabbix',
-                                                       help='List assets in a format suitable for Zabbix integration')
+    list_zabbix_parser = snipeit_subparsers.add_parser(
+        "list_for_zabbix",
+        help="List assets in a format suitable for Zabbix integration",
+    )
 
-    check_out_parser = snipeit_subparsers.add_parser('check_out', help='Check out an asset by providing the Asset ID or RTE IP')
+    check_out_parser = snipeit_subparsers.add_parser(
+        "check_out", help="Check out an asset by providing the Asset ID or RTE IP"
+    )
     check_out_group = check_out_parser.add_mutually_exclusive_group(required=True)
-    check_out_group.add_argument('--asset_id', type=int, help='Asset ID')
-    check_out_group.add_argument('--rte_ip', type=str, help='RTE IP')
-    check_out_parser = snipeit_subparsers.add_parser('user_add', help='Add a new user by providing user First Name and Last Name')
-    check_out_parser.add_argument("--first-name", type=str, help="User First Name", required=True)
-    check_out_parser.add_argument("--last-name", type=str, help="User Last Name", required=True)
-    check_out_parser.add_argument("--company-name", type=str, default="3mdeb", help="Company Name")
-    check_out_parser = snipeit_subparsers.add_parser('user_del', help='Delete new user by providing user First Name and Last Name')
-    check_out_parser.add_argument("--first-name", type=str, help="User First Name", required=True)
-    check_out_parser.add_argument("--last-name", type=str, help="User Last Name", required=True)
+    check_out_group.add_argument("--asset_id", type=int, help="Asset ID")
+    check_out_group.add_argument("--rte_ip", type=str, help="RTE IP")
+    check_out_parser = snipeit_subparsers.add_parser(
+        "user_add", help="Add a new user by providing user First Name and Last Name"
+    )
+    check_out_parser.add_argument(
+        "--first-name", type=str, help="User First Name", required=True
+    )
+    check_out_parser.add_argument(
+        "--last-name", type=str, help="User Last Name", required=True
+    )
+    check_out_parser.add_argument(
+        "--company-name", type=str, default="3mdeb", help="Company Name"
+    )
+    check_out_parser = snipeit_subparsers.add_parser(
+        "user_del", help="Delete new user by providing user First Name and Last Name"
+    )
+    check_out_parser.add_argument(
+        "--first-name", type=str, help="User First Name", required=True
+    )
+    check_out_parser.add_argument(
+        "--last-name", type=str, help="User Last Name", required=True
+    )
 
-    check_in_parser = snipeit_subparsers.add_parser('check_in', help='Check in an asset by providing the Asset ID or RTE IP')
+    check_in_parser = snipeit_subparsers.add_parser(
+        "check_in", help="Check in an asset by providing the Asset ID or RTE IP"
+    )
     check_in_group = check_in_parser.add_mutually_exclusive_group(required=True)
-    check_in_group.add_argument('--asset_id', type=int, help='Asset ID')
-    check_in_group.add_argument('--rte_ip', type=str, help='RTE IP address')
+    check_in_group.add_argument("--asset_id", type=int, help="Asset ID")
+    check_in_group.add_argument("--rte_ip", type=str, help="RTE IP address")
 
     # RTE subcommands
-    rte_parser.add_argument('--rte_ip', type=str, help='RTE IP address', required=True)
-    rte_subparsers = rte_parser.add_subparsers(title='subcommands', dest='rte_cmd', help='RTE subcommands')
-    rel_parser = rte_subparsers.add_parser('rel', help='Control RTE relay')
-    gpio_parser = rte_subparsers.add_parser('gpio', help='Control RTE GPIO')
-    pwr_parser = rte_subparsers.add_parser('pwr', help='Control DUT power via RTE')
-    spi_parser = rte_subparsers.add_parser('spi', help='Control SPI lines of RTE')
-    serial_parser = rte_subparsers.add_parser('serial', help='Open DUT serial via telnet')
-    flash_parser = rte_subparsers.add_parser('flash', help='DUT flash operations')
+    rte_parser.add_argument("--rte_ip", type=str, help="RTE IP address", required=True)
+    rte_subparsers = rte_parser.add_subparsers(
+        title="subcommands", dest="rte_cmd", help="RTE subcommands"
+    )
+    rel_parser = rte_subparsers.add_parser("rel", help="Control RTE relay")
+    gpio_parser = rte_subparsers.add_parser("gpio", help="Control RTE GPIO")
+    pwr_parser = rte_subparsers.add_parser("pwr", help="Control DUT power via RTE")
+    spi_parser = rte_subparsers.add_parser("spi", help="Control SPI lines of RTE")
+    serial_parser = rte_subparsers.add_parser(
+        "serial", help="Open DUT serial via telnet"
+    )
+    flash_parser = rte_subparsers.add_parser("flash", help="DUT flash operations")
 
     # Power subcommands
     pwr_subparsers = pwr_parser.add_subparsers(title="subcommands", dest="pwr_cmd")
     power_on_parser = pwr_subparsers.add_parser("on", help="Power on")
-    power_on_parser.add_argument("--time", type=int, default=1, help="Power button press time in seconds (default: 1)")
+    power_on_parser.add_argument(
+        "--time",
+        type=int,
+        default=1,
+        help="Power button press time in seconds (default: 1)",
+    )
     power_off_parser = pwr_subparsers.add_parser("off", help="Power off")
-    power_off_parser.add_argument("--time", type=int, default=5, help="Power button press time in seconds (default: 5)")
+    power_off_parser.add_argument(
+        "--time",
+        type=int,
+        default=5,
+        help="Power button press time in seconds (default: 5)",
+    )
     reset_parser = pwr_subparsers.add_parser("reset", help="Reset")
-    reset_parser.add_argument("--time", type=int, default=1, help="Reset button press time in seconds (default: 1)")
+    reset_parser.add_argument(
+        "--time",
+        type=int,
+        default=1,
+        help="Reset button press time in seconds (default: 1)",
+    )
 
     # GPIO subcommands
     gpio_subparsers = gpio_parser.add_subparsers(title="subcommands", dest="gpio_cmd")
@@ -305,7 +385,9 @@ def main():
     get_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
     set_gpio_parser = gpio_subparsers.add_parser("set", help="Set GPIO state")
     set_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
-    set_gpio_parser.add_argument("state", choices=["high", "low", "high-z"], help="GPIO state")
+    set_gpio_parser.add_argument(
+        "state", choices=["high", "low", "high-z"], help="GPIO state"
+    )
     set_gpio_parser = gpio_subparsers.add_parser("list", help="List GPIO states")
 
     # Relay subcommands
@@ -313,35 +395,64 @@ def main():
     tgl_rel_parser = rel_subparsers.add_parser("tgl", help="Toggle relay state")
     get_rel_parser = rel_subparsers.add_parser("get", help="Get relay state")
     set_rel_parser = rel_subparsers.add_parser("set", help="Set relay state")
-    set_rel_parser.add_argument("state", choices=["high", "low",], help="Relay state")
+    set_rel_parser.add_argument(
+        "state",
+        choices=[
+            "high",
+            "low",
+        ],
+        help="Relay state",
+    )
 
     # RTE SPI subcommands
     spi_subparsers = spi_parser.add_subparsers(title="subcommands", dest="spi_cmd")
     spi_on_parser = spi_subparsers.add_parser("on", help="Enable SPI lines")
-    spi_on_parser.add_argument("--voltage", type=str, default="1.8V", help="SPI voltage (default: 1.8V)")
+    spi_on_parser.add_argument(
+        "--voltage", type=str, default="1.8V", help="SPI voltage (default: 1.8V)"
+    )
     spi_off_parser = spi_subparsers.add_parser("off", help="Disable SPI lines")
 
     # RTE flash subcommands
-    flash_subparsers = flash_parser.add_subparsers(title="subcommands", dest="flash_cmd")
-    flash_probe_parser = flash_subparsers.add_parser("probe", help="Flash proble with flashrom")
-    flash_read_parser = flash_subparsers.add_parser("read", help="Read from DUT flash with flashrom")
-    flash_read_parser.add_argument("--rom", type=str, default="read.rom", help="Path to read firmware file (default: read.rom)")
-    flash_write_parser = flash_subparsers.add_parser("write", help="Write to DUT flash with flashrom")
-    flash_write_parser.add_argument("--rom", type=str, default="write.rom", help="Path to read firmware file (default: write.rom)")
-    flash_erase_parser = flash_subparsers.add_parser("erase", help="Erase DUT flash with flashrom")
+    flash_subparsers = flash_parser.add_subparsers(
+        title="subcommands", dest="flash_cmd"
+    )
+    flash_probe_parser = flash_subparsers.add_parser(
+        "probe", help="Flash probe with flashrom"
+    )
+    flash_read_parser = flash_subparsers.add_parser(
+        "read", help="Read from DUT flash with flashrom"
+    )
+    flash_read_parser.add_argument(
+        "--rom",
+        type=str,
+        default="read.rom",
+        help="Path to read firmware file (default: read.rom)",
+    )
+    flash_write_parser = flash_subparsers.add_parser(
+        "write", help="Write to DUT flash with flashrom"
+    )
+    flash_write_parser.add_argument(
+        "--rom",
+        type=str,
+        default="write.rom",
+        help="Path to read firmware file (default: write.rom)",
+    )
+    flash_erase_parser = flash_subparsers.add_parser(
+        "erase", help="Erase DUT flash with flashrom"
+    )
 
     args = parser.parse_args()
 
-    if args.command == 'snipeit':
-        if args.snipeit_cmd == 'list_used':
+    if args.command == "snipeit":
+        if args.snipeit_cmd == "list_used":
             list_used_assets()
-        elif args.snipeit_cmd == 'list_unused':
+        elif args.snipeit_cmd == "list_unused":
             list_unused_assets()
-        elif args.snipeit_cmd == 'list_all':
+        elif args.snipeit_cmd == "list_all":
             list_all_assets()
-        elif args.snipeit_cmd == 'list_for_zabbix':
+        elif args.snipeit_cmd == "list_for_zabbix":
             list_for_zabbix()
-        elif args.snipeit_cmd == 'check_out':
+        elif args.snipeit_cmd == "check_out":
             if args.asset_id:
                 check_out_asset(args.asset_id)
             elif args.rte_ip:
@@ -349,8 +460,8 @@ def main():
                 if asset_id:
                     check_out_asset(asset_id)
                 else:
-                    print(f'No asset found with RTE IP: {args.rte_ip}')
-        elif args.snipeit_cmd == 'check_in':
+                    print(f"No asset found with RTE IP: {args.rte_ip}")
+        elif args.snipeit_cmd == "check_in":
             if args.asset_id:
                 check_in_asset(args.asset_id)
             elif args.rte_ip:
@@ -358,19 +469,19 @@ def main():
                 if asset_id:
                     check_in_asset(asset_id)
                 else:
-                    print(f'No asset found with RTE IP: {args.rte_ip}')
-        elif args.snipeit_cmd == 'user_add':
+                    print(f"No asset found with RTE IP: {args.rte_ip}")
+        elif args.snipeit_cmd == "user_add":
             snipeit_api.user_add(args.first_name, args.last_name, args.company_name)
-        elif args.snipeit_cmd == 'user_del':
+        elif args.snipeit_cmd == "user_del":
             snipeit_api.user_del(args.first_name, args.last_name)
 
-    elif args.command == 'rte':
+    elif args.command == "rte":
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
         dut_model_name = snipeit_api.get_asset_model_name(asset_id)
-        print(f"DUT model retreived from snipeit: {dut_model_name}")
+        print(f"DUT model retrieved from snipeit: {dut_model_name}")
         rte = RTE(args.rte_ip, dut_model_name)
 
-        if args.rte_cmd == 'rel':
+        if args.rte_cmd == "rel":
             # Handle RTE relay related commands
             if args.rel_cmd == "tgl":
                 relay_toggle(rte, args)
@@ -378,7 +489,7 @@ def main():
                 relay_get(rte, args)
             elif args.rel_cmd == "set":
                 relay_set(rte, args)
-        elif args.rte_cmd == 'gpio':
+        elif args.rte_cmd == "gpio":
             # Handle RTE GPIO related commands
             if args.gpio_cmd == "get":
                 gpio_get(rte, args)
@@ -386,7 +497,7 @@ def main():
                 gpio_set(rte, args)
             elif args.gpio_cmd == "list":
                 gpio_list(rte, args)
-        elif args.rte_cmd == 'pwr':
+        elif args.rte_cmd == "pwr":
             # Handle RTE power related commands
             if args.pwr_cmd == "on":
                 power_on(rte, args)
@@ -394,14 +505,14 @@ def main():
                 power_off(rte, args)
             elif args.pwr_cmd == "reset":
                 reset(rte, args)
-        elif args.rte_cmd == 'serial':
+        elif args.rte_cmd == "serial":
             open_dut_serial(rte, args)
-        elif args.rte_cmd == 'spi':
+        elif args.rte_cmd == "spi":
             if args.spi_cmd == "on":
                 spi_on(rte, args)
             elif args.spi_cmd == "off":
                 spi_off(rte, args)
-        elif args.rte_cmd == 'flash':
+        elif args.rte_cmd == "flash":
             if args.flash_cmd == "probe":
                 flash_probe(rte, args)
             elif args.flash_cmd == "read":
@@ -410,29 +521,30 @@ def main():
                 flash_write(rte, args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
-    elif args.command == 'sonoff':
-        sonoff_ip = ''
+    elif args.command == "sonoff":
+        sonoff_ip = ""
 
         if args.sonoff_ip:
             sonoff_ip = args.sonoff_ip
         elif args.rte_ip:
             sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(args.rte_ip)
             if not sonoff_ip:
-                print(f'No Sonoff Device found with RTE IP: {args.rte_ip}')
+                print(f"No Sonoff Device found with RTE IP: {args.rte_ip}")
 
         sonoff = SonoffDevice(sonoff_ip)
 
-        if args.sonoff_cmd == 'on':
+        if args.sonoff_cmd == "on":
             sonoff_on(sonoff, args)
-        if args.sonoff_cmd == 'off':
+        if args.sonoff_cmd == "off":
             sonoff_off(sonoff, args)
-        if args.sonoff_cmd == 'get':
+        if args.sonoff_cmd == "get":
             sonoff_get(sonoff, args)
-        if args.sonoff_cmd == 'tgl':
+        if args.sonoff_cmd == "tgl":
             sonoff_tgl(sonoff, args)
 
     else:
         parser.print_help()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

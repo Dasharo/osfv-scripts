@@ -3,7 +3,7 @@
 This script allows you to interact with devices setup in the Dasharo OSFV lab.
 You can use this script to retrieve information about assets, list used and
 unused assets, check out and check in assets, control power of the devices, flash
-firwmare, and more.
+firmware, and more.
 
 This script is specific to the OSFV environment and Snipe-IT configuration, and
 as such, may not fit for other needs.
@@ -22,7 +22,7 @@ as such, may not fit for other needs.
    cd osfv-scripts/osfv_cli
    ```
 
-1. Install poety:
+1. Install poetry:
 
    ```shell
    pip install poetry
@@ -102,7 +102,7 @@ some examples:
   > Please note that the RTE IP should match the value stored in the asset's
   > custom field named "RTE IP".
 
-- For more command options, you can use the `--help` flag:
+* For more command options, you can use the `--help` flag:
 
   ```shell
   osfv_cli --help

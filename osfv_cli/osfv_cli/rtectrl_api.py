@@ -4,6 +4,7 @@ BASE_URL_TEMPLATE = "http://{rte_ip}:8000/api/v1"
 
 headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
+
 class rtectrl:
     GPIO_MIN = 0
     GPIO_MAX = 19
@@ -77,8 +78,10 @@ class rtectrl:
         response.raise_for_status()
         return response
 
+
 class GPIOWrongNumberError(Exception):
     pass
+
 
 class GPIOWrongStateError(Exception):
     pass

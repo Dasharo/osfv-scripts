@@ -1,8 +1,8 @@
 ---
 flash_chip:
-  # flash chip model to be used by flashrom (optional - if not given, no chip 
+  # flash chip model to be used by flashrom (optional - if not given, no chip
   # parameter will be explicitelt added to flashrom)
-  model: "MX25L12835F/MX25L12845E/MX25L12865E" 
+  model: "MX25L12835F/MX25L12845E/MX25L12865E"
     # flash chip voltage (required)
   voltage: "3.3V"
 

@@ -1,329 +1,289 @@
-import json
-import os
 import secrets
 import string
-import sys
 
 import requests
 import unidecode
-import yaml
-
-CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/snipeit.yml")
 
 
-# Retrieve API configuration from YAML file
-def load_api_config():
-    try:
-        with open(CONFIG_FILE_PATH, "r") as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found")
-    except yaml.YAMLError as e:
-        raise ValueError(f"Error parsing YAML: {e}")
+class SnipeIT:
+    def __init__(self, snipeit_cfg):
+        self.cfg_api_url = snipeit_cfg["url"]
+        self.cfg_api_token = snipeit_cfg["token"]
+        self.cfg_user_id = snipeit_cfg["user_id"]
+        self.headers = {
+            "Accept": "application/json",
+            "Authorization": f"Bearer {self.cfg_api_token}",
+        }
 
-    if config is None:
-        raise ValueError(f"Empty configuration file")
-        sys.exit(1)
+    # Retrieve all assets
+    def get_all_assets(self):
+        page = 1
+        all_assets = []
 
-    cfg_api_url = config.get("api_url")
-    cfg_api_token = config.get("api_token")
-    cfg_user_id = config.get("user_id")
+        while True:
+            response = requests.get(
+                f"{self.cfg_api_url}/hardware",
+                headers=self.headers,
+                params={"limit": 500, "offset": (page - 1) * 500},
+                timeout=10,
+            )
+            if response.status_code == 200:
+                data = response.json()
+                all_assets.extend(data["rows"])
+                if "total_pages" not in data or data["total_pages"] <= page:
+                    break
+                page += 1
+            else:
+                print(f"Error retrieving assets. Status code: {response.status_code}")
+                print(response.json())
+                break
 
-    if not cfg_api_url or not cfg_api_token:
-        raise ValueError("Incomplete API configuration in the YAML file")
-    if not isinstance(cfg_user_id, int):
-        raise ValueError(
-            f"User ID configuration in the YAML file should be int: {cfg_user_id}"
-        )
+        return all_assets
 
-    return cfg_api_url, cfg_api_token, cfg_user_id
+    def get_asset_id_by_rte_ip(self, rte_ip):
+        # Retrieve all assets
+        all_assets = self.get_all_assets()
 
+        # Search for asset with matching RTE IP
+        for asset in all_assets:
+            custom_fields = asset.get("custom_fields", {})
+            if custom_fields:
+                rte_ip_field = next(
+                    (
+                        field_data["value"]
+                        for field_name, field_data in custom_fields.items()
+                        if field_name == "RTE IP"
+                    ),
+                    None,
+                )
+                if rte_ip_field == rte_ip:
+                    return asset["id"]
 
-try:
-    # API endpoint and authentication token
-    cfg_api_url, cfg_api_token, cfg_user_id = load_api_config()
-except FileNotFoundError as e:
-    print(f"Configuration file not found at {CONFIG_FILE_PATH}: {e}")
-    sys.exit(1)
-except ValueError as e:
-    print(f"Please check the {CONFIG_FILE_PATH} file: {e}")
-    sys.exit(1)
+        # No asset found with matching RTE IP
+        return None
 
-# Headers for API requests
-headers = {"Accept": "application/json", "Authorization": f"Bearer {cfg_api_token}"}
+    def get_sonoff_ip_by_rte_ip(self, rte_ip):
+        # Retrieve all assets
+        all_assets = self.get_all_assets()
 
+        # Search for asset with matching RTE IP
+        for asset in all_assets:
+            custom_fields = asset.get("custom_fields", {})
+            if custom_fields:
+                rte_ip_field = next(
+                    (
+                        field_data["value"]
+                        for field_name, field_data in custom_fields.items()
+                        if field_name == "RTE IP"
+                    ),
+                    None,
+                )
+                if rte_ip_field == rte_ip:
+                    if custom_fields["Sonoff IP"]:
+                        return custom_fields["Sonoff IP"]["value"]
 
-# Retrieve all assets
-def get_all_assets():
-    page = 1
-    all_assets = []
+        # No asset found with matching RTE IP
+        return None
 
-    while True:
-        response = requests.get(
-            f"{cfg_api_url}/hardware",
-            headers=headers,
-            params={"limit": 500, "offset": (page - 1) * 500},
+    # Check out an asset
+    def check_out_asset(self, asset_id):
+        asset_data = self.get_asset(asset_id)
+
+        # Simply pass if asset is already checked out to the caller
+        if asset_data["assigned_to"]:
+            assigned_to_id = asset_data["assigned_to"]["id"]
+            if assigned_to_id == self.cfg_user_id:
+                return True, None
+
+        data = {
+            "asset_id": asset_id,
+            "assigned_user": self.cfg_user_id,
+            "checkout_to_type": "user",
+        }
+        response = requests.post(
+            f"{self.cfg_api_url}/hardware/{asset_id}/checkout",
+            headers=self.headers,
+            json=data,
             timeout=10,
         )
+        response_json = response.json()
+
+        if response.status_code == 200 and response_json.get("status") != "error":
+            return True, response_json
+        else:
+            return False, response_json
+
+    # Check in an asset
+    def check_in_asset(self, asset_id):
+        response = requests.post(
+            f"{self.cfg_api_url}/hardware/{asset_id}/checkin",
+            headers=self.headers,
+            timeout=10,
+        )
+        print(response)
+        response_json = response.json()
+
+        if response.status_code == 200 and response_json.get("status") != "error":
+            return True, response_json
+        else:
+            return False, response_json
+
+    def get_asset(self, asset_id):
+        response = requests.get(
+            f"{self.cfg_api_url}/hardware/{asset_id}", headers=self.headers, timeout=10
+        )
+        data = {}
         if response.status_code == 200:
             data = response.json()
-            all_assets.extend(data["rows"])
-            if "total_pages" not in data or data["total_pages"] <= page:
-                break
-            page += 1
         else:
             print(f"Error retrieving assets. Status code: {response.status_code}")
             print(response.json())
-            break
+        return data
 
-    return all_assets
+    def get_asset_model_name(self, asset_id):
+        data = self.get_asset(asset_id)
+        model_name = ""
+        if data:
+            model_name = data["model"]["name"]
+        return model_name
 
-
-def get_asset_id_by_rte_ip(rte_ip):
-    # Retrieve all assets
-    all_assets = get_all_assets()
-
-    # Search for asset with matching RTE IP
-    for asset in all_assets:
-        custom_fields = asset.get("custom_fields", {})
-        if custom_fields:
-            rte_ip_field = next(
-                (
-                    field_data["value"]
-                    for field_name, field_data in custom_fields.items()
-                    if field_name == "RTE IP"
-                ),
-                None,
-            )
-            if rte_ip_field == rte_ip:
-                return asset["id"]
-
-    # No asset found with matching RTE IP
-    return None
-
-
-def get_sonoff_ip_by_rte_ip(rte_ip):
-    # Retrieve all assets
-    all_assets = get_all_assets()
-
-    # Search for asset with matching RTE IP
-    for asset in all_assets:
-        custom_fields = asset.get("custom_fields", {})
-        if custom_fields:
-            rte_ip_field = next(
-                (
-                    field_data["value"]
-                    for field_name, field_data in custom_fields.items()
-                    if field_name == "RTE IP"
-                ),
-                None,
-            )
-            if rte_ip_field == rte_ip:
-                if custom_fields["Sonoff IP"]:
-                    return custom_fields["Sonoff IP"]["value"]
-
-    # No asset found with matching RTE IP
-    return None
-
-
-# Check out an asset
-def check_out_asset(asset_id):
-    asset_data = get_asset(asset_id)
-    assigned_to_id = asset_data["assigned_to"]["id"]
-
-    # Simply pass if asset is already checked out to the caller
-    if assigned_to_id == cfg_user_id:
-        return True, None
-
-    data = {
-        "asset_id": asset_id,
-        "assigned_user": cfg_user_id,
-        "checkout_to_type": "user",
-    }
-    response = requests.post(
-        f"{cfg_api_url}/hardware/{asset_id}/checkout",
-        headers=headers,
-        json=data,
-        timeout=10,
-    )
-    response_json = response.json()
-
-    if response.status_code == 200 and response_json.get("status") != "error":
-        return True, response_json
-    else:
-        return False, response_json
-
-
-# Check in an asset
-def check_in_asset(asset_id):
-    response = requests.post(
-        f"{cfg_api_url}/hardware/{asset_id}/checkin", headers=headers, timeout=10
-    )
-    print(response)
-    response_json = response.json()
-
-    if response.status_code == 200 and response_json.get("status") != "error":
-        return True, response_json
-    else:
-        return False, response_json
-
-
-def get_asset(asset_id):
-    response = requests.get(
-        f"{cfg_api_url}/hardware/{asset_id}", headers=headers, timeout=10
-    )
-    data = {}
-    if response.status_code == 200:
-        data = response.json()
-    else:
-        print(f"Error retrieving assets. Status code: {response.status_code}")
-        print(response.json())
-    return data
-
-
-def get_asset_model_name(asset_id):
-    data = get_asset(asset_id)
-    model_name = ""
-    if data:
-        model_name = data["model"]["name"]
-    return model_name
-
-
-def get_company_id(company_name):
-    response = requests.get(f"{cfg_api_url}/companies", headers=headers, timeout=10)
-    if response.status_code == 200:
-        companies_data = response.json()
-        for company in companies_data["rows"]:
-            if company["name"] == company_name:
-                return company["id"]
-        return None
-    else:
-        print(f"Error retrieving companies. Status code: {response.status_code}")
-        print(response.json())
-        return None
-
-
-def get_group_id(group_name):
-    response = requests.get(f"{cfg_api_url}/groups", headers=headers, timeout=10)
-    if response.status_code == 200:
-        groups_data = response.json()
-        for group in groups_data["rows"]:
-            if group["name"] == group_name:
-                return group["id"]
-        return None
-    else:
-        print(f"Error retrieving user groups. Status code: {response.status_code}")
-        print(response.json())
-        return None
-
-
-def generate_password(length=16):
-    characters = string.ascii_letters + string.digits + string.punctuation
-    password = "".join(secrets.choice(characters) for i in range(length))
-    return password
-
-
-def get_users():
-    page = 1
-    users = []
-
-    while True:
+    def get_company_id(self, company_name):
         response = requests.get(
-            f"{cfg_api_url}/users",
-            headers=headers,
-            params={"limit": 50, "offset": (page - 1) * 50},
-            timeout=10,
+            f"{self.cfg_api_url}/companies", headers=self.headers, timeout=10
         )
-        # print(response.json())
         if response.status_code == 200:
-            data = response.json()
-            users.extend(data["rows"])
-            if "total" not in data or data["total"] <= page:
-                break
-            page += 1
+            companies_data = response.json()
+            for company in companies_data["rows"]:
+                if company["name"] == company_name:
+                    return company["id"]
+            return None
         else:
-            print(f"Error retrieving users. Status code: {response.status_code}")
+            print(f"Error retrieving companies. Status code: {response.status_code}")
             print(response.json())
-            break
+            return None
 
-        return users
+    def get_group_id(self, group_name):
+        response = requests.get(
+            f"{self.cfg_api_url}/groups", headers=self.headers, timeout=10
+        )
+        if response.status_code == 200:
+            groups_data = response.json()
+            for group in groups_data["rows"]:
+                if group["name"] == group_name:
+                    return group["id"]
+            return None
+        else:
+            print(f"Error retrieving user groups. Status code: {response.status_code}")
+            print(response.json())
+            return None
 
+    def generate_password(self, length=16):
+        characters = string.ascii_letters + string.digits + string.punctuation
+        password = "".join(secrets.choice(characters) for i in range(length))
+        return password
 
-def get_user_id(username):
-    users = get_users()
-    for user in users:
-        if user["username"] == username:
-            return user["id"]
-    return None
+    def get_users(self):
+        page = 1
+        users = []
 
+        while True:
+            response = requests.get(
+                f"{self.cfg_api_url}/users",
+                headers=self.headers,
+                params={"limit": 50, "offset": (page - 1) * 50},
+                timeout=10,
+            )
+            # print(response.json())
+            if response.status_code == 200:
+                data = response.json()
+                users.extend(data["rows"])
+                if "total" not in data or data["total"] <= page:
+                    break
+                page += 1
+            else:
+                print(f"Error retrieving users. Status code: {response.status_code}")
+                print(response.json())
+                break
 
-def user_add(first_name, last_name, company_name):
-    email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-    username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
-    password = generate_password()
+            return users
 
-    users = get_users()
-    for user in users:
-        if user["username"] == username:
-            print(f"User with username '{username}' already exists.")
+    def get_user_id(self, username):
+        users = self.get_users()
+        if users:
+            for user in users:
+                if user["username"] == username:
+                    return user["id"]
+            return None
+
+    def user_add(self, first_name, last_name, company_name):
+        email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+        password = self.generate_password()
+
+        users = self.get_users()
+        if users:
+            for user in users:
+                if user["username"] == username:
+                    print(f"User with username '{username}' already exists.")
+                    return
+
+        group_id = self.get_group_id("Users")
+        if group_id is None:
+            print("Group 'Users' not found in Snipe-IT.")
             return
 
-    group_id = get_group_id("Users")
-    if group_id is None:
-        print("Group 'Users' not found in Snipe-IT.")
-        return
+        company_id = self.get_company_id(company_name)
+        if company_id is None:
+            print(f"Company {company_name} not found in Snipe-IT.")
+            return
 
-    company_id = get_company_id(company_name)
-    if company_id is None:
-        print(f"Company {company_name} not found in Snipe-IT.")
-        return
+        # For some reason, with our SnipeIT instance the group IT assignment does
+        # not work and we still need to do this manually...
+        data = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "username": username,
+            "email": email,
+            "password": password,
+            "password_confirmation": password,
+            "company_id": company_id,
+            "groups": group_id,
+            "activated": True,
+        }
+        print(data)
 
-    # For some reason, with our SnipeIT instance the group IT assignment does
-    # not work and we still need to do this manually...
-    data = {
-        "first_name": first_name,
-        "last_name": last_name,
-        "username": username,
-        "email": email,
-        "password": password,
-        "password_confirmation": password,
-        "company_id": company_id,
-        "groups": group_id,
-        "activated": True,
-    }
-    print(data)
+        response = requests.post(
+            f"{self.cfg_api_url}/users", headers=self.headers, json=data, timeout=10
+        )
+        response_json = response.json()
+        if response.status_code == 200 and response_json.get("status") != "error":
+            user_info = response.json()["payload"]
+            user_id = user_info["id"]
+            print(f"User created successfully!")
+            print(f"Username: {username}")
+            print(f"Password: {password}")
+            print(f"User ID: {user_id}")
+        else:
+            print(f"Failed to create user. Status code: {response.status_code}")
+            print(response_json)
 
-    response = requests.post(
-        f"{cfg_api_url}/users", headers=headers, json=data, timeout=10
-    )
-    response_json = response.json()
-    if response.status_code == 200 and response_json.get("status") != "error":
-        user_info = response.json()["payload"]
-        user_id = user_info["id"]
-        print(f"User created successfully!")
-        print(f"Username: {username}")
-        print(f"Password: {password}")
-        print(f"User ID: {user_id}")
-    else:
-        print(f"Failed to create user. Status code: {response.status_code}")
-        print(response_json)
+    def user_del(self, first_name, last_name):
+        email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
 
+        user_id = self.get_user_id(username)
+        if not user_id:
+            print(f"Failed to find user with username: {username}")
+            return
 
-def user_del(first_name, last_name):
-    email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-    username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
-
-    user_id = get_user_id(username)
-    if not user_id:
-        print(f"Failed to find user with username: {username}")
-        return
-
-    response = requests.delete(
-        f"{cfg_api_url}/users/{user_id}", headers=headers, timeout=10
-    )
-    response_json = response.json()
-    if response.status_code == 200 and response_json.get("status") != "error":
-        print(f"User {username} deleted successfully!")
-    else:
-        print(f"Failed to delete user {username}. Status code: {response.status_code}")
-        print(response_json)
+        response = requests.delete(
+            f"{self.cfg_api_url}/users/{user_id}", headers=self.headers, timeout=10
+        )
+        response_json = response.json()
+        if response.status_code == 200 and response_json.get("status") != "error":
+            print(f"User {username} deleted successfully!")
+        else:
+            print(
+                f"Failed to delete user {username}. Status code: {response.status_code}"
+            )
+            print(response_json)

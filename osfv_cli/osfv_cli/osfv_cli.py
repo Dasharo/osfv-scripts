@@ -2,17 +2,49 @@
 
 import argparse
 import json
+import os
 
 import pexpect
 import requests
+import yaml
 
-from . import snipeit_api
 from .rte import RTE
+from .snipeit_api import SnipeIT
 from .sonoff_api import SonoffDevice
+
+SNIPEIT_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/snipeit.yml")
+
+
+# Retrieve API configuration from YAML file
+def load_snipeit_config():
+    try:
+        with open(SNIPEIT_CONFIG_FILE_PATH, "r") as file:
+            config = yaml.safe_load(file)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"Configuration file not found")
+    except yaml.YAMLError as e:
+        raise ValueError(f"Error parsing YAML: {e}")
+
+    if config is None:
+        raise ValueError(f"Empty configuration file")
+
+    cfg = {}
+    cfg["url"] = config.get("api_url")
+    cfg["token"] = config.get("api_token")
+    cfg["user_id"] = config.get("user_id")
+
+    if not cfg["url"] or not ["cfg_token"]:
+        raise ValueError("Incomplete API configuration in the YAML file")
+    if not isinstance(cfg["user_id"], int):
+        raise ValueError(
+            f'User ID configuration in the YAML file should be int: {cfg["user_id"]}'
+        )
+
+    return cfg
 
 
 # Check out an asset
-def check_out_asset(asset_id):
+def check_out_asset(snipeit_api, asset_id):
     success, data = snipeit_api.check_out_asset(asset_id)
 
     if success:
@@ -22,8 +54,8 @@ def check_out_asset(asset_id):
         print(f"Response data: {data}")
 
 
-# Check in an asset
-def check_in_asset(asset_id):
+def check_in_asset(snipeit_api, asset_id):
+    # Check in an asset
     success, data = snipeit_api.check_in_asset(asset_id)
 
     if success:
@@ -34,7 +66,7 @@ def check_in_asset(asset_id):
 
 
 # List used assets
-def list_used_assets():
+def list_used_assets(snipeit_api):
     all_assets = snipeit_api.get_all_assets()
     used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
 
@@ -46,7 +78,24 @@ def list_used_assets():
 
 
 # List unused assets
-def list_unused_assets():
+def list_my_assets(snipeit_api):
+    all_assets = snipeit_api.get_all_assets()
+    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
+    my_assets = [
+        asset
+        for asset in used_assets
+        if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
+    ]
+
+    if my_assets:
+        for asset in my_assets:
+            print_asset_details(asset)
+    else:
+        print("No unused assets found.")
+
+
+# List unused assets
+def list_unused_assets(snipeit_api):
     all_assets = snipeit_api.get_all_assets()
     unused_assets = [asset for asset in all_assets if asset["assigned_to"] is None]
 
@@ -57,8 +106,7 @@ def list_unused_assets():
         print("No unused assets found.")
 
 
-# List all assets
-def list_all_assets():
+def list_all_assets(snipeit_api):
     all_assets = snipeit_api.get_all_assets()
 
     if all_assets:
@@ -69,7 +117,7 @@ def list_all_assets():
 
 
 # Print asset details as JSON with specific custom fields
-def list_for_zabbix():
+def list_for_zabbix(snipeit_api):
     all_assets = snipeit_api.get_all_assets()
 
     if all_assets:
@@ -85,7 +133,8 @@ def print_asset_details(asset):
         f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]}, Name: {asset["name"]}, Serial: {asset["serial"]}'
     )
 
-    print(f'Assigned to: {asset["assigned_to"]["name"]}')
+    if asset["assigned_to"]:
+        print(f'Assigned to: {asset["assigned_to"]["name"]}')
 
     custom_fields = asset.get("custom_fields", {})
     if custom_fields:
@@ -297,6 +346,10 @@ def main():
         "list_used", help="List all already used assets"
     )
 
+    list_my_parser = snipeit_subparsers.add_parser(
+        "list_my", help="List all my used assets"
+    )
+
     list_unused_parser = snipeit_subparsers.add_parser(
         "list_unused", help="List all unused assets"
     )
@@ -445,31 +498,36 @@ def main():
 
     args = parser.parse_args()
 
+    snipeit_cfg = load_snipeit_config()
+    snipeit_api = SnipeIT(snipeit_cfg)
+
     if args.command == "snipeit":
         if args.snipeit_cmd == "list_used":
-            list_used_assets()
+            list_used_assets(snipeit_api)
+        elif args.snipeit_cmd == "list_my":
+            list_my_assets(snipeit_api)
         elif args.snipeit_cmd == "list_unused":
-            list_unused_assets()
+            list_unused_assets(snipeit_api)
         elif args.snipeit_cmd == "list_all":
-            list_all_assets()
+            list_all_assets(snipeit_api)
         elif args.snipeit_cmd == "list_for_zabbix":
-            list_for_zabbix()
+            list_for_zabbix(snipeit_api)
         elif args.snipeit_cmd == "check_out":
             if args.asset_id:
-                check_out_asset(args.asset_id)
+                check_out_asset(snipeit_api, args.asset_id)
             elif args.rte_ip:
                 asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
                 if asset_id:
-                    check_out_asset(asset_id)
+                    check_out_asset(snipeit_api, asset_id)
                 else:
                     print(f"No asset found with RTE IP: {args.rte_ip}")
         elif args.snipeit_cmd == "check_in":
             if args.asset_id:
-                check_in_asset(args.asset_id)
+                check_in_asset(snipeit_api, args.asset_id)
             elif args.rte_ip:
                 asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
                 if asset_id:
-                    check_in_asset(asset_id)
+                    check_in_asset(snipeit_api, asset_id)
                 else:
                     print(f"No asset found with RTE IP: {args.rte_ip}")
         elif args.snipeit_cmd == "user_add":

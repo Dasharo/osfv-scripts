@@ -4,7 +4,6 @@ import time
 import paramiko
 import yaml
 
-from . import snipeit_api
 from .rtectrl_api import rtectrl
 from .sonoff_api import SonoffDevice
 
@@ -28,19 +27,36 @@ class RTE(rtectrl):
     PROGRAMMER = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
-    def __init__(self, rte_ip, dut_model):
+    CLI_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/cli.yml")
+
+    def __init__(self, rte_ip, dut_model, snipeit_api):
         self.rte_ip = rte_ip
         self.dut_model = dut_model
         self.dut_data = self.load_model_data()
         self.sonoff, self.sonoff_ip = self.init_sonoff()
+        self.snipeit_api = snipeit_api
 
     def load_model_data(self):
-        # Specify the file path
-        file_path = f"models/{self.dut_model}.yml"
+        try:
+            with open(self.CLI_CONFIG_FILE_PATH, "r") as file:
+                config = yaml.safe_load(file)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Configuration file not found")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Error parsing YAML: {e}")
+
+        if config is None:
+            raise ValueError(f"Empty configuration file")
+
+        print(config)
+        models_dir = config.get("models_dir")
+        file_path = os.path.join(models_dir, f"{self.dut_model}.yml")
 
         # Check if the file exists
         if not os.path.isfile(file_path):
-            raise UnsupportedDUTModel("The given model is not yet supported")
+            raise UnsupportedDUTModel(
+                f"The {self.dut_model} model is not yet supported"
+            )
 
         # Load the YAML file
         with open(file_path, "r") as file:
@@ -54,7 +70,7 @@ class RTE(rtectrl):
         sonoff = None
 
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
-            sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
+            sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
             if not sonoff_ip:
                 raise SonoffNotFound(
                     f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}"

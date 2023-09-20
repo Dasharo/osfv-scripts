@@ -539,7 +539,7 @@ def main():
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
         dut_model_name = snipeit_api.get_asset_model_name(asset_id)
         print(f"DUT model retrieved from snipeit: {dut_model_name}")
-        rte = RTE(args.rte_ip, dut_model_name)
+        rte = RTE(args.rte_ip, dut_model_name, snipeit_api)
 
         if args.rte_cmd == "rel":
             # Handle RTE relay related commands

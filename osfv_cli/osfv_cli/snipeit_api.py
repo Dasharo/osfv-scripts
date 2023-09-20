@@ -1,12 +1,15 @@
+import os
 import secrets
 import string
 
 import requests
 import unidecode
+import yaml
 
 
 class SnipeIT:
-    def __init__(self, snipeit_cfg):
+    def __init__(self):
+        snipeit_cfg = self.load_snipeit_config()
         self.cfg_api_url = snipeit_cfg["url"]
         self.cfg_api_token = snipeit_cfg["token"]
         self.cfg_user_id = snipeit_cfg["user_id"]
@@ -14,6 +17,35 @@ class SnipeIT:
             "Accept": "application/json",
             "Authorization": f"Bearer {self.cfg_api_token}",
         }
+
+    SNIPEIT_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/snipeit.yml")
+
+    # Retrieve API configuration from YAML file
+    def load_snipeit_config(self):
+        try:
+            with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
+                config = yaml.safe_load(file)
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Configuration file not found")
+        except yaml.YAMLError as e:
+            raise ValueError(f"Error parsing YAML: {e}")
+
+        if config is None:
+            raise ValueError(f"Empty configuration file")
+
+        cfg = {}
+        cfg["url"] = config.get("api_url")
+        cfg["token"] = config.get("api_token")
+        cfg["user_id"] = config.get("user_id")
+
+        if not cfg["url"] or not ["cfg_token"]:
+            raise ValueError("Incomplete API configuration in the YAML file")
+        if not isinstance(cfg["user_id"], int):
+            raise ValueError(
+                f'User ID configuration in the YAML file should be int: {cfg["user_id"]}'
+            )
+
+        return cfg
 
     # Retrieve all assets
     def get_all_assets(self):

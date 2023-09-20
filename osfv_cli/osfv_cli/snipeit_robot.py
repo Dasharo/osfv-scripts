@@ -1,5 +1,7 @@
 import robot.api.logger
-import snipeit_api
+from snipeit_api import SnipeIT
+
+snipeit_api = SnipeIT()
 
 
 def snipeit_checkout(rte_ip):

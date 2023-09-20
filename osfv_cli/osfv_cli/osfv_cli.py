@@ -2,45 +2,13 @@
 
 import argparse
 import json
-import os
 
 import pexpect
 import requests
-import yaml
 
 from .rte import RTE
 from .snipeit_api import SnipeIT
 from .sonoff_api import SonoffDevice
-
-SNIPEIT_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/snipeit.yml")
-
-
-# Retrieve API configuration from YAML file
-def load_snipeit_config():
-    try:
-        with open(SNIPEIT_CONFIG_FILE_PATH, "r") as file:
-            config = yaml.safe_load(file)
-    except FileNotFoundError:
-        raise FileNotFoundError(f"Configuration file not found")
-    except yaml.YAMLError as e:
-        raise ValueError(f"Error parsing YAML: {e}")
-
-    if config is None:
-        raise ValueError(f"Empty configuration file")
-
-    cfg = {}
-    cfg["url"] = config.get("api_url")
-    cfg["token"] = config.get("api_token")
-    cfg["user_id"] = config.get("user_id")
-
-    if not cfg["url"] or not ["cfg_token"]:
-        raise ValueError("Incomplete API configuration in the YAML file")
-    if not isinstance(cfg["user_id"], int):
-        raise ValueError(
-            f'User ID configuration in the YAML file should be int: {cfg["user_id"]}'
-        )
-
-    return cfg
 
 
 # Check out an asset
@@ -498,8 +466,7 @@ def main():
 
     args = parser.parse_args()
 
-    snipeit_cfg = load_snipeit_config()
-    snipeit_api = SnipeIT(snipeit_cfg)
+    snipeit_api = SnipeIT()
 
     if args.command == "snipeit":
         if args.snipeit_cmd == "list_used":
@@ -539,7 +506,7 @@ def main():
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
         dut_model_name = snipeit_api.get_asset_model_name(asset_id)
         print(f"DUT model retrieved from snipeit: {dut_model_name}")
-        rte = RTE(args.rte_ip, dut_model_name, snipeit_api)
+        rte = RTE(args.rte_ip, dut_model_name)
 
         if args.rte_cmd == "rel":
             # Handle RTE relay related commands

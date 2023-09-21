@@ -2,6 +2,7 @@
 
 import argparse
 import json
+from copy import copy
 
 import pexpect
 import requests
@@ -9,6 +10,7 @@ import requests
 from .rte import RTE
 from .snipeit_api import SnipeIT
 from .sonoff_api import SonoffDevice
+from .zabbix import Zabbix
 
 
 # Check out an asset
@@ -113,10 +115,9 @@ def print_asset_details(asset):
     print()
 
 
-# Print asset details formatted as an input for Zabbix import script
-def print_asset_details_for_zabbix(asset):
-    output = {}
-
+# extracts an asset to zabbix assets
+def get_zabbix_compatible_assets_from_asset(asset):
+    result = {}
     custom_fields = asset.get("custom_fields", {})
     if custom_fields:
         for field_name, field_data in custom_fields.items():
@@ -124,8 +125,15 @@ def print_asset_details_for_zabbix(asset):
                 field_value = field_data.get("value")
                 if field_value:
                     key = f'{asset["asset_tag"]}_{field_name}'.replace(" ", "_")
-                    output[key] = field_value
-                    print(f"{key}: {output[key]}")
+                    result[key] = field_value
+    return result
+
+
+# Print asset details formatted as an input for Zabbix import script
+def print_asset_details_for_zabbix(asset):
+    assets = get_zabbix_compatible_assets_from_asset(asset)
+    for key in assets.keys():
+        print(f"{key}: {assets[key]}")
 
 
 def relay_toggle(rte, args):
@@ -279,6 +287,164 @@ def sonoff_tgl(sonoff, args):
         print(f"Failed to toggle Sonoff relay state. Error: {e}")
 
 
+def ask_to_proceed(message="Do you want to proceed (y/n): "):
+    print("")
+    while True:
+        choice = input(message).lower()
+        if choice in ["y", "n"]:
+            return choice == "y"
+        else:
+            print("Invalid input. Please enter 'y' or 'n'.")
+
+
+def update_zabbix_assets(snipeit_api):
+    zabbix = Zabbix()
+    all_assets = snipeit_api.get_all_assets()
+
+    current_zabbix_assets = zabbix.get_all_hosts()
+    # snipeit assets but converted to zabbix-form assets
+    snipeit_assets = {}
+
+    update_available = False
+
+    if all_assets:
+        for asset in all_assets:
+            snipeit_assets.update(get_zabbix_compatible_assets_from_asset(asset))
+
+    snipeit_assets_keys = list(snipeit_assets.keys())
+
+    snipeit_configuration_error = False
+
+    forbidden_symbols = [
+        "/",
+        "\\",
+        "{",
+        "}",
+        ";",
+        ":",
+        "~",
+        "`",
+        '"',
+        "'",
+        "[",
+        "]",
+        "|",
+        "<",
+        ">",
+        "$",
+        "#",
+        "@",
+        "%",
+        "^",
+        "&",
+        "*",
+        "(",
+        ")",
+        "+",
+        "=",
+    ]
+
+    for i in range(snipeit_assets.__len__()):
+        # check for duplicates
+        for j in range(i + 1, snipeit_assets.__len__()):
+            if (
+                snipeit_assets[snipeit_assets_keys[i]]
+                == snipeit_assets[snipeit_assets_keys[j]]
+            ):
+                print(
+                    f"{snipeit_assets_keys[i]} has the same IP as {snipeit_assets_keys[j]}!"
+                )
+                snipeit_configuration_error = True
+            if snipeit_assets_keys[i] == snipeit_assets_keys[j]:
+                print(
+                    f"There are at least 2 assets with name {snipeit_assets_keys[i]} present!"
+                )
+                snipeit_configuration_error = True
+
+        # check for forbidden symbols in asset names
+        if any(symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols):
+            print(
+                f"{snipeit_assets_keys[i]} contains forbidden symbols! They are going to be changed to '_'."
+            )
+            new_key = copy(snipeit_assets_keys[i])
+            for s in forbidden_symbols:
+                new_key = new_key.replace(s, "_")
+
+            snipeit_assets[new_key] = snipeit_assets.pop(snipeit_assets_keys[i])
+
+    if snipeit_configuration_error:
+        print(
+            "\nSnipeIT configuration errors have been detected! Fix them and then continue."
+        )
+        return
+
+    keys_not_present_in_zabbix = set(snipeit_assets.keys()) - set(
+        current_zabbix_assets.keys()
+    )
+
+    keys_not_present_in_snipeit = set(current_zabbix_assets.keys()) - set(
+        snipeit_assets.keys()
+    )
+
+    if (
+        keys_not_present_in_zabbix.__len__() > 0
+        or keys_not_present_in_snipeit.__len__() > 0
+    ):
+        update_available = True
+
+    common_keys = set(snipeit_assets.keys()) & set(current_zabbix_assets.keys())
+
+    if keys_not_present_in_zabbix.__len__() > 0:
+        print("Assets not present in Zabbix (these will be added):")
+        print("\n".join(keys_not_present_in_zabbix))
+
+    if keys_not_present_in_snipeit.__len__() > 0:
+        print("\nAssets present in Zabbix but not in SnipeIT (these will be removed):")
+        print("\n".join(keys_not_present_in_snipeit))
+
+    print("")
+    keys_for_ip_change = []
+    for key in common_keys:
+        if snipeit_assets[key] != current_zabbix_assets[key]:
+            print(
+                f"{key} has wrong IP! (Zabbix one will be updated from {current_zabbix_assets[key]} to {snipeit_assets[key]})"
+            )
+            keys_for_ip_change.append(key)
+
+    if keys_for_ip_change.__len__() > 0:
+        update_available = True
+
+    if not update_available:
+        print("Zabbix is already synced with SnipeIT")
+        return
+
+    if not ask_to_proceed("Do you want to appply above changes? (y/n): "):
+        print("Changes were not applied")
+        return
+
+    # removing zabbix hosts
+    for key in keys_not_present_in_snipeit:
+        print(f"Removing {key}({current_zabbix_assets[key]})...")
+        result = zabbix.remove_host_by_name(key)
+        if "error" in result:
+            print("Failed to remove the host!")
+
+    # updating zabbix ips
+    for key in keys_for_ip_change:
+        print(f"Updating {key} IP to {snipeit_assets[key]}...")
+        result = zabbix.update_host_ip(key, snipeit_assets[key])
+        if "error" in result:
+            print("Failed to change host's IP!")
+
+    # adding zabbix hosts
+    for key in keys_not_present_in_zabbix:
+        print(f"Adding {key}({snipeit_assets[key]})...")
+        try:
+            result = zabbix.add_host(key, snipeit_assets[key])
+        except ValueError:
+            print("Failed to add the host!")
+
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(description="Open Source Firmware Validation CLI")
@@ -327,6 +493,11 @@ def main():
     list_zabbix_parser = snipeit_subparsers.add_parser(
         "list_for_zabbix",
         help="List assets in a format suitable for Zabbix integration",
+    )
+
+    update_zabbix_assets_parser = snipeit_subparsers.add_parser(
+        "update_zabbix",
+        help="Syncs Zabbix assets with SnipeIT ones",
     )
 
     check_out_parser = snipeit_subparsers.add_parser(
@@ -501,6 +672,8 @@ def main():
             snipeit_api.user_add(args.first_name, args.last_name, args.company_name)
         elif args.snipeit_cmd == "user_del":
             snipeit_api.user_del(args.first_name, args.last_name)
+        elif args.snipeit_cmd == "update_zabbix":
+            update_zabbix_assets(snipeit_api)
 
     elif args.command == "rte":
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)

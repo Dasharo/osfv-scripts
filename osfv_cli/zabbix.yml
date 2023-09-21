@@ -1,0 +1,4 @@
+---
+api_url: 'http://192.168.4.232/zabbix/api_jsonrpc.php'
+username: 'Admin'
+password: 'zabbix'

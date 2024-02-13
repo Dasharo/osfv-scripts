@@ -31,7 +31,7 @@ as such, may not fit for other needs.
 1. Build and install utility:
 
   ```shell
-  make
+  make install
   ```
 
 ## Usage
@@ -107,3 +107,8 @@ some examples:
   ```shell
   osfv_cli --help
   ```
+
+## Development
+
+You can test local changes by running `poetry shell` first. Then, all
+`osfv_cli` calls will use the local files in repository, not installed package.

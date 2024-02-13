@@ -3,6 +3,7 @@ import time
 
 import paramiko
 import yaml
+from importlib_resources import files
 
 from .rtectrl_api import rtectrl
 from .sonoff_api import SonoffDevice
@@ -27,8 +28,6 @@ class RTE(rtectrl):
     PROGRAMMER = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
-    CLI_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/cli.yml")
-
     def __init__(self, rte_ip, dut_model, snipeit_api):
         self.rte_ip = rte_ip
         self.dut_model = dut_model
@@ -37,20 +36,7 @@ class RTE(rtectrl):
         self.snipeit_api = snipeit_api
 
     def load_model_data(self):
-        try:
-            with open(self.CLI_CONFIG_FILE_PATH, "r") as file:
-                config = yaml.safe_load(file)
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found")
-        except yaml.YAMLError as e:
-            raise ValueError(f"Error parsing YAML: {e}")
-
-        if config is None:
-            raise ValueError(f"Empty configuration file")
-
-        print(config)
-        models_dir = config.get("models_dir")
-        file_path = os.path.join(models_dir, f"{self.dut_model}.yml")
+        file_path = os.path.join(files("osfv_cli"), "models", f"{self.dut_model}.yml")
 
         # Check if the file exists
         if not os.path.isfile(file_path):

@@ -418,7 +418,7 @@ def update_zabbix_assets(snipeit_api):
         print("Zabbix is already synced with SnipeIT")
         return
 
-    if not ask_to_proceed("Do you want to appply above changes? (y/n): "):
+    if not ask_to_proceed("Do you want to apply above changes? (y/n): "):
         print("Changes were not applied")
         return
 

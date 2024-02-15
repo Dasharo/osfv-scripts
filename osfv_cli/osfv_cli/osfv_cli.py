@@ -63,7 +63,7 @@ def list_my_assets(snipeit_api, args):
     ]
 
     if not my_assets:
-        print("No unused assets found.")
+        print("No used assets found.")
         return
 
     if args.json:
@@ -71,7 +71,6 @@ def list_my_assets(snipeit_api, args):
     else:
         for asset in my_assets:
             print_asset_details(asset)
-
 
 # List unused assets
 def list_unused_assets(snipeit_api, args):

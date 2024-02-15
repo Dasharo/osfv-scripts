@@ -537,6 +537,12 @@ def main():
 
     # RTE subcommands
     rte_parser.add_argument("--rte_ip", type=str, help="RTE IP address", required=True)
+    rte_parser.add_argument(
+        "--model",
+        type=str,
+        help="DUT model. If not given, will attempt to query from Snipe-IT.",
+        required=False,
+    )
     rte_subparsers = rte_parser.add_subparsers(
         title="subcommands", dest="rte_cmd", help="RTE subcommands"
     )
@@ -677,8 +683,12 @@ def main():
 
     elif args.command == "rte":
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
-        dut_model_name = snipeit_api.get_asset_model_name(asset_id)
-        print(f"DUT model retrieved from snipeit: {dut_model_name}")
+        if args.model:
+            print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
+            dut_model_name = args.model
+        else:
+            dut_model_name = snipeit_api.get_asset_model_name(asset_id)
+            print(f"DUT model retrieved from snipeit: {dut_model_name}")
         rte = RTE(args.rte_ip, dut_model_name, snipeit_api)
 
         if args.rte_cmd == "rel":

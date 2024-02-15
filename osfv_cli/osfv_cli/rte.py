@@ -32,8 +32,8 @@ class RTE(rtectrl):
         self.rte_ip = rte_ip
         self.dut_model = dut_model
         self.dut_data = self.load_model_data()
-        self.sonoff, self.sonoff_ip = self.init_sonoff()
         self.snipeit_api = snipeit_api
+        self.sonoff, self.sonoff_ip = self.init_sonoff()
 
     def load_model_data(self):
         file_path = os.path.join(files("osfv_cli"), "models", f"{self.dut_model}.yml")

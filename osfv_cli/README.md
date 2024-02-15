@@ -36,6 +36,9 @@ as such, may not fit for other needs.
 
 ## Usage
 
+> If you do not wish to use Snipe-IT, you can manually provide your device
+> model name to the script via the `--model` parameter.
+
 1. Customize the configuration:
 
     > The `~/.osfv/snipeit.yml` should be created automatically upon installing

@@ -1,0 +1,8 @@
+---
+flash_chip:
+  voltage: "1.8V"
+
+pwr_ctrl:
+  sonoff: true
+  relay: false
+  init_on: false

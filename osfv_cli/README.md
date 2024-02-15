@@ -108,6 +108,30 @@ some examples:
   osfv_cli --help
   ```
 
+## Adding new platform configs
+
+Platform configs hold information on power management, flash chip parameters,
+and whether CMOS needs to be reset after flashing. All currently available
+platform configs are located in the models directory. If you wish to expand
+the list, you can place your `MODEL.yml` with corresponding settings in the
+directory, following other configs' syntax. Available parameters are as
+follows:
+
+* `flash_chip`:
+    * `model` - optional, needs to be set if flashrom detects more than one
+    possible flash chip model - in other words, the `-c` parameter you use in
+    flashrom.
+    * `voltage` - required; chip supply voltage - most often "3.3V" or "1.8V";
+    should be discovered in appropriate datasheet.
+
+* `pwr_ctrl`:
+    * `sonoff` - required; true or false, whether you use sonoff power control.
+    * `relay` - required; true or false, whether you use onboard RTE relay
+    power control.
+
+* `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
+    is required after flashing.
+
 ## Development
 
 You can test local changes by running `poetry shell` first. Then, all

@@ -69,7 +69,7 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
 
-    def power_off(self, sleep=5):
+    def power_off(self, sleep=6):
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
 
@@ -89,6 +89,7 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_CMOS, "high-z")
 
     def spi_enable(self):
+        voltage = None
         if "flash_chip" in self.dut_data:
             if "voltage" in self.dut_data["flash_chip"]:
                 voltage = self.dut_data["flash_chip"]["voltage"]
@@ -107,7 +108,7 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_SPI_VCC, "low")
         time.sleep(2)
         self.gpio_set(self.GPIO_SPI_ON, "low")
-        time.sleep(2)
+        time.sleep(10)
 
     def spi_disable(self):
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
@@ -151,7 +152,9 @@ class RTE(rtectrl):
 
         # 3. RTE POFF
         # 4. sleep 3
-        self.power_off(3)
+        # Run 5 times in the loop to make sure to charge from PSU is dissipated
+        for _ in range(5):
+            self.power_off(3)
 
         # 5. SPI ON
         # 6. sleep 2

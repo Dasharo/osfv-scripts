@@ -3,6 +3,7 @@
 import argparse
 import json
 from copy import copy
+from importlib import metadata
 
 import pexpect
 import requests
@@ -448,6 +449,9 @@ def update_zabbix_assets(snipeit_api):
 # Main function
 def main():
     parser = argparse.ArgumentParser(description="Open Source Firmware Validation CLI")
+    parser.add_argument(
+        "-v", "--version", action="version", version=metadata.version("osfv_cli")
+    )
 
     subparsers = parser.add_subparsers(
         title="commands", dest="command", help="Command to execute"

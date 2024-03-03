@@ -2,6 +2,9 @@
 flash_chip:
   voltage: "3.3V"
 
+programmer:
+  name: ch341a
+
 pwr_ctrl:
   # whether power is controlled via Sonoff plug (required)
   sonoff: false

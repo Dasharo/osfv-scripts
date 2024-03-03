@@ -2,6 +2,9 @@
 flash_chip:
   voltage: "1.8V"
 
+programmer:
+  name: rte
+
 pwr_ctrl:
   sonoff: true
   relay: false

@@ -691,8 +691,13 @@ def main():
             print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
             dut_model_name = args.model
         else:
-            dut_model_name = snipeit_api.get_asset_model_name(asset_id)
-            print(f"DUT model retrieved from snipeit: {dut_model_name}")
+            status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
+            if status:
+                print(f"DUT model retrieved from snipeit: {dut_model_name}")
+            else:
+                exit(
+                    f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
+                )
         rte = RTE(args.rte_ip, dut_model_name, snipeit_api)
 
         if args.rte_cmd == "rel":

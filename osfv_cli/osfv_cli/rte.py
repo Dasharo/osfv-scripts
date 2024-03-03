@@ -4,6 +4,7 @@ import time
 import paramiko
 import yaml
 from importlib_resources import files
+from voluptuous import Any, Optional, Required, Schema
 
 from .rtectrl_api import rtectrl
 from .sonoff_api import SonoffDevice
@@ -25,7 +26,8 @@ class RTE(rtectrl):
     FW_PATH_WRITE = "/tmp/write.rom"
     FW_PATH_READ = "/tmp/read.rom"
 
-    PROGRAMMER = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
+    PROGRAMMER_RTE = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
+    PROGRAMMER_CH341A = "ch341a_spi"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
     def __init__(self, rte_ip, dut_model, snipeit_api):
@@ -47,6 +49,51 @@ class RTE(rtectrl):
         # Load the YAML file
         with open(file_path, "r") as file:
             data = yaml.safe_load(file)
+
+        voltage_validator = Any("1.8V", "3.3V")
+        programmer_name_validator = Any("rte", "ch341a")
+
+        schema = Schema(
+            {
+                Required("programmer"): {
+                    Required("name"): programmer_name_validator,
+                },
+                Required("flash_chip"): {
+                    Required("voltage"): voltage_validator,
+                    Optional("model"): str,
+                },
+                Required("pwr_ctrl"): {
+                    Required("sonoff"): bool,
+                    Required("relay"): bool,
+                    Optional("init_on"): bool,
+                },
+                Optional("reset_cmos", default=False): bool,
+            }
+        )
+
+        try:
+            schema(data)
+        except Exception as e:
+            exit(f"Model file is invalid: {e}")
+
+        # Check if required fields are present
+        required_fields = [
+            "pwr_ctrl",
+            "pwr_ctrl.sonoff",
+            "pwr_ctrl.relay",
+            "flash_chip",
+            "flash_chip.voltage",
+            "programmer",
+            "programmer.name",
+        ]
+        for field in required_fields:
+            current_field = data
+            keys = field.split(".")
+            for key in keys:
+                if key in current_field:
+                    current_field = current_field[key]
+                else:
+                    exit(f"Required field '{field}' is missing in model config.")
 
         # Return the loaded data
         return data
@@ -89,12 +136,7 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_CMOS, "high-z")
 
     def spi_enable(self):
-        voltage = None
-        if "flash_chip" in self.dut_data:
-            if "voltage" in self.dut_data["flash_chip"]:
-                voltage = self.dut_data["flash_chip"]["voltage"]
-            else:
-                raise IncompleteModelData("Flash chip voltage is missing in model data")
+        voltage = self.dut_data["flash_chip"]["voltage"]
 
         if voltage == "1.8V":
             state = "high-z"
@@ -140,13 +182,14 @@ class RTE(rtectrl):
                 raise Exception("Failed to power control OFF")
         time.sleep(2)
 
-    def flash_cmd(self, args, read_file=None, write_file=None):
+    def pwr_ctrl_before_flash(self, programmer):
         # 1. sonoff/relay ON
         # 2. sleep 5
         # Some flash scripts started with power platform ON, but some others
         # not (like FW4C).
-        if self.dut_data["pwr_ctrl"]["init_on"] is True:
-            self.pwr_ctrl_on()
+        if "init_on" in self.dut_data["pwr_ctrl"]:
+            if self.dut_data["pwr_ctrl"]["init_on"] is True:
+                self.pwr_ctrl_on()
         else:
             self.pwr_ctrl_off()
 
@@ -156,14 +199,25 @@ class RTE(rtectrl):
         for _ in range(5):
             self.power_off(3)
 
-        # 5. SPI ON
-        # 6. sleep 2
-        self.spi_enable()
-        time.sleep(2)
+        if programmer == "rte":
+            # 5. SPI ON
+            # 6. sleep 2
+            self.spi_enable()
+            time.sleep(2)
 
         # 7. sonoff/relay OFF
         # 8. sleep 2
         self.pwr_ctrl_off()
+
+    def pwr_ctrl_after_flash(self, programmer):
+        if programmer == "rte":
+            # 10. SPI OFF
+            # 11. sleep 2
+            self.spi_disable()
+            time.sleep(2)
+
+    def flash_cmd(self, args, read_file=None, write_file=None):
+        self.pwr_ctrl_before_flash(self.dut_data["programmer"]["name"])
 
         # 9. flashrom
 
@@ -181,7 +235,14 @@ class RTE(rtectrl):
                 scp.close()
 
             # Execute the flashrom command
-            command = self.FLASHROM_CMD.format(programmer=self.PROGRAMMER, args=args)
+            if self.dut_data["programmer"]["name"] == "ch341a":
+                flashrom_programmer = self.PROGRAMMER_CH341A
+            else:
+                flashrom_programmer = self.PROGRAMMER_RTE
+
+            command = self.FLASHROM_CMD.format(
+                programmer=flashrom_programmer, args=args
+            )
             print(f"Executing command: {command}")
 
             channel = ssh.get_transport().open_session()
@@ -199,13 +260,10 @@ class RTE(rtectrl):
                 scp.close()
 
         finally:
+            self.pwr_ctrl_after_flash(self.dut_data["programmer"]["name"])
+
             # Close the SSH connection
             ssh.close()
-
-            # 10. SPI OFF
-            # 11. sleep 2
-            self.spi_disable()
-            time.sleep(2)
 
     def flash_create_args(self, extra_args=""):
         args = ""

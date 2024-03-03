@@ -3,6 +3,9 @@ flash_chip:
   # flash chip voltage (required)
   voltage: "1.8V"
 
+programmer:
+  name: rte
+
 pwr_ctrl:
   # whether power is controlled via Sonoff plug (required)
   sonoff: false

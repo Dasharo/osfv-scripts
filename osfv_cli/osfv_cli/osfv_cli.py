@@ -37,19 +37,23 @@ def check_in_asset(snipeit_api, asset_id):
 
 
 # List used assets
-def list_used_assets(snipeit_api):
+def list_used_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
     used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
 
-    if used_assets:
+    if not used_assets:
+        print("No used assets found.")
+        return
+
+    if args.json:
+        print(json.dumps(used_assets))
+    else:
         for asset in used_assets:
             print_asset_details(asset)
-    else:
-        print("No used assets found.")
 
 
 # List unused assets
-def list_my_assets(snipeit_api):
+def list_my_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
     used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
     my_assets = [
@@ -58,37 +62,49 @@ def list_my_assets(snipeit_api):
         if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
     ]
 
-    if my_assets:
+    if not my_assets:
+        print("No unused assets found.")
+        return
+
+    if args.json:
+        print(json.dumps(my_assets))
+    else:
         for asset in my_assets:
             print_asset_details(asset)
-    else:
-        print("No unused assets found.")
 
 
 # List unused assets
-def list_unused_assets(snipeit_api):
+def list_unused_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
     unused_assets = [asset for asset in all_assets if asset["assigned_to"] is None]
 
-    if unused_assets:
+    if not unused_assets:
+        print("No unused assets found.")
+        return
+
+    if args.json:
+        print(json.dumps(unused_assets))
+    else:
         for asset in unused_assets:
             print_asset_details(asset)
-    else:
-        print("No unused assets found.")
 
 
-def list_all_assets(snipeit_api):
+def list_all_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
 
-    if all_assets:
+    if not all_assets:
+        print("No assets found.")
+        return
+
+    if args.json:
+        print(json.dumps(all_assets))
+    else:
         for asset in all_assets:
             print_asset_details(asset)
-    else:
-        print("No assets found.")
 
 
 # Print asset details as JSON with specific custom fields
-def list_for_zabbix(snipeit_api):
+def list_for_zabbix(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
 
     if all_assets:
@@ -453,6 +469,10 @@ def main():
         "-v", "--version", action="version", version=metadata.version("osfv_cli")
     )
 
+    parser.add_argument(
+        "-j", "--json", action="store_true", help="Output as JSON (if applicable)"
+    )
+
     subparsers = parser.add_subparsers(
         title="commands", dest="command", help="Command to execute"
     )
@@ -651,15 +671,15 @@ def main():
 
     if args.command == "snipeit":
         if args.snipeit_cmd == "list_used":
-            list_used_assets(snipeit_api)
+            list_used_assets(snipeit_api, args)
         elif args.snipeit_cmd == "list_my":
-            list_my_assets(snipeit_api)
+            list_my_assets(snipeit_api, args)
         elif args.snipeit_cmd == "list_unused":
-            list_unused_assets(snipeit_api)
+            list_unused_assets(snipeit_api, args)
         elif args.snipeit_cmd == "list_all":
-            list_all_assets(snipeit_api)
+            list_all_assets(snipeit_api, args)
         elif args.snipeit_cmd == "list_for_zabbix":
-            list_for_zabbix(snipeit_api)
+            list_for_zabbix(snipeit_api, args)
         elif args.snipeit_cmd == "check_out":
             if args.asset_id:
                 check_out_asset(snipeit_api, args.asset_id)

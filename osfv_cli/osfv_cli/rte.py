@@ -51,7 +51,7 @@ class RTE(rtectrl):
             data = yaml.safe_load(file)
 
         voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any("rte", "ch341a")
+        programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a")
 
         schema = Schema(
             {
@@ -65,7 +65,7 @@ class RTE(rtectrl):
                 Required("pwr_ctrl"): {
                     Required("sonoff"): bool,
                     Required("relay"): bool,
-                    Optional("init_on"): bool,
+                    Required("init_on"): bool,
                 },
                 Optional("reset_cmos", default=False): bool,
             }
@@ -187,30 +187,31 @@ class RTE(rtectrl):
         # 2. sleep 5
         # Some flash scripts started with power platform ON, but some others
         # not (like FW4C).
-        if "init_on" in self.dut_data["pwr_ctrl"]:
-            if self.dut_data["pwr_ctrl"]["init_on"] is True:
-                self.pwr_ctrl_on()
+        if self.dut_data["pwr_ctrl"]["init_on"] is True:
+            self.pwr_ctrl_on()
+            time.sleep(1)
+            self.power_off(6)
         else:
             self.pwr_ctrl_off()
+            # 3. RTE POFF
+            # 4. sleep 3
+            # Run 5 times in the loop to make sure to charge from PSU is dissipated
+            for _ in range(5):
+                self.power_off(3)
 
-        # 3. RTE POFF
-        # 4. sleep 3
-        # Run 5 times in the loop to make sure to charge from PSU is dissipated
-        for _ in range(5):
-            self.power_off(3)
-
-        if programmer == "rte":
+        if programmer == "rte_1_1":
             # 5. SPI ON
             # 6. sleep 2
             self.spi_enable()
             time.sleep(2)
 
-        # 7. sonoff/relay OFF
-        # 8. sleep 2
-        self.pwr_ctrl_off()
+        if self.dut_data["pwr_ctrl"]["init_on"] is False:
+            # 7. sonoff/relay OFF
+            # 8. sleep 2
+            self.pwr_ctrl_off()
 
     def pwr_ctrl_after_flash(self, programmer):
-        if programmer == "rte":
+        if programmer == "rte_1_1":
             # 10. SPI OFF
             # 11. sleep 2
             self.spi_disable()

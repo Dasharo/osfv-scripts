@@ -59,7 +59,7 @@ class RTE(rtectrl):
             sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
             if not sonoff_ip:
                 raise SonoffNotFound(
-                    f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}"
+                    exit(f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
                 )
             sonoff = SonoffDevice(sonoff_ip)
 

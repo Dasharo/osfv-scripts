@@ -16,6 +16,16 @@ as such, may not fit for other needs.
    git clone https://github.com/dasharo/osfv-scripts.git
    ```
 
+1. Create virtual environment and activate it:
+
+   ```shell
+   virtualenv venv
+   ```
+
+   ```shell
+   source venv/bin/activate
+   ```
+
 1. Navigate to the cloned repository:
 
    ```shell

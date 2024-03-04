@@ -119,7 +119,10 @@ class SnipeIT:
 
     # Check out an asset
     def check_out_asset(self, asset_id):
-        asset_data = self.get_asset(asset_id)
+        status, asset_data = self.get_asset(asset_id)
+
+        if not status:
+            return False, None
 
         # Simply pass if asset is already checked out to the caller
         if asset_data["assigned_to"]:
@@ -164,20 +167,19 @@ class SnipeIT:
         response = requests.get(
             f"{self.cfg_api_url}/hardware/{asset_id}", headers=self.headers, timeout=10
         )
-        data = {}
-        if response.status_code == 200:
-            data = response.json()
+        response_json = response.json()
+        if response.status_code == 200 and response_json.get("status") != "error":
+            return True, response_json
         else:
-            print(f"Error retrieving assets. Status code: {response.status_code}")
-            print(response.json())
-        return data
+            return False, response_json
 
     def get_asset_model_name(self, asset_id):
-        data = self.get_asset(asset_id)
-        model_name = ""
-        if data:
-            model_name = data["model"]["name"]
-        return model_name
+        status, data = self.get_asset(asset_id)
+
+        if not status:
+            return False, data
+
+        return True, data["model"]["name"]
 
     def get_company_id(self, company_name):
         response = requests.get(

@@ -54,49 +54,52 @@ as such, may not fit for other needs.
      - `user_id` is your Snipe-IT user id, which can be found by going to
        <http://snipeit/users> and showing column ID
 
-To use the script, you can run it with different commands and options. Here are
-some examples:
+To use the script, you can run it with different commands and options. The full
+list of commands and description of arguments is in the help message. Here are
+just some examples.
+
+### snipeit command
 
 * List all used assets:
 
   ```shell
-  osfv_cli list_used
+  osfv_cli snipeit list_used
   ```
 
 * List all unused assets:
 
   ```shell
-  osfv_cli list_unused
+  osfv_cli snipeit list_unused
   ```
 
 * List all assets:
 
   ```shell
-  osfv_cli list_all
+  osfv_cli snipeit list_all
   ```
 
 * Check out an asset (by asset ID):
 
   ```shell
-  osfv_cli check_out --asset_id 123
+  osfv_cli snipeit check_out --asset_id 123
   ```
 
 * Check in an asset (by asset ID):
 
   ```shell
-  osfv_cli check_in --asset_id 123
+  osfv_cli snipeit check_in --asset_id 123
   ```
 
 * Check out an asset (by RTE IP):
 
   ```bash
-  osfv_cli check_out --rte_ip <rte_ip_address>
+  osfv_cli snipeit check_out --rte_ip <rte_ip_address>
   ```
 
 * Check out an asset (by RTE IP):
 
   ```bash
-  osfv_cli check_out --rte_ip <rte_ip_address>
+  osfv_cli snipeit check_out --rte_ip <rte_ip_address>
   ```
 
   > Replace `<rte_ip_address>` with the actual RTE IP address of the asset you
@@ -105,11 +108,80 @@ some examples:
   > Please note that the RTE IP should match the value stored in the asset's
   > custom field named "RTE IP".
 
-* For more command options, you can use the `--help` flag:
+### sonoff command
 
-  ```shell
-  osfv_cli --help
+* Get Sonoff state:
+
+  ```bash
+  osfv_cli sonoff --sonoff_ip <sonoff_ip_address> get
   ```
+
+* Set Sonoff state to ON:
+
+  ```bash
+  osfv_cli sonoff --sonoff_ip <sonoff_ip_address> on
+  ```
+
+* Set Sonoff state to OFF:
+
+  ```bash
+  osfv_cli sonoff --sonoff_ip <sonoff_ip_address> off
+  ```
+
+* Toggle Sonoff state:
+
+  ```bash
+  osfv_cli sonoff --sonoff_ip <sonoff_ip_address> tgl
+  ```
+
+  > Replace `<sonoff_ip_address>` with the IP address of correct Sonoff. You
+  > may also use `--rte_ip` instead, and Sonoff IP will be retrieved from
+  > Snipe-IT if found.
+
+### rte command
+
+* Toggle relay state:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> rel tgl
+  ```
+
+* Power on the platform (push power button)
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> pwr on
+  ```
+
+* List state of controllable GPIOs:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> gpio list
+  ```
+
+* Enable SPI lines:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> spi on
+  ```
+
+* Connect to DUT serial port connected  to RTE via telnet:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> serial
+  ```
+
+* Flash DUT with given firmware file:
+
+  > flash commands already take care of getting the platform in the correct
+  > power state, and setting correct flashing parameters for certain device model,
+  > as defined in the config files in `osfv_cli/models`
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> flash write --rom <path_to_fw_file>
+  ```
+
+  > Replace `<rte_ip_address>` with the actual RTE IP address connected with
+  > the DUT.
 
 ## Adding new platform configs
 

@@ -477,6 +477,18 @@ socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
 [[package]]
+name = "voluptuous"
+version = "0.14.2"
+description = "Python data validation library"
+category = "main"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "voluptuous-0.14.2-py3-none-any.whl", hash = "sha256:efc1dadc9ae32a30cc622602c1400a17b7bf8ee2770d64f70418144860739c3b"},
+    {file = "voluptuous-0.14.2.tar.gz", hash = "sha256:533e36175967a310f1b73170d091232bf881403e4ebe52a9b4ade8404d151f5d"},
+]
+
+[[package]]
 name = "zipp"
 version = "3.17.0"
 description = "Backport of pathlib-compatible object wrapper for zip files"
@@ -495,4 +507,4 @@ testing = ["big-O", "jaraco.functools", "jaraco.itertools", "more-itertools", "p
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "24175a5f63e6755c6dc810441f13d1dfae40e35cc5fdcca544987e15fca01f0a"
+content-hash = "6fd0bed982b0616124e39d29889bc69fe45e95bdd8374a861253437a6504b30b"

@@ -1,0 +1,11 @@
+---
+flash_chip:
+  model: "MX25L12833F/MX25L12835F/MX25L12845E/MX25L12865E/MX25L12873F"
+  voltage: "3.3V"
+
+pwr_ctrl:
+  sonoff: false
+  relay: true
+  init_on: true
+
+reset_cmos: true

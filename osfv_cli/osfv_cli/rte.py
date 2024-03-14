@@ -203,7 +203,7 @@ class RTE(rtectrl):
             # 5. SPI ON
             # 6. sleep 2
             self.spi_enable()
-            time.sleep(2)
+            time.sleep(3)
 
         if self.dut_data["pwr_ctrl"]["init_on"] is False:
             # 7. sonoff/relay OFF

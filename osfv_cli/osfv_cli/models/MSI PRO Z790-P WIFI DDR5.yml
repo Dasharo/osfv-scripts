@@ -3,7 +3,7 @@ flash_chip:
   voltage: "1.8V"
 
 programmer:
-  name: rte
+  name: rte_1_1
 
 pwr_ctrl:
   sonoff: true

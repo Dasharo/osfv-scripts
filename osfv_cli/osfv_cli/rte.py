@@ -182,6 +182,13 @@ class RTE(rtectrl):
                 raise Exception("Failed to power control OFF")
         time.sleep(2)
 
+    def discharge_psu(self):
+        """
+        Push power button 5 times in the loop to make sure the charge from PSU is dissipated
+        """
+        for _ in range(5):
+            self.power_off(3)
+
     def pwr_ctrl_before_flash(self, programmer):
         # 1. sonoff/relay ON
         # 2. sleep 5
@@ -189,15 +196,14 @@ class RTE(rtectrl):
         # not (like FW4C).
         if self.dut_data["pwr_ctrl"]["init_on"] is True:
             self.pwr_ctrl_on()
-            time.sleep(1)
+            time.sleep(5)
             self.power_off(6)
+            time.sleep(10)
         else:
-            self.pwr_ctrl_off()
             # 3. RTE POFF
             # 4. sleep 3
-            # Run 5 times in the loop to make sure to charge from PSU is dissipated
-            for _ in range(5):
-                self.power_off(3)
+            self.pwr_ctrl_off()
+            self.discharge_psu()
 
         if programmer == "rte_1_1":
             # 5. SPI ON
@@ -205,10 +211,11 @@ class RTE(rtectrl):
             self.spi_enable()
             time.sleep(3)
 
-        if self.dut_data["pwr_ctrl"]["init_on"] is False:
+        if self.dut_data["pwr_ctrl"]["init_on"] is True:
             # 7. sonoff/relay OFF
             # 8. sleep 2
             self.pwr_ctrl_off()
+            self.discharge_psu()
 
     def pwr_ctrl_after_flash(self, programmer):
         if programmer == "rte_1_1":

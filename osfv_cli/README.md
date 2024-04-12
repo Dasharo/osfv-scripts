@@ -118,7 +118,7 @@ just some examples.
   > Please note that the RTE IP should match the value stored in the asset's
   > custom field named "RTE IP".
 
-- For more command options, you can use the `--help` flag:
+- For more command options, you can use the `--help` flag.
 
 ### sonoff command
 

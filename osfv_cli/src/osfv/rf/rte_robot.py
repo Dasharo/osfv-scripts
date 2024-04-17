@@ -85,12 +85,12 @@ class RobotRTE:
     
     @keyword(types=None)
     def rte_gpio_get(self, gpio_no):
-        state = self.rte.gpio_get(gpio_no)
+        state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state: {state}")
         return state
     
     @keyword(types=None)
     def rte_gpio_set(self, gpio_no, state):
-        self.rte.gpio_set(gpio_no, state)
-        state = self.rte.gpio_get(gpio_no)
+        self.rte.gpio_set(int(gpio_no), state)
+        state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state set to {state}")

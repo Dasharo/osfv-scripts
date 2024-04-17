@@ -137,8 +137,8 @@ class RTE(rtectrl):
         gpio_state = None
         if relay_state == 'on':
             gpio_state = 'high'
-        if relay_state == 'low':
-            gpio_state = 'off'
+        if relay_state == 'off':
+            gpio_state = 'low'
         self.gpio_set(self.GPIO_RELAY, gpio_state)
 
     def reset_cmos(self):

@@ -7,7 +7,6 @@ from importlib import metadata
 
 import pexpect
 import requests
-
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
@@ -71,6 +70,7 @@ def list_my_assets(snipeit_api, args):
     else:
         for asset in my_assets:
             print_asset_details(asset)
+
 
 # List unused assets
 def list_unused_assets(snipeit_api, args):

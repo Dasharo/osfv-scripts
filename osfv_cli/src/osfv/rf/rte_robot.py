@@ -1,8 +1,7 @@
 import robot.api.logger
-from robot.api.deco import keyword
 from osfv.libs.rte import RTE, UnsupportedDUTModel
 from osfv.libs.snipeit_api import SnipeIT
-
+from robot.api.deco import keyword
 
 model_dict = {
     "minnowboard_turbot": "MinnowBoard Turbot B41",
@@ -22,7 +21,7 @@ model_dict = {
     "protectli-vp4650": "VP4650",
     "protectli-vp4670": "VP4670",
     "protectli-vp6650": "VP6650",
-    "protectli-vp6670": "VP6670"
+    "protectli-vp6670": "VP6670",
 }
 
 
@@ -34,14 +33,17 @@ class RobotRTE:
             status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
             if status:
                 robot.api.logger.info(
-                    f"DUT model retrieved from snipeit: {dut_model_name}")
+                    f"DUT model retrieved from snipeit: {dut_model_name}"
+                )
             else:
                 raise AssertionError(
                     f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
                 )
             self.rte = RTE(rte_ip, dut_model_name, snipeit_api)
         else:
-            self.rte = RTE(rte_ip, self.cli_model_from_osfv(config), sonoff_ip=sonoff_ip)
+            self.rte = RTE(
+                rte_ip, self.cli_model_from_osfv(config), sonoff_ip=sonoff_ip
+            )
 
     def cli_model_from_osfv(self, osfv_model):
         """
@@ -51,21 +53,21 @@ class RobotRTE:
             raise TypeError(f"Expected a value for 'config', but got {osfv_model}")
         cli_model = model_dict.get(osfv_model)
         if not cli_model:
-            raise UnsupportedDUTModel(f"The {osfv_model} model has no counterpart in osfv_cli")
+            raise UnsupportedDUTModel(
+                f"The {osfv_model} model has no counterpart in osfv_cli"
+            )
         return cli_model
 
     @keyword(types=None)
     def rte_flash_read(self, fw_file):
-        """Reads DUT flash chip content into ``fw_file``  path
-        """
+        """Reads DUT flash chip content into ``fw_file``  path"""
         robot.api.logger.info(f"Reading from flash...")
         self.rte.flash_read(fw_file)
         robot.api.logger.info(f"Read flash content saved to {fw_file}")
 
     @keyword(types=None)
     def rte_flash_write(self, fw_file):
-        """Writes file from ``fw_file`` path into DUT flash chip
-        """
+        """Writes file from ``fw_file`` path into DUT flash chip"""
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         self.rte.flash_write(fw_file)
         robot.api.logger.info(f"Flash written")

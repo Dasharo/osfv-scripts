@@ -4,10 +4,9 @@ import time
 import paramiko
 import yaml
 from importlib_resources import files
-from voluptuous import Any, Optional, Required, Schema
-
 from osfv.libs.rtectrl_api import rtectrl
 from osfv.libs.sonoff_api import SonoffDevice
+from voluptuous import Any, Optional, Required, Schema
 
 
 class RTE(rtectrl):
@@ -30,7 +29,7 @@ class RTE(rtectrl):
     PROGRAMMER_CH341A = "ch341a_spi"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
-    def __init__(self, rte_ip, dut_model, snipeit_api=None, sonoff_ip= None):
+    def __init__(self, rte_ip, dut_model, snipeit_api=None, sonoff_ip=None):
         self.rte_ip = rte_ip
         self.dut_model = dut_model
         self.dut_data = self.load_model_data()
@@ -105,7 +104,9 @@ class RTE(rtectrl):
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             if not self.snipeit_api:
                 if not init_sonoff_ip:
-                    raise TypeError(f"Expected a value for 'sonoff_ip', but got {init_sonoff_ip}")
+                    raise TypeError(
+                        f"Expected a value for 'sonoff_ip', but got {init_sonoff_ip}"
+                    )
                 return SonoffDevice(init_sonoff_ip), init_sonoff_ip
             sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
             if not sonoff_ip:
@@ -131,18 +132,18 @@ class RTE(rtectrl):
     def relay_get(self):
         gpio_state = self.gpio_get(self.GPIO_RELAY)
         relay_state = None
-        if gpio_state == 'high':
-            relay_state = 'on'
-        if gpio_state == 'low':
-            relay_state = 'off'
+        if gpio_state == "high":
+            relay_state = "on"
+        if gpio_state == "low":
+            relay_state = "off"
         return relay_state
 
     def relay_set(self, relay_state):
         gpio_state = None
-        if relay_state == 'on':
-            gpio_state = 'high'
-        if relay_state == 'off':
-            gpio_state = 'low'
+        if relay_state == "on":
+            gpio_state = "high"
+        if relay_state == "off":
+            gpio_state = "low"
         self.gpio_set(self.GPIO_RELAY, gpio_state)
 
     def reset_cmos(self):

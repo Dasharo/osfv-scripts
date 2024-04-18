@@ -21,14 +21,14 @@ class SonoffDevice:
         return response.status_code
 
     def turn_on(self):
-        endpoint = "/switch/sonoff_s20_relay/turn_on"
+        endpoint = "/cm?cmnd=Power%20On"
         return self._post_request(endpoint)
 
     def turn_off(self):
-        endpoint = "/switch/sonoff_s20_relay/turn_off"
+        endpoint = "/cm?cmnd=Power%20off"
         return self._post_request(endpoint)
 
     def get_state(self):
-        endpoint = "/switch/sonoff_s20_relay"
+        endpoint = "/cm?cmnd=Power"
         response = self._get_request(endpoint)
-        return response.get("state")
+        return response.get("POWER")

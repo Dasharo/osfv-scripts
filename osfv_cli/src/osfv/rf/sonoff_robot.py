@@ -1,7 +1,7 @@
 import requests
 import robot.api.logger
-from robot.api.deco import keyword
 from osfv.libs.sonoff_api import SonoffDevice
+from robot.api.deco import keyword
 
 
 class Sonoff:
@@ -16,7 +16,7 @@ class Sonoff:
             robot.api.logger.info(response)
         except requests.exceptions.RequestException as e:
             robot.api.logger.info(f"Failed to turn on Sonoff relay. Error: {e}")
-    
+
     @keyword(types=None)
     def sonoff_off(self):
         robot.api.logger.info("Turning off Sonoff relay...")
@@ -25,7 +25,7 @@ class Sonoff:
             robot.api.logger.info(response)
         except requests.exceptions.RequestException as e:
             robot.api.logger.info(f"Failed to turn off Sonoff relay. Error: {e}")
-    
+
     @keyword(types=None)
     def sonoff_get(self):
         state = None
@@ -43,7 +43,7 @@ class Sonoff:
         try:
             response = self.sonoff.get_state()
             current_state = response.get("state")
-    
+
             if current_state == "ON":
                 response = self.sonoff.turn_off()
                 robot.api.logger.info("Sonoff relay state toggled off.")

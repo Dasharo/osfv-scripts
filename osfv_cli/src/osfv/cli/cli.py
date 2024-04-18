@@ -7,7 +7,6 @@ from importlib import metadata
 
 import pexpect
 import requests
-
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice

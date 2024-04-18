@@ -1,21 +1,58 @@
 import robot.api.logger
 from robot.api.deco import keyword
-from osfv.libs.rte import RTE
+from osfv.libs.rte import RTE, UnsupportedDUTModel
 from osfv.libs.snipeit_api import SnipeIT
 
 
+model_dict = {
+    "minnowboard_turbot": "MinnowBoard Turbot B41",
+    "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
+    "msi-pro-z690-a-wifi-ddr4": "MSI PRO Z690-A DDR4",
+    "msi-pro-z690-a-ddr5": "MSI PRO Z690-A DDR5",
+    "pcengines-apu2": "APU2",
+    "pcengines-apu3": "APU3",
+    "pcengines-apu4": "APU4",
+    "pcengines-apu6": "APU6",
+    "protectli-v1210": "V1210",
+    "protectli-v1410": "V1410",
+    "protectli-v1610": "V1610",
+    "protectli-vp2410": "VP2410",
+    "protectli-vp2420": "VP2420",
+    "protectli-vp4630": "VP4630",
+    "protectli-vp4650": "VP4650",
+    "protectli-vp4670": "VP4670",
+    "protectli-vp6650": "VP6650",
+    "protectli-vp6670": "VP6670"
+}
+
+
 class RobotRTE:
-    def __init__(self, rte_ip):
-        snipeit_api = SnipeIT()
-        asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-        status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
-        if status:
-            robot.api.logger.info(f"DUT model retrieved from snipeit: {dut_model_name}")
+    def __init__(self, rte_ip, snipeit: bool, sonoff_ip=None, config=None):
+        if snipeit:
+            snipeit_api = SnipeIT()
+            asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
+            status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
+            if status:
+                robot.api.logger.info(
+                    f"DUT model retrieved from snipeit: {dut_model_name}")
+            else:
+                raise AssertionError(
+                    f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
+                )
+            self.rte = RTE(rte_ip, dut_model_name, snipeit_api)
         else:
-            raise AssertionError(
-                f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
-            )
-        self.rte = RTE(rte_ip, dut_model_name, snipeit_api)
+            self.rte = RTE(rte_ip, self.cli_model_from_osfv(config), sonoff_ip=sonoff_ip)
+
+    def cli_model_from_osfv(self, osfv_model):
+        """
+        Get osfv_cli model name from OSFV repo config name
+        """
+        if not osfv_model:
+            raise TypeError(f"Expected a value for 'config', but got {osfv_model}")
+        cli_model = model_dict.get(osfv_model)
+        if not cli_model:
+            raise UnsupportedDUTModel(f"The {osfv_model} model has no counterpart in osfv_cli")
+        return cli_model
 
     @keyword(types=None)
     def rte_flash_read(self, fw_file):
@@ -37,7 +74,7 @@ class RobotRTE:
     def rte_flash_probe(self):
         robot.api.logger.info(f"Probing flash...")
         self.rte.flash_probe()
-    
+
     @keyword(types=None)
     def rte_flash_erase(self):
         robot.api.logger.info(f"Erasing DUT flash...")
@@ -54,14 +91,14 @@ class RobotRTE:
         self.rte.relay_set(new_state_str)
         state = self.rte.relay_get()
         robot.api.logger.info(f"Relay state toggled. New state: {state}")
-    
+
     @keyword(types=None)
     def rte_relay_set(self, state):
         self.rte.relay_set(state)
         state = self.rte.relay_get()
         robot.api.logger.info(f"Relay state set to {state}")
         return state
-    
+
     @keyword(types=None)
     def rte_relay_get(self):
         state = self.rte.relay_get()
@@ -72,23 +109,23 @@ class RobotRTE:
     def rte_power_on(self, time=1):
         robot.api.logger.info(f"Powering on...")
         self.rte.power_on(time)
-    
+
     @keyword(types=None)
     def rte_power_off(self, time=6):
         robot.api.logger.info(f"Powering off...")
         self.rte.power_off(time)
-    
+
     @keyword(types=None)
     def rte_reset(self, time=1):
         robot.api.logger.info(f"Pressing reset button...")
         self.rte.reset(time)
-    
+
     @keyword(types=None)
     def rte_gpio_get(self, gpio_no):
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state: {state}")
         return state
-    
+
     @keyword(types=None)
     def rte_gpio_set(self, gpio_no, state):
         self.rte.gpio_set(int(gpio_no), state)

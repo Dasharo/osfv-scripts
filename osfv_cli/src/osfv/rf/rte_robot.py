@@ -1,6 +1,8 @@
+import osfv.libs.utils as utils
 import robot.api.logger
 from osfv.libs.rte import RTE, UnsupportedDUTModel
 from osfv.libs.snipeit_api import SnipeIT
+from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword
 
 model_dict = {
@@ -27,10 +29,11 @@ model_dict = {
 
 class RobotRTE:
     def __init__(self, rte_ip, snipeit: bool, sonoff_ip=None, config=None):
+        self.rte_ip = rte_ip
         if snipeit:
-            snipeit_api = SnipeIT()
-            asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-            status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
+            self.snipeit_api = SnipeIT()
+            asset_id = self.snipeit_api.get_asset_id_by_rte_ip(rte_ip)
+            status, dut_model_name = self.snipeit_api.get_asset_model_name(asset_id)
             if status:
                 robot.api.logger.info(
                     f"DUT model retrieved from snipeit: {dut_model_name}"
@@ -39,11 +42,13 @@ class RobotRTE:
                 raise AssertionError(
                     f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
                 )
-            self.rte = RTE(rte_ip, dut_model_name, snipeit_api)
-        else:
-            self.rte = RTE(
-                rte_ip, self.cli_model_from_osfv(config), sonoff_ip=sonoff_ip
+            self.sonoff, self.sonoff_ip = utils.init_sonoff(
+                sonoff_ip, self.rte_ip, self.snipeit_api
             )
+            self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
+        else:
+            self.sonoff, self.sonoff_ip = utils.init_sonoff(sonoff_ip, self.rte_ip)
+            self.rte = RTE(rte_ip, self.cli_model_from_osfv(config), self.sonoff)
 
     def cli_model_from_osfv(self, osfv_model):
         """

@@ -5,6 +5,7 @@ import json
 from copy import copy
 from importlib import metadata
 
+import osfv.libs.utils as utils
 import pexpect
 import requests
 from osfv.libs.rte import RTE
@@ -716,7 +717,8 @@ def main():
                 exit(
                     f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
                 )
-        rte = RTE(args.rte_ip, dut_model_name, snipeit_api)
+        sonoff, sonoff_ip = utils.init_sonoff(None, args.rte_ip, snipeit_api)
+        rte = RTE(args.rte_ip, dut_model_name, sonoff)
 
         if args.rte_cmd == "rel":
             # Handle RTE relay related commands

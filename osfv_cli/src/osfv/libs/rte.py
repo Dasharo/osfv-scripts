@@ -6,8 +6,8 @@ import yaml
 from importlib_resources import files
 from voluptuous import Any, Optional, Required, Schema
 
-from .rtectrl_api import rtectrl
-from .sonoff_api import SonoffDevice
+from osfv.libs.rtectrl_api import rtectrl
+from osfv.libs.sonoff_api import SonoffDevice
 
 
 class RTE(rtectrl):
@@ -38,7 +38,7 @@ class RTE(rtectrl):
         self.sonoff, self.sonoff_ip = self.init_sonoff()
 
     def load_model_data(self):
-        file_path = os.path.join(files("osfv_cli"), "models", f"{self.dut_model}.yml")
+        file_path = os.path.join(files("osfv"), "models", f"{self.dut_model}.yml")
 
         # Check if the file exists
         if not os.path.isfile(file_path):
@@ -126,10 +126,21 @@ class RTE(rtectrl):
         time.sleep(sleep)
 
     def relay_get(self):
-        return self.gpio_get(self.GPIO_RELAY)
+        gpio_state = self.gpio_get(self.GPIO_RELAY)
+        relay_state = None
+        if gpio_state == 'high':
+            relay_state = 'on'
+        if gpio_state == 'low':
+            relay_state = 'off'
+        return relay_state
 
-    def relay_set(self, state):
-        self.gpio_set(self.GPIO_RELAY, state)
+    def relay_set(self, relay_state):
+        gpio_state = None
+        if relay_state == 'on':
+            gpio_state = 'high'
+        if relay_state == 'off':
+            gpio_state = 'low'
+        self.gpio_set(self.GPIO_RELAY, gpio_state)
 
     def reset_cmos(self):
         self.gpio_set(self.GPIO_CMOS, "low")
@@ -164,9 +175,9 @@ class RTE(rtectrl):
             if state != "ON":
                 raise Exception("Failed to power control ON")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
-            self.relay_set("high")
+            self.relay_set("on")
             state = self.relay_get()
-            if state != "high":
+            if state != "on":
                 raise Exception("Failed to power control ON")
         time.sleep(5)
 
@@ -177,9 +188,9 @@ class RTE(rtectrl):
             if state != "OFF":
                 raise Exception("Failed to power control OFF")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
-            self.relay_set("low")
+            self.relay_set("off")
             state = self.relay_get()
-            if state != "low":
+            if state != "off":
                 raise Exception("Failed to power control OFF")
         time.sleep(2)
 

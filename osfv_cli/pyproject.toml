@@ -3,14 +3,14 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-osfv_cli = "osfv_cli.osfv_cli:main"
+osfv_cli = "osfv.cli.cli:main"
 
 [tool.poetry]
-name = "osfv_cli"
+name = "osfv"
 version = "0.4.4"
 description = "Open Source Firmware Validation Command Line Interface Tool"
 authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
-include = ["osfv_cli/models/*.yml"]
+include = ["src/models/*.yml"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

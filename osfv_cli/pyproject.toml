@@ -3,14 +3,14 @@ requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-osfv_cli = "osfv_cli.osfv_cli:main"
+osfv_cli = "osfv.cli.cli:main"
 
 [tool.poetry]
-name = "osfv_cli"
-version = "0.4.2"
+name = "osfv"
+version = "0.4.4"
 description = "Open Source Firmware Validation Command Line Interface Tool"
 authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
-include = ["osfv_cli/models/*.yml"]
+include = ["src/models/*.yml"]
 
 [tool.poetry.dependencies]
 python = "^3.8"
@@ -21,3 +21,8 @@ requests = "^2.31.0"
 unidecode = "^1.3.6"
 importlib-resources = "^6.1.1"
 voluptuous = "^0.14.2"
+
+# # Include your packages here
+# osfv_cli = {path = "./src/osfv_cli"}
+# osfv_libs = {path = "./src/osfv_libs"}
+# osfv_rf = {path = "./src/osfv_rf"}

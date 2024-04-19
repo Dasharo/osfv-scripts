@@ -8,7 +8,7 @@ build:
 	poetry build
 
 install: build
-	pip install dist/$(PACKAGE_NAME)-$(VERSION)-py3-none-any.whl
+	pip install --force-reinstall dist/$(PACKAGE_NAME)-$(VERSION)-py3-none-any.whl
 	test -f $(SNIPEIT_CONFIG_FILE) || install -D -m 644 snipeit.yml $(SNIPEIT_CONFIG_FILE)
 	test -f $(ZABBIX_CONFIG_FILE) || install -D -m 644 zabbix.yml $(ZABBIX_CONFIG_FILE)
 

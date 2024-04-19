@@ -8,10 +8,10 @@ from importlib import metadata
 import pexpect
 import requests
 
-from .rte import RTE
-from .snipeit_api import SnipeIT
-from .sonoff_api import SonoffDevice
-from .zabbix import Zabbix
+from osfv.libs.rte import RTE
+from osfv.libs.snipeit_api import SnipeIT
+from osfv.libs.sonoff_api import SonoffDevice
+from osfv.libs.zabbix import Zabbix
 
 
 # Check out an asset
@@ -154,10 +154,10 @@ def print_asset_details_for_zabbix(asset):
 
 def relay_toggle(rte, args):
     state_str = rte.relay_get()
-    if state_str == "low":
-        new_state_str = "high"
+    if state_str == "off":
+        new_state_str = "on"
     else:
-        new_state_str = "low"
+        new_state_str = "off"
     rte.relay_set(new_state_str)
     state = rte.relay_get()
     print(f"Relay state toggled. New state: {state}")
@@ -465,7 +465,7 @@ def update_zabbix_assets(snipeit_api):
 def main():
     parser = argparse.ArgumentParser(description="Open Source Firmware Validation CLI")
     parser.add_argument(
-        "-v", "--version", action="version", version=metadata.version("osfv_cli")
+        "-v", "--version", action="version", version=metadata.version("osfv")
     )
 
     parser.add_argument(
@@ -621,8 +621,8 @@ def main():
     set_rel_parser.add_argument(
         "state",
         choices=[
-            "high",
-            "low",
+            "on",
+            "off",
         ],
         help="Relay state",
     )

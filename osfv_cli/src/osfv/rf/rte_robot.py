@@ -50,7 +50,7 @@ class RobotRTE:
         Get osfv_cli model name from OSFV repo config name
         """
         if not osfv_model:
-            raise TypeError(f"Expected a value for 'config', but got {osfv_model}")
+            raise TypeError(f"Expected a value for 'config', but got None")
         cli_model = model_dict.get(osfv_model)
         if not cli_model:
             raise UnsupportedDUTModel(

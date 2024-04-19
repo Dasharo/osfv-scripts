@@ -105,16 +105,16 @@ class RTE(rtectrl):
             if not self.snipeit_api:
                 if not init_sonoff_ip:
                     raise TypeError(
-                        f"Expected a value for 'sonoff_ip', but got {init_sonoff_ip}"
+                        f"Expected a value for 'sonoff_ip', but got None"
                     )
-                return SonoffDevice(init_sonoff_ip), init_sonoff_ip
-            sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
-            if not sonoff_ip:
-                raise SonoffNotFound(
-                    exit(f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
-                )
+                sonoff_ip = init_sonoff_ip
+            else:
+                sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
+                if not sonoff_ip:
+                    raise SonoffNotFound(
+                        exit(f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
+                    )
             sonoff = SonoffDevice(sonoff_ip)
-
         return sonoff, sonoff_ip
 
     def power_on(self, sleep=1):

@@ -5,7 +5,6 @@ import paramiko
 import yaml
 from importlib_resources import files
 from osfv.libs.rtectrl_api import rtectrl
-from osfv.libs.sonoff_api import SonoffDevice
 from voluptuous import Any, Optional, Required, Schema
 
 
@@ -29,12 +28,11 @@ class RTE(rtectrl):
     PROGRAMMER_CH341A = "ch341a_spi"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
-    def __init__(self, rte_ip, dut_model, snipeit_api=None, sonoff_ip=None):
+    def __init__(self, rte_ip, dut_model, sonoff):
         self.rte_ip = rte_ip
         self.dut_model = dut_model
         self.dut_data = self.load_model_data()
-        self.snipeit_api = snipeit_api
-        self.sonoff, self.sonoff_ip = self.init_sonoff(sonoff_ip)
+        self.sonoff = sonoff
 
     def load_model_data(self):
         file_path = os.path.join(files("osfv"), "models", f"{self.dut_model}.yml")
@@ -96,26 +94,6 @@ class RTE(rtectrl):
 
         # Return the loaded data
         return data
-
-    def init_sonoff(self, init_sonoff_ip):
-        sonoff_ip = ""
-        sonoff = None
-
-        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
-            if not self.snipeit_api:
-                if not init_sonoff_ip:
-                    raise TypeError(
-                        f"Expected a value for 'sonoff_ip', but got None"
-                    )
-                sonoff_ip = init_sonoff_ip
-            else:
-                sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(self.rte_ip)
-                if not sonoff_ip:
-                    raise SonoffNotFound(
-                        exit(f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
-                    )
-            sonoff = SonoffDevice(sonoff_ip)
-        return sonoff, sonoff_ip
 
     def power_on(self, sleep=1):
         self.gpio_set(self.GPIO_POWER, "low", sleep)
@@ -334,6 +312,3 @@ class UnsupportedDUTModel(Exception):
 class SPIWrongVoltage(Exception):
     pass
 
-
-class SonoffNotFound(Exception):
-    pass

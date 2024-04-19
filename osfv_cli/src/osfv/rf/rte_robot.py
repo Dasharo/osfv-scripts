@@ -3,6 +3,7 @@ from osfv.libs.rte import RTE, UnsupportedDUTModel
 from osfv.libs.snipeit_api import SnipeIT
 from robot.api.deco import keyword
 from osfv.libs.sonoff_api import SonoffDevice
+import osfv.libs.utils as utils
 
 model_dict = {
     "minnowboard_turbot": "MinnowBoard Turbot B41",
@@ -29,7 +30,6 @@ model_dict = {
 class RobotRTE:
     def __init__(self, rte_ip, snipeit: bool, sonoff_ip=None, config=None):
         self.rte_ip = rte_ip
-        self.sonoff = self.init_sonoff(sonoff_ip)
         if snipeit:
             self.snipeit_api = SnipeIT()
             asset_id = self.snipeit_api.get_asset_id_by_rte_ip(rte_ip)
@@ -42,30 +42,12 @@ class RobotRTE:
                 raise AssertionError(
                     f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
                 )
+            self.sonoff, self.sonoff_ip = utils.init_sonoff(sonoff_ip, self.rte_ip, self.snipeit_api)
             self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
         else:
+            self.sonoff, self.sonoff_ip = utils.init_sonoff(sonoff_ip, self.rte_ip)
             self.rte = RTE(
                 rte_ip, self.cli_model_from_osfv(config), self.sonoff)
-
-    def init_sonoff(self, init_sonoff_ip):
-        sonoff_ip = ""
-        sonoff = None
-        if not self.snipeit_api:
-            if not init_sonoff_ip:
-                raise TypeError(
-                    f"Expected a value for 'sonoff_ip', but got None"
-                )
-            sonoff_ip = init_sonoff_ip
-        else:
-            sonoff_ip = self.snipeit_api.get_sonoff_ip_by_rte_ip(
-                self.rte_ip)
-            if not sonoff_ip:
-                raise SonoffNotFound(
-                    exit(
-                        f"Sonoff IP not found in SnipeIT for RTE: {self.rte_ip}")
-                )
-        sonoff = SonoffDevice(sonoff_ip)
-        return sonoff, sonoff_ip
 
     def cli_model_from_osfv(self, osfv_model):
         """
@@ -156,5 +138,3 @@ class RobotRTE:
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state set to {state}")
 
-class SonoffNotFound(Exception):
-    pass

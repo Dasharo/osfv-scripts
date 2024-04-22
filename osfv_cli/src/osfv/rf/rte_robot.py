@@ -4,7 +4,7 @@ from osfv.libs.snipeit_api import SnipeIT
 from robot.api.deco import keyword
 
 model_dict = {
-    "minnowboard_turbot": "MinnowBoard Turbot B41",
+    "minnowboard-turbot": "MinnowBoard Turbot B41",
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-wifi-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-ddr5": "MSI PRO Z690-A DDR5",

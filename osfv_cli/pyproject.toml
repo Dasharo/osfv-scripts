@@ -7,7 +7,7 @@ osfv_cli = "osfv_cli.osfv_cli:main"
 
 [tool.poetry]
 name = "osfv_cli"
-version = "0.4.2"
+version = "0.4.3"
 description = "Open Source Firmware Validation Command Line Interface Tool"
 authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
 include = ["osfv_cli/models/*.yml"]

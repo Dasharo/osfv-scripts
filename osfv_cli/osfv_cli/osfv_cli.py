@@ -72,6 +72,7 @@ def list_my_assets(snipeit_api, args):
         for asset in my_assets:
             print_asset_details(asset)
 
+
 # List unused assets
 def list_unused_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
@@ -288,8 +289,7 @@ def sonoff_get(sonoff, args):
 def sonoff_tgl(sonoff, args):
     print("Toggling Sonoff relay state...")
     try:
-        response = sonoff.get_state()
-        current_state = response.get("state")
+        current_state = sonoff.get_state()
 
         if current_state == "ON":
             response = sonoff.turn_off()

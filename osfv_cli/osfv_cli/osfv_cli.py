@@ -72,6 +72,7 @@ def list_my_assets(snipeit_api, args):
         for asset in my_assets:
             print_asset_details(asset)
 
+
 # List unused assets
 def list_unused_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()

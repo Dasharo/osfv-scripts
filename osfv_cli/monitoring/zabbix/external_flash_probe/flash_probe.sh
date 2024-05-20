@@ -44,7 +44,7 @@ probe_flash() {
 while IFS= read -r ip || [ -n "$ip" ]; do
     if check_snipeit "$ip"; then
         echo "$ip found in snipeit list_used"
-        echo "$ip" >> "$output_used"
+#       echo "$ip" >> "$output_used"
     else
         echo "$ip not found in snipeit list_used, probing flash..."
         probe_flash "$ip"

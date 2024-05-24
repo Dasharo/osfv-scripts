@@ -1,0 +1,12 @@
+---
+flash_chip:
+  model: "W25Q128.W"
+  voltage: "3.3V"
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  sonoff: false
+  relay: true
+  init_on: true

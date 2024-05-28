@@ -233,7 +233,12 @@ class RTE(rtectrl):
 
         try:
             # Connect to the SSH server
-            ssh.connect(self.rte_ip, username=self.SSH_USER, password=self.SSH_PWD)
+            ssh.connect(
+                self.rte_ip,
+                username=self.SSH_USER,
+                password=self.SSH_PWD,
+                look_for_keys=False,
+            )
 
             if write_file:
                 scp = ssh.open_sftp()

@@ -71,6 +71,7 @@ class RTE(rtectrl):
                     Required("flashing_power_state"): flashing_power_state_validator,
                 },
                 Optional("reset_cmos", default=False): bool,
+                Optional("disable_wp", default=False): bool,
             }
         )
 
@@ -324,6 +325,9 @@ class RTE(rtectrl):
         return self.flash_cmd(args)
 
     def flash_write(self, write_file):
+        if "disable_wp" in self.dut_data:
+            args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
+            self.flash_cmd(args)
         args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)

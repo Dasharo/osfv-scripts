@@ -12,3 +12,5 @@ pwr_ctrl:
   flashing_power_state: "OFF"
 
 reset_cmos: false
+
+disable_wp: true

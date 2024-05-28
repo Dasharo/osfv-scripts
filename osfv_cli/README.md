@@ -228,6 +228,9 @@ follows:
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.
 
+- `disable_wp`: - optional; true or false (false by default), whether flash WP
+   is required before flashing.
+
 ## Development
 
 You can test local changes by running `poetry shell` first. Then, all

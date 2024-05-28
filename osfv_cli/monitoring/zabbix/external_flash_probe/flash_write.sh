@@ -16,9 +16,9 @@ macro_exists() {
 for macro in "$@"; do
     if ! macro_exists "$macro"; then
          echo "$macro" >> "$output_file"
-         echo 1
+         echo 0
     else
 #        echo "Macro '$macro' already exists in the file."
-         echo 0
+         echo 2
     fi
 done

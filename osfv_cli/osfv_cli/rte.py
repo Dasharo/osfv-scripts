@@ -1,6 +1,5 @@
 import os
 import time
-
 import paramiko
 import yaml
 from importlib_resources import files
@@ -68,6 +67,7 @@ class RTE(rtectrl):
                     Required("init_on"): bool,
                 },
                 Optional("reset_cmos", default=False): bool,
+                Optional("flash_preparation"): list
             }
         )
 
@@ -299,6 +299,10 @@ class RTE(rtectrl):
         self.flash_cmd(args)
 
     def flash_write(self, write_file):
+        if "flash_preparation" in self.dut_data:
+            for cmd in self.dut_data["flash_preparation"]:
+                args = self.flash_create_args(cmd)
+                self.flash_cmd(args)
         args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         self.flash_cmd(args, write_file=write_file)
         time.sleep(2)

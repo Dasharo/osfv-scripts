@@ -12,3 +12,5 @@ pwr_ctrl:
   init_on: false
 
 reset_cmos: false
+
+flash_preparation: ["--wp-disable", "--wp-range=0x0,0x0"]

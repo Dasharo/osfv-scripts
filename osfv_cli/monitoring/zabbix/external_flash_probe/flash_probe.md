@@ -14,6 +14,10 @@
 crontab -e
 ```
 
+```C
+crontab -e
+```
+
 > The script runs every 30 minutes between 4:00 AM and 10:00 PM, Monday to Friday.
 
 ```C
@@ -42,11 +46,24 @@ crontab -e
 
 1. First trigger.
 - Severity: **High**
-- Expression: `max(/Flash probe/flash_read.sh[{HOST.IP}],15m)=2`
+- Name: Clip Fail
+- Expression:
+
+```C
+min(/Flash probe/flash_read_2zabbix.sh[{HOST.IP}],15m)=2 and
+last(/Flash probe/flash_read_2zabbix.sh[{HOST.IP}])=2
+```
 
 2. Second trigger.
 - Severity: **Information**
-- Expression: `max(/Flash probe/flash_read.sh[{HOST.IP}],25m)=1`
+- Name: Platform checked out
+- Expression:
+
+```C
+max(/Flash probe/flash_read_2zabbix.sh[{HOST.IP}],15m)=1 and
+min(/Flash probe/flash_read_2zabbix.sh[{HOST.IP}],15m)=1 and
+last(/Flash probe/flash_read_2zabbix.sh[{HOST.IP}])=1
+```
 
 ## Link Hosts to the template
 

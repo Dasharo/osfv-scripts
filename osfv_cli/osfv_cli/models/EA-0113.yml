@@ -10,3 +10,6 @@ pwr_ctrl:
   sonoff: false
   relay: true
   init_on: true
+
+flash_preparation: ["--wp-disable", "--wp-range=0x0,0x0"]
+

@@ -52,6 +52,7 @@ class RTE(rtectrl):
 
         voltage_validator = Any("1.8V", "3.3V")
         programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a")
+        flashing_power_state_validator = Any("G3", "OFF")
 
         schema = Schema(
             {
@@ -65,7 +66,7 @@ class RTE(rtectrl):
                 Required("pwr_ctrl"): {
                     Required("sonoff"): bool,
                     Required("relay"): bool,
-                    Required("init_on"): bool,
+                    Required("flashing_power_state"): flashing_power_state_validator,
                 },
                 Optional("reset_cmos", default=False): bool,
             }
@@ -189,45 +190,42 @@ class RTE(rtectrl):
         for _ in range(5):
             self.power_off(3)
 
-    def pwr_ctrl_before_flash(self, programmer):
-        # 1. sonoff/relay ON
-        # 2. sleep 5
-        # Some flash scripts started with power platform ON, but some others
-        # not (like FW4C).
-        if self.dut_data["pwr_ctrl"]["init_on"] is True:
-            self.pwr_ctrl_on()
-            time.sleep(5)
-            self.power_off(6)
-            time.sleep(10)
-        else:
-            # 3. RTE POFF
-            # 4. sleep 3
-            self.pwr_ctrl_off()
-            self.discharge_psu()
+    def pwr_ctrl_before_flash(self, programmer, power_state):
 
+        # Always start from the same state (PSU active)
+        self.pwr_ctrl_on()
+        time.sleep(5)
+        self.power_off(6)
+        time.sleep(10)
+
+        # Some platforms need to enable SPI lines at this point
+        # when PSU is active (e.g. VP6650). Otherwise the chip is not detected.
+        # So we must turn the PSU ON first in the middle of power cycle,
+        # even if we perform flashing with the PSU OFF.
         if programmer == "rte_1_1":
-            # 5. SPI ON
-            # 6. sleep 2
             self.spi_enable()
             time.sleep(3)
 
-        if self.dut_data["pwr_ctrl"]["init_on"] is True:
-            # 7. sonoff/relay OFF
-            # 8. sleep 2
+        if power_state == "G3":
+            pass
+        elif power_state == "OFF":
             self.pwr_ctrl_off()
             self.discharge_psu()
+        else:
+            exit(
+                f"Power state: '{power_state}' is not supported. Please check model config."
+            )
 
     def pwr_ctrl_after_flash(self, programmer):
         if programmer == "rte_1_1":
-            # 10. SPI OFF
-            # 11. sleep 2
             self.spi_disable()
             time.sleep(2)
 
     def flash_cmd(self, args, read_file=None, write_file=None):
-        self.pwr_ctrl_before_flash(self.dut_data["programmer"]["name"])
-
-        # 9. flashrom
+        self.pwr_ctrl_before_flash(
+            self.dut_data["programmer"]["name"],
+            self.dut_data["pwr_ctrl"]["flashing_power_state"],
+        )
 
         # Create SSH client
         ssh = paramiko.SSHClient()

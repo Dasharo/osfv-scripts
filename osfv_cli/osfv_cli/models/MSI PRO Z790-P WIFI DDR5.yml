@@ -8,4 +8,4 @@ programmer:
 pwr_ctrl:
   sonoff: true
   relay: false
-  init_on: false
+  flashing_power_state: "OFF"

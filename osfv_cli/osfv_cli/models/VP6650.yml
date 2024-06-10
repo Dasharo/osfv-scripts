@@ -9,6 +9,6 @@ programmer:
 pwr_ctrl:
   sonoff: true
   relay: false
-  init_on: true
+  flashing_power_state: "OFF"
 
 reset_cmos: true

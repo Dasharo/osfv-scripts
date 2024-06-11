@@ -212,11 +212,18 @@ follows:
     + `voltage` - required; chip supply voltage - most often "3.3V" or "1.8V";
     should be discovered in appropriate datasheet.
 
+- `programmer`:
+
+    + `name`- required; name of the programmer connected to the platform; supported
+    values: `rte_1_0`, `rte_1_1`, `ch341a`
+
 - `pwr_ctrl`:
 
     + `sonoff` - required; true or false, whether you use sonoff power control.
     + `relay` - required; true or false, whether you use onboard RTE relay
     power control.
+    + `flashing_power_state` - required; defines a power state the platform
+    needs to be in for SPI flashing; supported values: `"OFF"`, `"G3"`
 
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.

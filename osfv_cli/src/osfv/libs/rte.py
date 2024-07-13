@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 import paramiko
@@ -261,7 +262,25 @@ class RTE(rtectrl):
             while True:
                 if channel.exit_status_ready():
                     break
-                print(channel.recv(1024).decode())
+                if channel.recv_ready():
+                    stdout = channel.recv(1024).decode()
+                    if stdout:
+                        print(stdout, end="")
+                if channel.recv_stderr_ready():
+                    stderr = channel.recv_stderr(1024).decode()
+                    if stderr:
+                        print(stderr, end="", file=sys.stderr)
+
+            # Ensure all remaining output is captured after the loop exits
+            while channel.recv_ready():
+                stdout = channel.recv(1024).decode()
+                if stdout:
+                    print(stdout, end="")
+
+            while channel.recv_stderr_ready():
+                stderr = channel.recv_stderr(1024).decode()
+                if stderr:
+                    print(stderr, end="", file=sys.stderr)
 
             if read_file:
                 scp = ssh.open_sftp()

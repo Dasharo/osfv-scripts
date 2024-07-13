@@ -14,15 +14,20 @@ from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
 
 
-# Check out an asset
 def check_out_asset(snipeit_api, asset_id):
-    success, data = snipeit_api.check_out_asset(asset_id)
+    success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
+
+    if already_checked_out:
+        print(f"Asset {asset_id} is already checked out by you")
+        return already_checked_out
 
     if success:
         print(f"Asset {asset_id} successfully checked out.")
     else:
         print(f"Error checking out asset {asset_id}")
         print(f"Response data: {data}")
+
+    return already_checked_out
 
 
 def check_in_asset(snipeit_api, asset_id):
@@ -706,6 +711,9 @@ def main():
 
     elif args.command == "rte":
         asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
+        if not asset_id:
+            print(f"No asset found with RTE IP: {args.rte_ip}")
+
         if args.model:
             print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
             dut_model_name = args.model
@@ -719,6 +727,11 @@ def main():
                 )
         sonoff, sonoff_ip = utils.init_sonoff(None, args.rte_ip, snipeit_api)
         rte = RTE(args.rte_ip, dut_model_name, sonoff)
+
+        print(
+            f"Using rte command is invasive action, checking first if the device is not used..."
+        )
+        already_checked_out = check_out_asset(snipeit_api, asset_id)
 
         if args.rte_cmd == "rel":
             # Handle RTE relay related commands
@@ -760,6 +773,16 @@ def main():
                 flash_write(rte, args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
+
+        if already_checked_out:
+            print(
+                f"Since the asset {asset_id} has been checkout manually by you prior running this script, it will NOT be checked in automatically. Please return the device when work is finished."
+            )
+        else:
+            print(
+                f"Since the asset {asset_id} has been checkout automatically by this script, it is automatically checked in as well."
+            )
+            check_in_asset(snipeit_api, asset_id)
     elif args.command == "sonoff":
         sonoff_ip = ""
 
@@ -769,6 +792,15 @@ def main():
             sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(args.rte_ip)
             if not sonoff_ip:
                 print(f"No Sonoff Device found with RTE IP: {args.rte_ip}")
+
+        asset_id = snipeit_api.get_asset_id_by_sonoff_ip(sonoff_ip)
+        if not asset_id:
+            print(f"No asset found with RTE IP: {args.rte_ip}")
+
+        print(
+            f"Using rte command is invasive action, checking first if the device is not used..."
+        )
+        already_checked_out = check_out_asset(snipeit_api, asset_id)
 
         sonoff = SonoffDevice(sonoff_ip)
 
@@ -780,6 +812,16 @@ def main():
             sonoff_get(sonoff, args)
         if args.sonoff_cmd == "tgl":
             sonoff_tgl(sonoff, args)
+
+        if already_checked_out:
+            print(
+                f"Since the asset {asset_id} has been checkout manually by you prior running this script, it will NOT be checked in automatically. Please return the device when work is finished."
+            )
+        else:
+            print(
+                f"Since the asset {asset_id} has been checkout automatically by this script, it is automatically checked in as well."
+            )
+            check_in_asset(snipeit_api, asset_id)
 
     else:
         parser.print_help()

@@ -164,16 +164,35 @@ class SnipeIT:
 
     # Check out an asset
     def check_out_asset(self, asset_id):
+        """
+        Checks out an asset to the current user.
+
+        This method attempts to check out the specified asset to the user identified by `self.cfg_user_id`.
+        If the asset is already checked out to this user, the method will simply confirm this status.
+        Otherwise, it will make an HTTP POST request to check out the asset.
+
+        Parameters:
+        asset_id (str): The unique identifier of the asset to be checked out.
+
+        Returns:
+        tuple:
+            bool: Indicates if the checkout operation was initiated (True) or not (False).
+            dict or None: The JSON response from the API if the checkout was initiated, otherwise None.
+            bool: Indicates if the asset was already checked out to the current user (True) or not (False).
+
+        Raises:
+        requests.exceptions.RequestException: If the HTTP request to the API fails.
+        """
         status, asset_data = self.get_asset(asset_id)
 
         if not status:
-            return False, None
+            return False, None, False
 
         # Simply pass if asset is already checked out to the caller
         if asset_data["assigned_to"]:
             assigned_to_id = asset_data["assigned_to"]["id"]
             if assigned_to_id == self.cfg_user_id:
-                return True, None
+                return True, None, True
 
         data = {
             "asset_id": asset_id,
@@ -189,9 +208,9 @@ class SnipeIT:
         response_json = response.json()
 
         if response.status_code == 200 and response_json.get("status") != "error":
-            return True, response_json
+            return True, response_json, False
         else:
-            return False, response_json
+            return False, response_json, False
 
     # Check in an asset
     def check_in_asset(self, asset_id):
@@ -200,7 +219,6 @@ class SnipeIT:
             headers=self.headers,
             timeout=10,
         )
-        print(response)
         response_json = response.json()
 
         if response.status_code == 200 and response_json.get("status") != "error":

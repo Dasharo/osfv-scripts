@@ -6,7 +6,7 @@ snipeit_api = SnipeIT()
 
 def snipeit_checkout(rte_ip):
     asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-    success, data = snipeit_api.check_out_asset(asset_id)
+    success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
     if success:
         robot.api.logger.info(f"Asset {asset_id} successfully checked out.")
         return data

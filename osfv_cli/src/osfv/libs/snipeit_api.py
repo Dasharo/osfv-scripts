@@ -94,6 +94,28 @@ class SnipeIT:
         # No asset found with matching RTE IP
         return None
 
+    def get_asset_id_by_sonoff_ip(self, rte_ip):
+        # Retrieve all assets
+        all_assets = self.get_all_assets()
+
+        # Search for asset with matching RTE IP
+        for asset in all_assets:
+            custom_fields = asset.get("custom_fields", {})
+            if custom_fields:
+                rte_ip_field = next(
+                    (
+                        field_data["value"]
+                        for field_name, field_data in custom_fields.items()
+                        if field_name == "Sonoff IP"
+                    ),
+                    None,
+                )
+                if rte_ip_field == rte_ip:
+                    return asset["id"]
+
+        # No asset found with matching RTE IP
+        return None
+
     def get_sonoff_ip_by_rte_ip(self, rte_ip):
         # Retrieve all assets
         all_assets = self.get_all_assets()

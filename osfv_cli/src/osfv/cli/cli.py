@@ -26,6 +26,9 @@ def check_out_asset(snipeit_api, asset_id):
     else:
         print(f"Error checking out asset {asset_id}")
         print(f"Response data: {data}")
+        exit(
+            f"Exiting to avoid conflict. Check who is working on this device and contact them first."
+        )
 
     return already_checked_out
 

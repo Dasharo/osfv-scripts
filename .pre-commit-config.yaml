@@ -59,3 +59,13 @@ repos:
     rev: 24.4.2
     hooks:
       - id: black
+
+  - repo: https://github.com/MarketSquare/robotframework-tidy
+    rev: 4.8.1
+    hooks:
+      - id: robotidy
+
+  - repo: https://github.com/MarketSquare/robotframework-robocop
+    rev: 5.0.1
+    hooks:
+      - id: robocop

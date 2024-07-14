@@ -18,7 +18,9 @@ class SnipeIT:
             "Authorization": f"Bearer {self.cfg_api_token}",
         }
 
-    SNIPEIT_CONFIG_FILE_PATH = os.path.expanduser("~/.osfv/snipeit.yml")
+    SNIPEIT_CONFIG_FILE_PATH = os.getenv(
+        "SNIPEIT_CONFIG_FILE_PATH", os.path.expanduser("~/.osfv/snipeit.yml")
+    )
 
     # Retrieve API configuration from YAML file
     def load_snipeit_config(self):

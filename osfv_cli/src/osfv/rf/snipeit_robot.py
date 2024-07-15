@@ -9,7 +9,7 @@ def snipeit_checkout(rte_ip):
     success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
     if success:
         robot.api.logger.info(f"Asset {asset_id} successfully checked out.")
-        return data
+        return already_checked_out
     else:
         raise AssertionError(
             f"Error checking out asset {asset_id}. Response data: {data}"

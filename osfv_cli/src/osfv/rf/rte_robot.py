@@ -67,26 +67,30 @@ class RobotRTE:
     def rte_flash_read(self, fw_file):
         """Reads DUT flash chip content into ``fw_file``  path"""
         robot.api.logger.info(f"Reading from flash...")
-        self.rte.flash_read(fw_file)
+        rc = self.rte.flash_read(fw_file)
         robot.api.logger.info(f"Read flash content saved to {fw_file}")
+        return rc
 
     @keyword(types=None)
     def rte_flash_write(self, fw_file):
         """Writes file from ``fw_file`` path into DUT flash chip"""
         robot.api.logger.info(f"Writing {fw_file} to flash...")
-        self.rte.flash_write(fw_file)
+        rc = self.rte.flash_write(fw_file)
         robot.api.logger.info(f"Flash written")
+        return rc
 
     @keyword(types=None)
     def rte_flash_probe(self):
         robot.api.logger.info(f"Probing flash...")
-        self.rte.flash_probe()
+        rc = self.rte.flash_probe()
+        return rc
 
     @keyword(types=None)
     def rte_flash_erase(self):
         robot.api.logger.info(f"Erasing DUT flash...")
-        self.rte.flash_erase()
+        rc = self.rte.flash_erase()
         robot.api.logger.info(f"Flash erased")
+        return rc
 
     @keyword(types=None)
     def rte_relay_toggle(self):

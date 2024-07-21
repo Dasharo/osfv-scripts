@@ -282,6 +282,9 @@ class RTE(rtectrl):
                 if stderr:
                     print(stderr, end="", file=sys.stderr)
 
+            # Get the return code from flashrom process
+            flashrom_rc = channel.recv_exit_status()
+
             if read_file:
                 scp = ssh.open_sftp()
                 scp.get(self.FW_PATH_READ, read_file)
@@ -292,6 +295,8 @@ class RTE(rtectrl):
 
             # Close the SSH connection
             ssh.close()
+
+        return flashrom_rc
 
     def flash_create_args(self, extra_args=""):
         args = ""
@@ -308,23 +313,24 @@ class RTE(rtectrl):
 
     def flash_probe(self):
         args = self.flash_create_args()
-        self.flash_cmd(args)
+        return self.flash_cmd(args)
 
     def flash_read(self, read_file):
         args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
-        self.flash_cmd(args, read_file=read_file)
+        return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
         args = self.flash_create_args(f"-E")
-        self.flash_cmd(args)
+        return self.flash_cmd(args)
 
     def flash_write(self, write_file):
         args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
-        self.flash_cmd(args, write_file=write_file)
+        rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
         if "reset_cmos" in self.dut_data:
             if self.dut_data["reset_cmos"] == True:
                 self.reset_cmos()
+        return rc
 
     def sonoff_sanity_check(self):
         """

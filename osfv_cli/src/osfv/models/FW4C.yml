@@ -1,7 +1,7 @@
 ---
 flash_chip:
   # flash chip voltage (required)
-  voltage: "1.8V"
+  voltage: "3.3V"
 
 programmer:
   name: rte_1_1

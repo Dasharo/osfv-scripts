@@ -112,6 +112,12 @@ just some examples.
   osfv_cli snipeit check_out --rte_ip <rte_ip_address>
   ```
 
+- Check in all your assets:
+
+  ```bash
+  osfv_cli snipeit check_in_my
+  ```
+
   > Replace `<rte_ip_address>` with the actual RTE IP address of the asset you
   > want to check out. The script will identify the asset based on the RTE IP and
   > perform the check-out process.

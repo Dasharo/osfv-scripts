@@ -101,10 +101,11 @@ def check_in_my(snipeit_api, args):
     if not list_my_assets(snipeit_api, args):
         return
 
-    print(f"Are you sure you want to check in {len(my_assets)} assets? [y/N]")
-    if input() != "y":
-        print(f"Checking in {len(my_assets)} assets aborted.")
-        return
+    if not args.yes:
+        print(f"Are you sure you want to check in {len(my_assets)} assets? [y/N]")
+        if input() != "y":
+            print(f"Checking in {len(my_assets)} assets aborted.")
+            return
 
     failed = []
     for asset in my_assets:
@@ -604,6 +605,9 @@ def main():
 
     check_in_my_parser = snipeit_subparsers.add_parser(
         "check_in_my", help="Check in all my used assets"
+    )
+    check_in_my_parser.add_argument(
+        "-y", "--yes", action="store_true", help="Skips the confirmation"
     )
 
     # RTE subcommands

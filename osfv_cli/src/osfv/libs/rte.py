@@ -27,6 +27,7 @@ class RTE(rtectrl):
 
     PROGRAMMER_RTE = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
     PROGRAMMER_CH341A = "ch341a_spi"
+    PROGRAMMER_DEDIPROG = "dediprog"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
     def __init__(self, rte_ip, dut_model, sonoff):
@@ -53,7 +54,7 @@ class RTE(rtectrl):
             data = yaml.safe_load(file)
 
         voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a")
+        programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a", "dediprog")
         flashing_power_state_validator = Any("G3", "OFF")
 
         schema = Schema(
@@ -248,6 +249,8 @@ class RTE(rtectrl):
             # Execute the flashrom command
             if self.dut_data["programmer"]["name"] == "ch341a":
                 flashrom_programmer = self.PROGRAMMER_CH341A
+            elif self.dut_data["programmer"]["name"] == "dediprog":
+                flashrom_programmer = self.PROGRAMMER_DEDIPROG
             else:
                 flashrom_programmer = self.PROGRAMMER_RTE
 

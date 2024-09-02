@@ -4,12 +4,11 @@ flash_chip:
   voltage: "3.3V"
 
 programmer:
-  name: rte_1_1
+  name: dediprog
 
 pwr_ctrl:
   sonoff: false
   relay: true
   flashing_power_state: "G3"
-  init_on: true
 
 disable_wp: true

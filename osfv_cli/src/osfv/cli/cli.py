@@ -39,9 +39,11 @@ def check_in_asset(snipeit_api, asset_id):
 
     if success:
         print(f"Asset {asset_id} successfully checked in.")
+        return True
     else:
         print(f"Error checking in asset {asset_id}")
         print(f"Response data: {data}")
+        return False
 
 
 # List used assets
@@ -60,25 +62,59 @@ def list_used_assets(snipeit_api, args):
             print_asset_details(asset)
 
 
-# List unused assets
-def list_my_assets(snipeit_api, args):
+def get_my_assets(snipeit_api):
     all_assets = snipeit_api.get_all_assets()
     used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
-    my_assets = [
+    return [
         asset
         for asset in used_assets
         if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
     ]
 
+
+# List my assets
+def list_my_assets(snipeit_api, args):
+    my_assets = get_my_assets(snipeit_api)
+
     if not my_assets:
         print("No used assets found.")
-        return
+        return False
 
     if args.json:
         print(json.dumps(my_assets))
     else:
         for asset in my_assets:
             print_asset_details(asset)
+    return True
+
+
+# Check in all my assets
+def check_in_my(snipeit_api, args):
+    categories_to_ignore = ["Employee Laptop"]
+    my_assets = get_my_assets(snipeit_api)
+
+    my_assets = [
+        asset
+        for asset in my_assets
+        if not set(asset["category"].values()) & set(categories_to_ignore)
+    ]
+    if not list_my_assets(snipeit_api, args):
+        return
+
+    print(f"Are you sure you want to check in {len(my_assets)} assets? [y/N]")
+    if input() != "y":
+        print(f"Checking in {len(my_assets)} assets aborted.")
+        return
+
+    failed = []
+    for asset in my_assets:
+        if not check_in_asset(snipeit_api, asset["id"]):
+            failed = failed.append(asset)
+
+    if failed:
+        print(f"Failed to check-in {len(failed)} assets:")
+    else:
+        print(f"{len(my_assets)} assets checked in successfully.")
 
 
 # List unused assets
@@ -566,6 +602,10 @@ def main():
     check_in_group.add_argument("--asset_id", type=int, help="Asset ID")
     check_in_group.add_argument("--rte_ip", type=str, help="RTE IP address")
 
+    check_in_my_parser = snipeit_subparsers.add_parser(
+        "check_in_my", help="Check in all my used assets"
+    )
+
     # RTE subcommands
     rte_parser.add_argument("--rte_ip", type=str, help="RTE IP address", required=True)
     rte_parser.add_argument(
@@ -705,6 +745,8 @@ def main():
                     check_in_asset(snipeit_api, asset_id)
                 else:
                     print(f"No asset found with RTE IP: {args.rte_ip}")
+        elif args.snipeit_cmd == "check_in_my":
+            check_in_my(snipeit_api, args)
         elif args.snipeit_cmd == "user_add":
             snipeit_api.user_add(args.first_name, args.last_name, args.company_name)
         elif args.snipeit_cmd == "user_del":

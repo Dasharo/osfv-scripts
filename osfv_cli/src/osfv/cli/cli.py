@@ -63,6 +63,15 @@ def list_used_assets(snipeit_api, args):
 
 
 def get_my_assets(snipeit_api):
+    """
+    Gets a list of assets assigned to the current user
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+
+    Returns:
+        List of assets assigned to the current user
+    """
     all_assets = snipeit_api.get_all_assets()
     used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
     return [
@@ -72,8 +81,17 @@ def get_my_assets(snipeit_api):
     ]
 
 
-# List my assets
 def list_my_assets(snipeit_api, args):
+    """
+    Lists all assets assigned to the current user.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - json: A boolean indicating to output the list as json.
+    Returns:
+        Boolean: False if no assets were assigned to the user, True otherwise
+    """
     my_assets = get_my_assets(snipeit_api)
 
     if not my_assets:
@@ -88,8 +106,18 @@ def list_my_assets(snipeit_api, args):
     return True
 
 
-# Check in all my assets
 def check_in_my(snipeit_api, args):
+    """
+    Lists all assets assigned to the current user, checks in all of them
+    except those which are in a category listed in `categories_to_ignore`.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - yes: A boolean indicating to skip the confirmation prompt.
+    Returns:
+        None
+    """
     categories_to_ignore = ["Employee Laptop"]
     my_assets = get_my_assets(snipeit_api)
 
@@ -604,7 +632,7 @@ def main():
     check_in_group.add_argument("--rte_ip", type=str, help="RTE IP address")
 
     check_in_my_parser = snipeit_subparsers.add_parser(
-        "check_in_my", help="Check in all my used assets"
+        "check_in_my", help="Check in all my used assets, except work laptops"
     )
     check_in_my_parser.add_argument(
         "-y", "--yes", action="store_true", help="Skips the confirmation"

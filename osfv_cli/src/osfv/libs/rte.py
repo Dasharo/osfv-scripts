@@ -22,7 +22,7 @@ class RTE(rtectrl):
 
     SSH_USER = "root"
     SSH_PWD = "meta-rte"
-    FW_PATH_WRITE = "/tmp/write.rom"
+    FW_PATH_WRITE = "/data/write.rom"
     FW_PATH_READ = "/tmp/read.rom"
 
     PROGRAMMER_RTE = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"

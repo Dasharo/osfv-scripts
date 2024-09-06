@@ -76,7 +76,10 @@ class RobotRTE:
         """Writes file from ``fw_file`` path into DUT flash chip"""
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         rc = self.rte.flash_write(fw_file)
-        robot.api.logger.info(f"Flash written")
+        if rc == 0:
+            robot.api.logger.info(f"Flash written successfully")
+        else:
+            robot.api.logger.info(f"Flash write failed with code {rc}")
         return rc
 
     @keyword(types=None)

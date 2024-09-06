@@ -322,8 +322,11 @@ def flash_read(rte, args):
 
 def flash_write(rte, args):
     print(f"Writing {args.rom} to flash...")
-    rte.flash_write(args.rom)
-    print(f"Flash written")
+    rc = rte.flash_write(args.rom)
+    if rc == 0:
+        print(f"Flash written successfully")
+    else:
+        print(f"Flash write failed with code {rc}")
 
 
 def flash_erase(rte, args):

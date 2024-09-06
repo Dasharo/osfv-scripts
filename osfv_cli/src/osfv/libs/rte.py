@@ -329,9 +329,9 @@ class RTE(rtectrl):
 
     def flash_write(self, write_file):
         if "disable_wp" in self.dut_data:
-            args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
-            self.flash_cmd(args)
-        args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
+            args = self.flash_create_args(f"--wp-disable --wp-range=0x0,0x0 -w {self.FW_PATH_WRITE}")
+        else:
+            args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
         if "reset_cmos" in self.dut_data:

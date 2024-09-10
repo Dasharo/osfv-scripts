@@ -222,10 +222,14 @@ class RTE(rtectrl):
             time.sleep(2)
 
     def flash_cmd(self, args, read_file=None, write_file=None):
-        self.pwr_ctrl_before_flash(
-            self.dut_data["programmer"]["name"],
-            self.dut_data["pwr_ctrl"]["flashing_power_state"],
-        )
+        try:
+            self.pwr_ctrl_before_flash(
+                self.dut_data["programmer"]["name"],
+                self.dut_data["pwr_ctrl"]["flashing_power_state"],
+            )
+        except requests.exceptions.ConnectionError as e:
+            print(f"Failed to change power state while flashing: {e}")
+            raise SystemExit
 
         # Create SSH client
         ssh = paramiko.SSHClient()

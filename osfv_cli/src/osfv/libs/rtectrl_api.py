@@ -61,10 +61,16 @@ class rtectrl:
             else:
                 raise GPIOWrongStateError("Wrong GPIO state")
 
-        message = {"state": state, "direction": "out", "time": sleep}
-        response = self._patch_request(f"/gpio/{gpio_no}", message)
-        if response.status_code != 200:
-            raise RuntimeError("Failed to set GPIO state")
+        try:
+            message = {"state": state, "direction": "out", "time": sleep}
+            response = self._patch_request(f"/gpio/{gpio_no}", message)
+            if response.status_code != 200:
+                raise RuntimeError("Failed to set GPIO state")
+        except (
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ProtocolError,
+        ) as e:
+            print(f"Failed while setting gpio {e}")
 
     def _get_request(self, endpoint):
         url = BASE_URL_TEMPLATE.format(rte_ip=self.rte_ip)

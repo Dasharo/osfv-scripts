@@ -322,7 +322,7 @@ def flash_read(rte, args):
 
 def flash_write(rte, args):
     print(f"Writing {args.rom} to flash...")
-    rc = rte.flash_write(args.rom)
+    rc = rte.flash_write(args.rom, args.bios)
     if rc == 0:
         print(f"Flash written successfully")
     else:
@@ -742,6 +742,12 @@ def main():
         type=str,
         default="write.rom",
         help="Path to read firmware file (default: write.rom)",
+    )
+    flash_write_parser.add_argument(
+        "-b",
+        "--bios",
+        action="store_true",
+        help="Adds \"-i bios --ifd\" to flashrom command",
     )
     flash_erase_parser = flash_subparsers.add_parser(
         "erase", help="Erase DUT flash with flashrom"

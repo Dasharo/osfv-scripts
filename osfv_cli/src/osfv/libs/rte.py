@@ -42,11 +42,10 @@ class RTE(rtectrl):
 
     def load_model_data(self):
         file_path = os.path.join(files("osfv"), "models", f"{self.dut_model}.yml")
-
         # Check if the file exists
         if not os.path.isfile(file_path):
             raise UnsupportedDUTModel(
-                f"The {self.dut_model} model is not yet supported"
+                f"The {file_path} model is not yet supported"
             )
 
         # Load the YAML file
@@ -327,11 +326,14 @@ class RTE(rtectrl):
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
-    def flash_write(self, write_file):
+    def flash_write(self, write_file, bios=False):
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
-        args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
+        if bios:
+            args = self.flash_create_args(f"-i bios --ifd -w {self.FW_PATH_WRITE}")
+        else:  
+            args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
         if "reset_cmos" in self.dut_data:

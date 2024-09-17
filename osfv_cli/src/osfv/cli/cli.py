@@ -747,7 +747,7 @@ def main():
         "-b",
         "--bios",
         action="store_true",
-        help="Adds \"-i bios --ifd\" to flashrom command",
+        help='Adds "-i bios --ifd" to flashrom command',
     )
     flash_erase_parser = flash_subparsers.add_parser(
         "erase", help="Erase DUT flash with flashrom"

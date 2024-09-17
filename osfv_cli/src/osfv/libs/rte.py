@@ -44,9 +44,7 @@ class RTE(rtectrl):
         file_path = os.path.join(files("osfv"), "models", f"{self.dut_model}.yml")
         # Check if the file exists
         if not os.path.isfile(file_path):
-            raise UnsupportedDUTModel(
-                f"The {file_path} model is not yet supported"
-            )
+            raise UnsupportedDUTModel(f"The {file_path} model is not yet supported")
 
         # Load the YAML file
         with open(file_path, "r") as file:
@@ -336,7 +334,7 @@ class RTE(rtectrl):
             self.flash_cmd(args)
         if bios:
             args = self.flash_create_args(f"-i bios --ifd -w {self.FW_PATH_WRITE}")
-        else:  
+        else:
             args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)

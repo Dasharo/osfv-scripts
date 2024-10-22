@@ -20,6 +20,7 @@ model_dict = {
     "protectli-v1610": "V1610",
     "protectli-vp2410": "VP2410",
     "protectli-vp2420": "VP2420",
+    "protectli-vp3230": "VP3230",
     "protectli-vp4630": "VP4630",
     "protectli-vp4650": "VP4650",
     "protectli-vp4670": "VP4670",

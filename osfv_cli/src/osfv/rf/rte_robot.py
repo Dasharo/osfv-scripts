@@ -11,6 +11,7 @@ model_dict = {
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-wifi-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-ddr5": "MSI PRO Z690-A DDR5",
+    "msi-pro-z790-p-ddr5": "MSI PRO Z790-P DDR5",
     "pcengines-apu2": "APU2",
     "pcengines-apu3": "APU3",
     "pcengines-apu4": "APU4",

@@ -14,4 +14,4 @@ pwr_ctrl:
   sonoff: true
   # whether power is controller via on-board RTE relay (required)
   relay: false
-  flashing_power_state: "OFF"
+  flashing_power_state: "G3"

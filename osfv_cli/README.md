@@ -229,7 +229,7 @@ follows:
     + `relay` - required; true or false, whether you use onboard RTE relay
     power control.
     + `flashing_power_state` - required; defines a power state the platform
-    needs to be in for SPI flashing; supported values: `"OFF"`, `"G3"`
+    needs to be in for SPI flashing; supported values: `"S5"`, `"G3"`
 
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.

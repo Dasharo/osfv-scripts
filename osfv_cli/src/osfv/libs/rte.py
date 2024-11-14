@@ -52,7 +52,7 @@ class RTE(rtectrl):
 
         voltage_validator = Any("1.8V", "3.3V")
         programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a", "dediprog")
-        flashing_power_state_validator = Any("G3", "OFF")
+        flashing_power_state_validator = Any("G3", "S5")
 
         schema = Schema(
             {
@@ -193,20 +193,23 @@ class RTE(rtectrl):
         # Always start from the same state (PSU active)
         self.pwr_ctrl_on()
         time.sleep(5)
+        # Put the device into S5 state
         self.power_off(6)
         time.sleep(10)
 
         # Some platforms need to enable SPI lines at this point
         # when PSU is active (e.g. VP6650). Otherwise the chip is not detected.
         # So we must turn the PSU ON first in the middle of power cycle,
-        # even if we perform flashing with the PSU OFF.
+        # even if we perform flashing with the PSU OFF (G3).
         if programmer == "rte_1_1":
             self.spi_enable()
             time.sleep(3)
 
-        if power_state == "G3":
+        if power_state == "S5":
+            # Nothing to do, we just entered the S5 state
             pass
-        elif power_state == "OFF":
+        elif power_state == "G3":
+            # Turn off the PSU/AC brick to put device into G3
             self.pwr_ctrl_off()
             self.discharge_psu()
         else:

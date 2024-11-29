@@ -101,18 +101,49 @@ class RTE(rtectrl):
         return data
 
     def power_on(self, sleep=1):
+        """
+        Turns the power on by setting the power button pin to "low" for a
+        specified duration.
+
+        Args:
+            sleep (int, optional): The duration (in seconds) to keep the
+            power pin in the "low" state. Default is 1 second.
+        """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
 
     def power_off(self, sleep=6):
+        """
+        Turns the power off by setting the power button pin to "low" for a
+        specified duration.
+
+        Args:
+            sleep (int, optional): The duration (in seconds) to keep the power
+            pin in the "low" state. Default is 6 seconds.
+        """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
 
     def reset(self, sleep=1):
+        """
+        Resets the system by setting the reset button pin to "low" for a
+        specified duration.
+
+        Args:
+            sleep (int, optional): The duration (in seconds) to keep the reset
+            pin in the "low" state. Default is 1 second.
+        """
         self.gpio_set(self.GPIO_RESET, "low", sleep)
         time.sleep(sleep)
 
     def relay_get(self):
+        """
+        Retrieves the current state of the relay.
+
+        Returns:
+            str: The state of the relay, either "on" if the GPIO relay pin is
+                 "high", or "off" if the GPIO relay pin is "low".
+        """
         gpio_state = self.gpio_get(self.GPIO_RELAY)
         relay_state = None
         if gpio_state == "high":
@@ -122,6 +153,13 @@ class RTE(rtectrl):
         return relay_state
 
     def relay_set(self, relay_state):
+        """
+        Sets the state of the relay by configuring the GPIO relay pin accordingly.
+
+        Args:
+            relay_state (str): Desired state of the relay, either "on" (sets GPIO pin to "high")
+                               or "off" (sets GPIO pin to "low").
+        """
         gpio_state = None
         if relay_state == "on":
             gpio_state = "high"
@@ -130,11 +168,17 @@ class RTE(rtectrl):
         self.gpio_set(self.GPIO_RELAY, gpio_state)
 
     def reset_cmos(self):
+        """
+        Resets the CMOS by setting the GPIO CMOS pin to "low" for 10 seconds, then returning it to a "high-z" state.
+        """
         self.gpio_set(self.GPIO_CMOS, "low")
         time.sleep(10)
         self.gpio_set(self.GPIO_CMOS, "high-z")
 
     def spi_enable(self):
+        """
+        Enables the SPI interface by configuring GPIO pins based on the voltage level required by the flash chip.
+        """
         voltage = self.dut_data["flash_chip"]["voltage"]
 
         if voltage == "1.8V":
@@ -152,10 +196,16 @@ class RTE(rtectrl):
         time.sleep(10)
 
     def spi_disable(self):
+        """
+        Disables the SPI interface by setting the GPIO pins to a "high-z" state.
+        """
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
 
-    def pwr_ctrl_on(self):
+    def psu_on(self):
+        """
+        Connect main power supply to the DUT by setting either relay or Sonoff to ON state.
+        """
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_on()
             state = self.sonoff.get_state()
@@ -168,7 +218,11 @@ class RTE(rtectrl):
                 raise Exception("Failed to power control ON")
         time.sleep(5)
 
-    def pwr_ctrl_off(self):
+    def psu_off(self):
+        """
+        Disconnect main power supply from the DUT by setting either relay or Sonoff to OFF state.
+        """
+        # TODO: rework using abstract interfaces for power control?
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_off()
             state = self.sonoff.get_state()
@@ -181,6 +235,17 @@ class RTE(rtectrl):
                 raise Exception("Failed to power control OFF")
         time.sleep(2)
 
+    def psu_get(self):
+        """
+        Get PSU state
+        """
+        state = None
+        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+            state = self.sonoff.get_state()
+        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+            state = self.relay_get()
+        return state
+
     def discharge_psu(self):
         """
         Push power button 5 times in the loop to make sure the charge from PSU is dissipated
@@ -189,9 +254,12 @@ class RTE(rtectrl):
             self.power_off(3)
 
     def pwr_ctrl_before_flash(self, programmer, power_state):
+        """
+        Move the DUT into specific power state required for external flashing operation. Defined in the model config file.
+        """
 
         # Always start from the same state (PSU active)
-        self.pwr_ctrl_on()
+        self.psu_on()
         time.sleep(5)
         # Put the device into S5 state
         self.power_off(6)
@@ -210,7 +278,7 @@ class RTE(rtectrl):
             pass
         elif power_state == "G3":
             # Turn off the PSU/AC brick to put device into G3
-            self.pwr_ctrl_off()
+            self.psu_off()
             self.discharge_psu()
         else:
             exit(
@@ -218,11 +286,17 @@ class RTE(rtectrl):
             )
 
     def pwr_ctrl_after_flash(self, programmer):
+        """
+        Additional power actions to take after flashing.
+        """
         if programmer == "rte_1_1":
             self.spi_disable()
             time.sleep(2)
 
     def flash_cmd(self, args, read_file=None, write_file=None):
+        """
+        Send the firmware file to RTE and execute flashrom command over SSH to flash the DUT.
+        """
         try:
             self.pwr_ctrl_before_flash(
                 self.dut_data["programmer"]["name"],
@@ -307,6 +381,9 @@ class RTE(rtectrl):
         return flashrom_rc
 
     def flash_create_args(self, extra_args=""):
+        """
+        Create flashrom arguments based on the DUT model config.
+        """
         args = ""
 
         # Set chip explicitly, if defined in model configuration
@@ -320,18 +397,30 @@ class RTE(rtectrl):
         return args
 
     def flash_probe(self):
+        """
+        Execute flashrom with no commands to simply probe the flash chip
+        """
         args = self.flash_create_args()
         return self.flash_cmd(args)
 
     def flash_read(self, read_file):
+        """
+        Execute flashrom with read command to read the firmware from the DUT
+        """
         args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
         return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
+        """
+        Execute flashrom with erase command to erase the flash chip
+        """
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
     def flash_write(self, write_file, bios=False):
+        """
+        Execute flashrom with write command to write firmware to the DUT
+        """
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)

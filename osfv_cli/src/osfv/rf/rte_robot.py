@@ -139,6 +139,20 @@ class RobotRTE:
         self.rte.reset(time)
 
     @keyword(types=None)
+    def rte_psu_on(self):
+        robot.api.logger.info(f"Enabling power supply...")
+        self.rte.psu_on()
+
+    @keyword(types=None)
+    def rte_psu_off(self):
+        robot.api.logger.info(f"Disabling power supply...")
+        self.rte.psu_off()
+
+    @keyword(types=None)
+    def rte_psu_get(self):
+        return self.rte.psu_get()
+
+    @keyword(types=None)
     def rte_gpio_get(self, gpio_no):
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state: {state}")

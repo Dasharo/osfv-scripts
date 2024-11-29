@@ -249,6 +249,12 @@ def relay_get(rte, args):
 
 
 def power_on(rte, args):
+    state = rte.psu_get()
+    if state != "on" or state != "ON":
+        print(f"Power supply state: {state} !")
+        print(
+            'If you wanted to power on the DUT, you need to enable power supply first ("pwr psu on"), pushing the power button is not enough!'
+        )
     print(f"Powering on...")
     rte.power_on(args.time)
 
@@ -261,6 +267,21 @@ def power_off(rte, args):
 def reset(rte, args):
     print(f"Pressing reset button...")
     rte.reset(args.time)
+
+
+def psu_on(rte, args):
+    print(f"Enabling power supply...")
+    rte.psu_on()
+
+
+def psu_off(rte, args):
+    print(f"Disabling power supply...")
+    rte.psu_off()
+
+
+def psu_get(rte, args):
+    state = rte.psu_get()
+    print(f"Power supply state: {state}")
 
 
 def gpio_get(rte, args):
@@ -663,27 +684,42 @@ def main():
 
     # Power subcommands
     pwr_subparsers = pwr_parser.add_subparsers(title="subcommands", dest="pwr_cmd")
-    power_on_parser = pwr_subparsers.add_parser("on", help="Power on")
+    power_on_parser = pwr_subparsers.add_parser(
+        "on", help="Short power button press, to power on DUT"
+    )
     power_on_parser.add_argument(
         "--time",
         type=int,
         default=1,
         help="Power button press time in seconds (default: 1)",
     )
-    power_off_parser = pwr_subparsers.add_parser("off", help="Power off")
+    power_off_parser = pwr_subparsers.add_parser(
+        "off", help="Long power button press, to power off DUT"
+    )
     power_off_parser.add_argument(
         "--time",
         type=int,
-        default=5,
-        help="Power button press time in seconds (default: 5)",
+        default=6,
+        help="Power button press time in seconds (default: 6)",
     )
-    reset_parser = pwr_subparsers.add_parser("reset", help="Reset")
+    reset_parser = pwr_subparsers.add_parser(
+        "reset", help="Reset button press, to reset DUT"
+    )
     reset_parser.add_argument(
         "--time",
         type=int,
         default=1,
         help="Reset button press time in seconds (default: 1)",
     )
+    psu_parser = pwr_subparsers.add_parser(
+        "psu", help="Generic control interface of the power supply"
+    )
+    psu_subparsers = psu_parser.add_subparsers(
+        title="Power supply commands", dest="psu_cmd"
+    )
+    psu_subparsers.add_parser("on", help="Turn the power supply on")
+    psu_subparsers.add_parser("off", help="Turn the power supply off")
+    psu_subparsers.add_parser("get", help="Display information on DUT's power state")
 
     # GPIO subcommands
     gpio_subparsers = gpio_parser.add_subparsers(title="subcommands", dest="gpio_cmd")
@@ -843,6 +879,13 @@ def main():
                 power_off(rte, args)
             elif args.pwr_cmd == "reset":
                 reset(rte, args)
+            elif args.pwr_cmd == "psu":
+                if args.psu_cmd == "on":
+                    psu_on(rte, args)
+                elif args.psu_cmd == "off":
+                    psu_off(rte, args)
+                elif args.psu_cmd == "get":
+                    psu_get(rte, args)
         elif args.rte_cmd == "serial":
             open_dut_serial(rte, args)
         elif args.rte_cmd == "spi":

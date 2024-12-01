@@ -212,12 +212,12 @@ class RTE(rtectrl):
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_on()
             state = self.sonoff.get_state()
-            if state != "ON":
+            if state != self.PSU_STATE_ON:
                 raise Exception("Failed to power control ON")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
-            self.relay_set("on")
+            self.relay_set(self.PSU_STATE_ON)
             state = self.relay_get()
-            if state != "on":
+            if state != self.PSU_STATE_ON:
                 raise Exception("Failed to power control ON")
         time.sleep(5)
 

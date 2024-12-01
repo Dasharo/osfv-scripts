@@ -20,6 +20,9 @@ class RTE(rtectrl):
 
     GPIO_CMOS = 12
 
+    PSU_STATE_ON = "ON"
+    PSU_STATE_OFF = "OFF"
+
     SSH_USER = "root"
     SSH_PWD = "meta-rte"
     FW_PATH_WRITE = "/data/write.rom"
@@ -147,9 +150,9 @@ class RTE(rtectrl):
         gpio_state = self.gpio_get(self.GPIO_RELAY)
         relay_state = None
         if gpio_state == "high":
-            relay_state = "on"
+            relay_state = self.PSU_STATE_ON
         if gpio_state == "low":
-            relay_state = "off"
+            relay_state = self.PSU_STATE_OFF
         return relay_state
 
     def relay_set(self, relay_state):
@@ -161,9 +164,9 @@ class RTE(rtectrl):
                                or "off" (sets GPIO pin to "low").
         """
         gpio_state = None
-        if relay_state == "on":
+        if relay_state == self.PSU_STATE_ON:
             gpio_state = "high"
-        if relay_state == "off":
+        if relay_state == self.PSU_STATE_OFF:
             gpio_state = "low"
         self.gpio_set(self.GPIO_RELAY, gpio_state)
 
@@ -226,12 +229,12 @@ class RTE(rtectrl):
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_off()
             state = self.sonoff.get_state()
-            if state != "OFF":
+            if state != self.PSU_STATE_OFF:
                 raise Exception("Failed to power control OFF")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
-            self.relay_set("off")
+            self.relay_set(self.PSU_STATE_OFF)
             state = self.relay_get()
-            if state != "off":
+            if state != self.PSU_STATE_OFF:
                 raise Exception("Failed to power control OFF")
         time.sleep(2)
 

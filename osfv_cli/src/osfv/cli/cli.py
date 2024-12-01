@@ -250,7 +250,7 @@ def relay_get(rte, args):
 
 def power_on(rte, args):
     state = rte.psu_get()
-    if state != "on" or state != "ON":
+    if state != rte.PSU_STATE_ON:
         print(f"Power supply state: {state} !")
         print(
             'If you wanted to power on the DUT, you need to enable power supply first ("pwr psu on"), pushing the power button is not enough!'

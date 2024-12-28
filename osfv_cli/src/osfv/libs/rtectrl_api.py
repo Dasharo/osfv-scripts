@@ -154,7 +154,9 @@ class rtectrl:
             HTTPError: If the response contains an HTTP error status code.
         """
         url = BASE_URL_TEMPLATE.format(rte_ip=self.rte_ip)
-        response = requests.patch(f"{url}{endpoint}", json=data, headers=headers)
+        response = requests.patch(
+            f"{url}{endpoint}", json=data, headers=headers
+        )
         response.raise_for_status()
         return response
 

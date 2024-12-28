@@ -1,7 +1,7 @@
 spacecount = 4
 indent = 4
 continuation-indent = 4
-line-length = 120
+line-length = 80
 lineseparator = "unix"
 separator = "space"
 

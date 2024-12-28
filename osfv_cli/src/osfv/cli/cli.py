@@ -49,7 +49,9 @@ def check_in_asset(snipeit_api, asset_id):
 # List used assets
 def list_used_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
-    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
+    used_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is not None
+    ]
 
     if not used_assets:
         print("No used assets found.")
@@ -73,7 +75,9 @@ def get_my_assets(snipeit_api):
         List of assets assigned to the current user
     """
     all_assets = snipeit_api.get_all_assets()
-    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
+    used_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is not None
+    ]
     return [
         asset
         for asset in used_assets
@@ -130,7 +134,9 @@ def check_in_my(snipeit_api, args):
         return
 
     if not args.yes:
-        print(f"Are you sure you want to check in {len(my_assets)} assets? [y/N]")
+        print(
+            f"Are you sure you want to check in {len(my_assets)} assets? [y/N]"
+        )
         if input() != "y":
             print(f"Checking in {len(my_assets)} assets aborted.")
             return
@@ -149,7 +155,9 @@ def check_in_my(snipeit_api, args):
 # List unused assets
 def list_unused_assets(snipeit_api, args):
     all_assets = snipeit_api.get_all_assets()
-    unused_assets = [asset for asset in all_assets if asset["assigned_to"] is None]
+    unused_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is None
+    ]
 
     if not unused_assets:
         print("No unused assets found.")
@@ -214,7 +222,9 @@ def get_zabbix_compatible_assets_from_asset(asset):
             if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
                 field_value = field_data.get("value")
                 if field_value:
-                    key = f'{asset["asset_tag"]}_{field_name}'.replace(" ", "_")
+                    key = f'{asset["asset_tag"]}_{field_name}'.replace(
+                        " ", "_"
+                    )
                     result[key] = field_value
     return result
 
@@ -422,7 +432,9 @@ def update_zabbix_assets(snipeit_api):
 
     if all_assets:
         for asset in all_assets:
-            snipeit_assets.update(get_zabbix_compatible_assets_from_asset(asset))
+            snipeit_assets.update(
+                get_zabbix_compatible_assets_from_asset(asset)
+            )
 
     snipeit_assets_keys = list(snipeit_assets.keys())
 
@@ -475,7 +487,9 @@ def update_zabbix_assets(snipeit_api):
                 snipeit_configuration_error = True
 
         # check for forbidden symbols in asset names
-        if any(symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols):
+        if any(
+            symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols
+        ):
             print(
                 f"{snipeit_assets_keys[i]} contains forbidden symbols! They are going to be changed to '_'."
             )
@@ -483,7 +497,9 @@ def update_zabbix_assets(snipeit_api):
             for s in forbidden_symbols:
                 new_key = new_key.replace(s, "_")
 
-            snipeit_assets[new_key] = snipeit_assets.pop(snipeit_assets_keys[i])
+            snipeit_assets[new_key] = snipeit_assets.pop(
+                snipeit_assets_keys[i]
+            )
 
     if snipeit_configuration_error:
         print(
@@ -505,14 +521,18 @@ def update_zabbix_assets(snipeit_api):
     ):
         update_available = True
 
-    common_keys = set(snipeit_assets.keys()) & set(current_zabbix_assets.keys())
+    common_keys = set(snipeit_assets.keys()) & set(
+        current_zabbix_assets.keys()
+    )
 
     if keys_not_present_in_zabbix.__len__() > 0:
         print("Assets not present in Zabbix (these will be added):")
         print("\n".join(keys_not_present_in_zabbix))
 
     if keys_not_present_in_snipeit.__len__() > 0:
-        print("\nAssets present in Zabbix but not in SnipeIT (these will be removed):")
+        print(
+            "\nAssets present in Zabbix but not in SnipeIT (these will be removed):"
+        )
         print("\n".join(keys_not_present_in_snipeit))
 
     print("")
@@ -560,13 +580,18 @@ def update_zabbix_assets(snipeit_api):
 
 # Main function
 def main():
-    parser = argparse.ArgumentParser(description="Open Source Firmware Validation CLI")
+    parser = argparse.ArgumentParser(
+        description="Open Source Firmware Validation CLI"
+    )
     parser.add_argument(
         "-v", "--version", action="version", version=metadata.version("osfv")
     )
 
     parser.add_argument(
-        "-j", "--json", action="store_true", help="Output as JSON (if applicable)"
+        "-j",
+        "--json",
+        action="store_true",
+        help="Output as JSON (if applicable)",
     )
 
     subparsers = parser.add_subparsers(
@@ -580,7 +605,9 @@ def main():
 
     # Sonoff subcommands
     sonoff_group = sonoff_parser.add_mutually_exclusive_group(required=True)
-    sonoff_group.add_argument("--sonoff_ip", type=str, help="Sonoff IP address")
+    sonoff_group.add_argument(
+        "--sonoff_ip", type=str, help="Sonoff IP address"
+    )
     sonoff_group.add_argument("--rte_ip", type=str, help="RTE IP address")
     sonoff_subparsers = sonoff_parser.add_subparsers(
         title="subcommands", dest="sonoff_cmd", help="Sonoff subcommands"
@@ -608,7 +635,9 @@ def main():
         "list_unused", help="List all unused assets"
     )
 
-    list_all_parser = snipeit_subparsers.add_parser("list_all", help="List all assets")
+    list_all_parser = snipeit_subparsers.add_parser(
+        "list_all", help="List all assets"
+    )
 
     list_zabbix_parser = snipeit_subparsers.add_parser(
         "list_for_zabbix",
@@ -621,13 +650,17 @@ def main():
     )
 
     check_out_parser = snipeit_subparsers.add_parser(
-        "check_out", help="Check out an asset by providing the Asset ID or RTE IP"
+        "check_out",
+        help="Check out an asset by providing the Asset ID or RTE IP",
     )
-    check_out_group = check_out_parser.add_mutually_exclusive_group(required=True)
+    check_out_group = check_out_parser.add_mutually_exclusive_group(
+        required=True
+    )
     check_out_group.add_argument("--asset_id", type=int, help="Asset ID")
     check_out_group.add_argument("--rte_ip", type=str, help="RTE IP")
     check_out_parser = snipeit_subparsers.add_parser(
-        "user_add", help="Add a new user by providing user First Name and Last Name"
+        "user_add",
+        help="Add a new user by providing user First Name and Last Name",
     )
     check_out_parser.add_argument(
         "--first-name", type=str, help="User First Name", required=True
@@ -639,7 +672,8 @@ def main():
         "--company-name", type=str, default="3mdeb", help="Company Name"
     )
     check_out_parser = snipeit_subparsers.add_parser(
-        "user_del", help="Delete new user by providing user First Name and Last Name"
+        "user_del",
+        help="Delete new user by providing user First Name and Last Name",
     )
     check_out_parser.add_argument(
         "--first-name", type=str, help="User First Name", required=True
@@ -649,9 +683,12 @@ def main():
     )
 
     check_in_parser = snipeit_subparsers.add_parser(
-        "check_in", help="Check in an asset by providing the Asset ID or RTE IP"
+        "check_in",
+        help="Check in an asset by providing the Asset ID or RTE IP",
     )
-    check_in_group = check_in_parser.add_mutually_exclusive_group(required=True)
+    check_in_group = check_in_parser.add_mutually_exclusive_group(
+        required=True
+    )
     check_in_group.add_argument("--asset_id", type=int, help="Asset ID")
     check_in_group.add_argument("--rte_ip", type=str, help="RTE IP address")
 
@@ -663,7 +700,9 @@ def main():
     )
 
     # RTE subcommands
-    rte_parser.add_argument("--rte_ip", type=str, help="RTE IP address", required=True)
+    rte_parser.add_argument(
+        "--rte_ip", type=str, help="RTE IP address", required=True
+    )
     rte_parser.add_argument(
         "--model",
         type=str,
@@ -675,15 +714,23 @@ def main():
     )
     rel_parser = rte_subparsers.add_parser("rel", help="Control RTE relay")
     gpio_parser = rte_subparsers.add_parser("gpio", help="Control RTE GPIO")
-    pwr_parser = rte_subparsers.add_parser("pwr", help="Control DUT power via RTE")
-    spi_parser = rte_subparsers.add_parser("spi", help="Control SPI lines of RTE")
+    pwr_parser = rte_subparsers.add_parser(
+        "pwr", help="Control DUT power via RTE"
+    )
+    spi_parser = rte_subparsers.add_parser(
+        "spi", help="Control SPI lines of RTE"
+    )
     serial_parser = rte_subparsers.add_parser(
         "serial", help="Open DUT serial via telnet"
     )
-    flash_parser = rte_subparsers.add_parser("flash", help="DUT flash operations")
+    flash_parser = rte_subparsers.add_parser(
+        "flash", help="DUT flash operations"
+    )
 
     # Power subcommands
-    pwr_subparsers = pwr_parser.add_subparsers(title="subcommands", dest="pwr_cmd")
+    pwr_subparsers = pwr_parser.add_subparsers(
+        title="subcommands", dest="pwr_cmd"
+    )
     power_on_parser = pwr_subparsers.add_parser(
         "on", help="Short power button press, to power on DUT"
     )
@@ -719,10 +766,14 @@ def main():
     )
     psu_subparsers.add_parser("on", help="Turn the power supply on")
     psu_subparsers.add_parser("off", help="Turn the power supply off")
-    psu_subparsers.add_parser("get", help="Display information on DUT's power state")
+    psu_subparsers.add_parser(
+        "get", help="Display information on DUT's power state"
+    )
 
     # GPIO subcommands
-    gpio_subparsers = gpio_parser.add_subparsers(title="subcommands", dest="gpio_cmd")
+    gpio_subparsers = gpio_parser.add_subparsers(
+        title="subcommands", dest="gpio_cmd"
+    )
     get_gpio_parser = gpio_subparsers.add_parser("get", help="Get GPIO state")
     get_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
     set_gpio_parser = gpio_subparsers.add_parser("set", help="Set GPIO state")
@@ -730,11 +781,17 @@ def main():
     set_gpio_parser.add_argument(
         "state", choices=["high", "low", "high-z"], help="GPIO state"
     )
-    set_gpio_parser = gpio_subparsers.add_parser("list", help="List GPIO states")
+    set_gpio_parser = gpio_subparsers.add_parser(
+        "list", help="List GPIO states"
+    )
 
     # Relay subcommands
-    rel_subparsers = rel_parser.add_subparsers(title="subcommands", dest="rel_cmd")
-    tgl_rel_parser = rel_subparsers.add_parser("tgl", help="Toggle relay state")
+    rel_subparsers = rel_parser.add_subparsers(
+        title="subcommands", dest="rel_cmd"
+    )
+    tgl_rel_parser = rel_subparsers.add_parser(
+        "tgl", help="Toggle relay state"
+    )
     get_rel_parser = rel_subparsers.add_parser("get", help="Get relay state")
     set_rel_parser = rel_subparsers.add_parser("set", help="Set relay state")
     set_rel_parser.add_argument(
@@ -747,10 +804,15 @@ def main():
     )
 
     # RTE SPI subcommands
-    spi_subparsers = spi_parser.add_subparsers(title="subcommands", dest="spi_cmd")
+    spi_subparsers = spi_parser.add_subparsers(
+        title="subcommands", dest="spi_cmd"
+    )
     spi_on_parser = spi_subparsers.add_parser("on", help="Enable SPI lines")
     spi_on_parser.add_argument(
-        "--voltage", type=str, default="1.8V", help="SPI voltage (default: 1.8V)"
+        "--voltage",
+        type=str,
+        default="1.8V",
+        help="SPI voltage (default: 1.8V)",
     )
     spi_off_parser = spi_subparsers.add_parser("off", help="Disable SPI lines")
 
@@ -825,7 +887,9 @@ def main():
         elif args.snipeit_cmd == "check_in_my":
             check_in_my(snipeit_api, args)
         elif args.snipeit_cmd == "user_add":
-            snipeit_api.user_add(args.first_name, args.last_name, args.company_name)
+            snipeit_api.user_add(
+                args.first_name, args.last_name, args.company_name
+            )
         elif args.snipeit_cmd == "user_del":
             snipeit_api.user_del(args.first_name, args.last_name)
         elif args.snipeit_cmd == "update_zabbix":

@@ -15,7 +15,9 @@ class Sonoff:
             response = self.sonoff.turn_on()
             robot.api.logger.info(response)
         except requests.exceptions.RequestException as e:
-            robot.api.logger.info(f"Failed to turn on Sonoff relay. Error: {e}")
+            robot.api.logger.info(
+                f"Failed to turn on Sonoff relay. Error: {e}"
+            )
 
     @keyword(types=None)
     def sonoff_off(self):
@@ -24,7 +26,9 @@ class Sonoff:
             response = self.sonoff.turn_off()
             robot.api.logger.info(response)
         except requests.exceptions.RequestException as e:
-            robot.api.logger.info(f"Failed to turn off Sonoff relay. Error: {e}")
+            robot.api.logger.info(
+                f"Failed to turn off Sonoff relay. Error: {e}"
+            )
 
     @keyword(types=None)
     def sonoff_get(self):
@@ -34,7 +38,9 @@ class Sonoff:
             state = self.sonoff.get_state()
             robot.api.logger.info(f"Sonoff relay state: {state}")
         except requests.exceptions.RequestException as e:
-            robot.api.logger.info(f"Failed to get Sonoff relay state. Error: {e}")
+            robot.api.logger.info(
+                f"Failed to get Sonoff relay state. Error: {e}"
+            )
         return state
 
     @keyword(types=None)
@@ -51,6 +57,10 @@ class Sonoff:
                 response = self.sonoff.turn_on()
                 robot.api.logger.info("Sonoff relay state toggled on.")
             else:
-                robot.api.logger.info(f"Unexpected Sonoff relay state: {current_state}")
+                robot.api.logger.info(
+                    f"Unexpected Sonoff relay state: {current_state}"
+                )
         except requests.exceptions.RequestException as e:
-            robot.api.logger.info(f"Failed to toggle Sonoff relay state. Error: {e}")
+            robot.api.logger.info(
+                f"Failed to toggle Sonoff relay state. Error: {e}"
+            )

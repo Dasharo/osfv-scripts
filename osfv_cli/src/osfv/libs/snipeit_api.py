@@ -68,7 +68,9 @@ class SnipeIT:
                     break
                 page += 1
             else:
-                print(f"Error retrieving assets. Status code: {response.status_code}")
+                print(
+                    f"Error retrieving assets. Status code: {response.status_code}"
+                )
                 print(response.json())
                 break
 
@@ -209,7 +211,10 @@ class SnipeIT:
         )
         response_json = response.json()
 
-        if response.status_code == 200 and response_json.get("status") != "error":
+        if (
+            response.status_code == 200
+            and response_json.get("status") != "error"
+        ):
             return True, response_json, False
         else:
             return False, response_json, False
@@ -223,17 +228,25 @@ class SnipeIT:
         )
         response_json = response.json()
 
-        if response.status_code == 200 and response_json.get("status") != "error":
+        if (
+            response.status_code == 200
+            and response_json.get("status") != "error"
+        ):
             return True, response_json
         else:
             return False, response_json
 
     def get_asset(self, asset_id):
         response = requests.get(
-            f"{self.cfg_api_url}/hardware/{asset_id}", headers=self.headers, timeout=10
+            f"{self.cfg_api_url}/hardware/{asset_id}",
+            headers=self.headers,
+            timeout=10,
         )
         response_json = response.json()
-        if response.status_code == 200 and response_json.get("status") != "error":
+        if (
+            response.status_code == 200
+            and response_json.get("status") != "error"
+        ):
             return True, response_json
         else:
             return False, response_json
@@ -257,7 +270,9 @@ class SnipeIT:
                     return company["id"]
             return None
         else:
-            print(f"Error retrieving companies. Status code: {response.status_code}")
+            print(
+                f"Error retrieving companies. Status code: {response.status_code}"
+            )
             print(response.json())
             return None
 
@@ -272,7 +287,9 @@ class SnipeIT:
                     return group["id"]
             return None
         else:
-            print(f"Error retrieving user groups. Status code: {response.status_code}")
+            print(
+                f"Error retrieving user groups. Status code: {response.status_code}"
+            )
             print(response.json())
             return None
 
@@ -300,7 +317,9 @@ class SnipeIT:
                     break
                 page += 1
             else:
-                print(f"Error retrieving users. Status code: {response.status_code}")
+                print(
+                    f"Error retrieving users. Status code: {response.status_code}"
+                )
                 print(response.json())
                 break
 
@@ -316,7 +335,9 @@ class SnipeIT:
 
     def user_add(self, first_name, last_name, company_name):
         email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-        username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+        username = (
+            f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+        )
         password = self.generate_password()
 
         users = self.get_users()
@@ -352,10 +373,16 @@ class SnipeIT:
         print(data)
 
         response = requests.post(
-            f"{self.cfg_api_url}/users", headers=self.headers, json=data, timeout=10
+            f"{self.cfg_api_url}/users",
+            headers=self.headers,
+            json=data,
+            timeout=10,
         )
         response_json = response.json()
-        if response.status_code == 200 and response_json.get("status") != "error":
+        if (
+            response.status_code == 200
+            and response_json.get("status") != "error"
+        ):
             user_info = response.json()["payload"]
             user_id = user_info["id"]
             print(f"User created successfully!")
@@ -363,12 +390,16 @@ class SnipeIT:
             print(f"Password: {password}")
             print(f"User ID: {user_id}")
         else:
-            print(f"Failed to create user. Status code: {response.status_code}")
+            print(
+                f"Failed to create user. Status code: {response.status_code}"
+            )
             print(response_json)
 
     def user_del(self, first_name, last_name):
         email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-        username = f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+        username = (
+            f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
+        )
 
         user_id = self.get_user_id(username)
         if not user_id:
@@ -376,10 +407,15 @@ class SnipeIT:
             return
 
         response = requests.delete(
-            f"{self.cfg_api_url}/users/{user_id}", headers=self.headers, timeout=10
+            f"{self.cfg_api_url}/users/{user_id}",
+            headers=self.headers,
+            timeout=10,
         )
         response_json = response.json()
-        if response.status_code == 200 and response_json.get("status") != "error":
+        if (
+            response.status_code == 200
+            and response_json.get("status") != "error"
+        ):
             print(f"User {username} deleted successfully!")
         else:
             print(

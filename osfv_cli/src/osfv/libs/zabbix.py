@@ -29,7 +29,10 @@ class Zabbix:
         payload = {
             "jsonrpc": "2.0",
             "method": "user.login",
-            "params": {"user": self.api_username, "password": self.api_password},
+            "params": {
+                "user": self.api_username,
+                "password": self.api_password,
+            },
             "id": 1,
             "auth": None,
         }
@@ -41,7 +44,9 @@ class Zabbix:
             return result["result"]
         elif "error" in result:
             error_message = result["error"]["message"]
-            raise ValueError(f"Zabbix API authentication failed: {error_message}")
+            raise ValueError(
+                f"Zabbix API authentication failed: {error_message}"
+            )
         else:
             raise ValueError("Invalid response from Zabbix API authentication")
 
@@ -49,7 +54,10 @@ class Zabbix:
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",
-            "params": {"selectInterfaces": ["ip"], "output": ["hostid", "host"]},
+            "params": {
+                "selectInterfaces": ["ip"],
+                "output": ["hostid", "host"],
+            },
             "id": 1,
             "auth": self.auth_token,
         }

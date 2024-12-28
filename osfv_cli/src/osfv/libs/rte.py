@@ -40,21 +40,29 @@ class RTE(rtectrl):
         self.sonoff = sonoff
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
-                exit(f"Missing value for 'sonoff_ip' or Sonoff not found in SnipeIT")
+                exit(
+                    f"Missing value for 'sonoff_ip' or Sonoff not found in SnipeIT"
+                )
             )
 
     def load_model_data(self):
-        file_path = os.path.join(files("osfv"), "models", f"{self.dut_model}.yml")
+        file_path = os.path.join(
+            files("osfv"), "models", f"{self.dut_model}.yml"
+        )
         # Check if the file exists
         if not os.path.isfile(file_path):
-            raise UnsupportedDUTModel(f"The {file_path} model is not yet supported")
+            raise UnsupportedDUTModel(
+                f"The {file_path} model is not yet supported"
+            )
 
         # Load the YAML file
         with open(file_path, "r") as file:
             data = yaml.safe_load(file)
 
         voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any("rte_1_1", "rte_1_0", "ch341a", "dediprog")
+        programmer_name_validator = Any(
+            "rte_1_1", "rte_1_0", "ch341a", "dediprog"
+        )
         flashing_power_state_validator = Any("G3", "S5")
 
         schema = Schema(
@@ -69,7 +77,9 @@ class RTE(rtectrl):
                 Required("pwr_ctrl"): {
                     Required("sonoff"): bool,
                     Required("relay"): bool,
-                    Required("flashing_power_state"): flashing_power_state_validator,
+                    Required(
+                        "flashing_power_state"
+                    ): flashing_power_state_validator,
                 },
                 Optional("reset_cmos", default=False): bool,
                 Optional("disable_wp", default=False): bool,
@@ -98,7 +108,9 @@ class RTE(rtectrl):
                 if key in current_field:
                     current_field = current_field[key]
                 else:
-                    exit(f"Required field '{field}' is missing in model config.")
+                    exit(
+                        f"Required field '{field}' is missing in model config."
+                    )
 
         # Return the loaded data
         return data
@@ -428,7 +440,9 @@ class RTE(rtectrl):
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
         if bios:
-            args = self.flash_create_args(f"-i bios --ifd -w {self.FW_PATH_WRITE}")
+            args = self.flash_create_args(
+                f"-i bios --ifd -w {self.FW_PATH_WRITE}"
+            )
         else:
             args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
         rc = self.flash_cmd(args, write_file=write_file)

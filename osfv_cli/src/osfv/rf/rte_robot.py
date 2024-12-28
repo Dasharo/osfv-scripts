@@ -37,7 +37,9 @@ class RobotRTE:
         if snipeit:
             self.snipeit_api = SnipeIT()
             asset_id = self.snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-            status, dut_model_name = self.snipeit_api.get_asset_model_name(asset_id)
+            status, dut_model_name = self.snipeit_api.get_asset_model_name(
+                asset_id
+            )
             if status:
                 robot.api.logger.info(
                     f"DUT model retrieved from snipeit: {dut_model_name}"
@@ -51,8 +53,12 @@ class RobotRTE:
             )
             self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
         else:
-            self.sonoff, self.sonoff_ip = utils.init_sonoff(sonoff_ip, self.rte_ip)
-            self.rte = RTE(rte_ip, self.cli_model_from_osfv(config), self.sonoff)
+            self.sonoff, self.sonoff_ip = utils.init_sonoff(
+                sonoff_ip, self.rte_ip
+            )
+            self.rte = RTE(
+                rte_ip, self.cli_model_from_osfv(config), self.sonoff
+            )
 
     def cli_model_from_osfv(self, osfv_model):
         """

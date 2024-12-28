@@ -238,10 +238,10 @@ def print_asset_details_for_zabbix(asset):
 
 def relay_toggle(rte, args):
     state_str = rte.relay_get()
-    if state_str == "off":
-        new_state_str = "on"
+    if state_str == RTE.PSU_STATE_OFF:
+        new_state_str = RTE.PSU_STATE_ON
     else:
-        new_state_str = "off"
+        new_state_str = RTE.PSU_STATE_OFF
     rte.relay_set(new_state_str)
     state = rte.relay_get()
     print(f"Relay state toggled. New state: {state}")
@@ -656,6 +656,9 @@ def main():
     check_out_group = check_out_parser.add_mutually_exclusive_group(
         required=True
     )
+    check_out_group = check_out_parser.add_mutually_exclusive_group(
+        required=True
+    )
     check_out_group.add_argument("--asset_id", type=int, help="Asset ID")
     check_out_group.add_argument("--rte_ip", type=str, help="RTE IP")
     check_out_parser = snipeit_subparsers.add_parser(
@@ -685,6 +688,9 @@ def main():
     check_in_parser = snipeit_subparsers.add_parser(
         "check_in",
         help="Check in an asset by providing the Asset ID or RTE IP",
+    )
+    check_in_group = check_in_parser.add_mutually_exclusive_group(
+        required=True
     )
     check_in_group = check_in_parser.add_mutually_exclusive_group(
         required=True

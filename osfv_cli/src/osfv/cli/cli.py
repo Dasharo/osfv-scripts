@@ -715,6 +715,12 @@ def main():
         help="DUT model. If not given, will attempt to query from Snipe-IT.",
         required=False,
     )
+    rte_parser.add_argument(
+        "--skip-snipeit",
+        action="store_true",
+        help="Skips Snipe-IT related actions like checkout and check-in. \
+            Useful for OSFV homelab.",
+    )
     rte_subparsers = rte_parser.add_subparsers(
         title="subcommands", dest="rte_cmd", help="RTE subcommands"
     )
@@ -902,28 +908,37 @@ def main():
             update_zabbix_assets(snipeit_api)
 
     elif args.command == "rte":
-        asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
-        if not asset_id:
-            print(f"No asset found with RTE IP: {args.rte_ip}")
+        if not args.skip_snipeit:
+            asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
+            if not asset_id:
+                print(f"No asset found with RTE IP: {args.rte_ip}")
 
         if args.model:
             print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
             dut_model_name = args.model
         else:
-            status, dut_model_name = snipeit_api.get_asset_model_name(asset_id)
-            if status:
-                print(f"DUT model retrieved from snipeit: {dut_model_name}")
-            else:
-                exit(
-                    f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
+            if not args.skip_snipeit:
+                status, dut_model_name = snipeit_api.get_asset_model_name(
+                    asset_id
                 )
+                if status:
+                    print(
+                        f"DUT model retrieved from snipeit: {dut_model_name}"
+                    )
+                else:
+                    exit(
+                        f"failed to retrieve model name from snipe-it. check again arguments, or try providing model manually."
+                    )
+            else:
+                exit(f"model name not present. check again arguments.")
         sonoff, sonoff_ip = utils.init_sonoff(None, args.rte_ip, snipeit_api)
         rte = RTE(args.rte_ip, dut_model_name, sonoff)
 
-        print(
-            f"Using rte command is invasive action, checking first if the device is not used..."
-        )
-        already_checked_out = check_out_asset(snipeit_api, asset_id)
+        if not args.skip_snipeit:
+            print(
+                f"Using rte command is invasive action, checking first if the device is not used..."
+            )
+            already_checked_out = check_out_asset(snipeit_api, asset_id)
 
         if args.rte_cmd == "rel":
             # Handle RTE relay related commands
@@ -973,14 +988,20 @@ def main():
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
 
-        if already_checked_out:
-            print(
-                f"Since the asset {asset_id} has been checkout manually by you prior running this script, it will NOT be checked in automatically. Please return the device when work is finished."
-            )
-        else:
-            print(
-                f"Since the asset {asset_id} has been checkout automatically by this script, it is automatically checked in as well."
-            )
+        if not args.skip_snipeit:
+            if already_checked_out:
+                print(
+                    f"Since the asset {asset_id} has been checkout manually \
+                    by you prior running this script, it will NOT be checked \
+                    in automatically. Please return the device when work is \
+                    finished."
+                )
+            else:
+                print(
+                    f"Since the asset {asset_id} has been checkout \
+                    automatically by this script, it is automatically checked \
+                    in as well."
+                )
             check_in_asset(snipeit_api, asset_id)
     elif args.command == "sonoff":
         sonoff_ip = ""

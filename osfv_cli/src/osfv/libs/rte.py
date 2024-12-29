@@ -3,6 +3,7 @@ import sys
 import time
 
 import paramiko
+import requests
 import yaml
 from importlib_resources import files
 from osfv.libs.rtectrl_api import rtectrl

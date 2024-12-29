@@ -1,4 +1,5 @@
 import requests
+from urllib3.exceptions import ProtocolError
 
 BASE_URL_TEMPLATE = "http://{rte_ip}:8000/api/v1"
 
@@ -101,14 +102,18 @@ class rtectrl:
             elif state_str == "high-z":
                 state = 0
             else:
-                raise GPIOWrongStateError("Wrong GPIO state")
+                raise GPIOWrongStateError(
+                    f"Wrong GPIO {gpio_no} state: {state_str}"
+                )
         if 13 <= gpio_no <= 19 or gpio_no == 0:
             if state_str == "high":
                 state = 1
             elif state_str == "low":
                 state = 0
             else:
-                raise GPIOWrongStateError("Wrong GPIO state")
+                raise GPIOWrongStateError(
+                    f"Wrong GPIO {gpio_no} state: {state_str}"
+                )
 
         try:
             message = {"state": state, "direction": "out", "time": sleep}
@@ -117,7 +122,7 @@ class rtectrl:
                 raise RuntimeError("Failed to set GPIO state")
         except (
             requests.exceptions.ConnectionError,
-            requests.exceptions.ProtocolError,
+            ProtocolError,
         ) as e:
             print(f"Failed while setting gpio {e}")
 

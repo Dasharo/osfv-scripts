@@ -859,7 +859,10 @@ def main():
 
     args = parser.parse_args()
 
-    snipeit_api = SnipeIT()
+    try:
+        snipeit_api = SnipeIT()
+    except Exception as e:
+        exit(f"Error initializing SnipeIT library: {e}")
 
     if args.command == "snipeit":
         if args.snipeit_cmd == "list_used":

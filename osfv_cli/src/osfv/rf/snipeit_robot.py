@@ -1,7 +1,11 @@
 import robot.api.logger
 from osfv.libs.snipeit_api import SnipeIT
+from robot.api.exceptions import FatalError
 
-snipeit_api = SnipeIT()
+try:
+    snipeit_api = SnipeIT()
+except Exception as e:
+    raise FatalError(f"Error initializing SnipeIT library: {e}")
 
 
 def snipeit_checkout(rte_ip):

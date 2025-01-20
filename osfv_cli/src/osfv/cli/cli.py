@@ -300,6 +300,11 @@ def gpio_get(rte, args):
     print(f"GPIO {args.gpio_no} state: {state}")
 
 
+def check_pwr_led(rte, args):
+    state = rte.gpio_get(RTE.GPIO_PWR_LED)
+    print(f"Power LED state: {'ON' if state == 'high' else 'OFF'}")
+
+
 def gpio_set(rte, args):
     rte.gpio_set(args.gpio_no, args.state)
     state = rte.gpio_get(args.gpio_no)
@@ -784,6 +789,9 @@ def main():
     psu_subparsers.add_parser(
         "get", help="Display information on DUT's power state"
     )
+    check_pwr_led_parser = pwr_subparsers.add_parser(
+        "check_led", help="Check the state of the DUT power LED"
+    )
 
     # GPIO subcommands
     gpio_subparsers = gpio_parser.add_subparsers(
@@ -967,6 +975,8 @@ def main():
                 power_off(rte, args)
             elif args.pwr_cmd == "reset":
                 reset(rte, args)
+            elif args.pwr_cmd == "check_led":
+                check_pwr_led(rte, args)
             elif args.pwr_cmd == "psu":
                 if args.psu_cmd == "on":
                     psu_on(rte, args)

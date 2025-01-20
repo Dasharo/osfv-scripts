@@ -22,6 +22,8 @@ class RTE(rtectrl):
 
     GPIO_CMOS = 12
 
+    GPIO_PWR_LED = 13
+
     PSU_STATE_ON = "ON"
     PSU_STATE_OFF = "OFF"
 

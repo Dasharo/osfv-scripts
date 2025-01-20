@@ -170,3 +170,11 @@ class RobotRTE:
         self.rte.gpio_set(int(gpio_no), state)
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state set to {state}")
+
+    @keyword(types=None)
+    def rte_check_power_led(self):
+        state = self.rte.gpio_get(RTE.GPIO_PWR_LED)
+        robot.api.logger.info(
+            f"Power LED state: {'ON' if state == 'high' else 'OFF'}"
+        )
+        return state

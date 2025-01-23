@@ -8,6 +8,7 @@ from importlib import metadata
 import osfv.libs.utils as utils
 import pexpect
 import requests
+import sys
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
@@ -857,6 +858,31 @@ def main():
         "erase", help="Erase DUT flash with flashrom"
     )
 
+    local_parser = flash_subparsers.add_parser(
+        "local", help="Locally flash the DUT (like flash.sh) using local GPIO toggling & flashrom"
+    )
+    local_subparsers = local_parser.add_subparsers(dest="local_cmd", help="Local flash commands")
+
+    local_probe_parser = local_subparsers.add_parser("probe", help="Probe flash locally")
+
+    local_read_parser = local_subparsers.add_parser("read", help="Read flash locally")
+    local_read_parser.add_argument(
+        "--rom",
+        type=str,
+        default="read.rom",
+        help="Output file for reading flash content (default: read.rom)",
+    )
+
+    local_write_parser = local_subparsers.add_parser("write", help="Write flash locally")
+    local_write_parser.add_argument(
+        "--rom",
+        type=str,
+        default="write.rom",
+        help="Firmware file to write to flash (default: write.rom)",
+    )
+
+    local_erase_parser = local_subparsers.add_parser("erase", help="Erase flash locally")
+
     args = parser.parse_args()
 
     snipeit_api = SnipeIT()
@@ -981,6 +1007,45 @@ def main():
                 flash_write(rte, args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
+            elif args.flash_cmd == "local":
+                # We have to see which subcommand was chosen: probe/read/write/erase
+                from osfv.libs.localflash import LocalFlasher, LocalFlashError
+
+                # User sets voltage, flashrom params, etc.
+                local_flasher = LocalFlasher(voltage="1.8V", flashrom_params="")
+
+                # check which local_cmd subcommand was used
+                if args.local_cmd == "probe":
+                    try:
+                        local_flasher.cmd_probe()
+                    except LocalFlashError as e:
+                        print(f"[ERROR] {e}")
+                        sys.exit(1)
+
+                elif args.local_cmd == "read":
+                    try:
+                        local_flasher.cmd_read(args.rom)
+                    except LocalFlashError as e:
+                        print(f"[ERROR] {e}")
+                        sys.exit(1)
+
+                elif args.local_cmd == "write":
+                    try:
+                        local_flasher.cmd_write(args.rom)
+                    except LocalFlashError as e:
+                        print(f"[ERROR] {e}")
+                        sys.exit(1)
+
+                elif args.local_cmd == "erase":
+                    try:
+                        local_flasher.cmd_erase()
+                    except LocalFlashError as e:
+                        print(f"[ERROR] {e}")
+                        sys.exit(1)
+
+                else:
+                    print("No local flash subcommand chosen. See --help.")
+                    sys.exit(1)
 
         if not args.skip_snipeit:
             if already_checked_out:

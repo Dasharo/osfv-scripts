@@ -32,7 +32,13 @@ class RTE(rtectrl):
     PROGRAMMER_RTE = "linux_spi:dev=/dev/spidev1.0,spispeed=16000"
     PROGRAMMER_CH341A = "ch341a_spi"
     PROGRAMMER_DEDIPROG = "dediprog"
-    FLASHROM_CMD = "flashrom -p {programmer} {args}"
+    PROGRAMMER_BINARY_FLASHROM = "flashrom"
+    PROGRAMMER_BINARY_FLASHPROG = "flashprog"
+    SUPPORTED_PROGRAMMER_BINARIES = [
+        self.PROGRAMMER_BINARY_FLASHROM,
+        self.PROGRAMMER_BINARY_FLASHPROG,
+    ]
+    FLASH_CMD = "{programmer_binary} -p {programmer} {args}"
 
     def __init__(self, rte_ip, dut_model, sonoff):
         self.rte_ip = rte_ip
@@ -348,8 +354,31 @@ class RTE(rtectrl):
             else:
                 flashrom_programmer = self.PROGRAMMER_RTE
 
-            command = self.FLASHROM_CMD.format(
-                programmer=flashrom_programmer, args=args
+            programmer_binary = self.dut_data["programmer"].get("binary", None)
+            if not programmer_binary:
+                print(
+                    "[WARNING] [programmer]:[binary] is not set!"
+                    f"Using the default value of {self.PROGRAMMER_BINARY_FLASHROM}"
+                )
+                programmer_binary = self.PROGRAMMER_BINARY_FLASHROM
+            elif programmer_binary not in self.SUPPORTED_PROGRAMMER_BINARIES:
+                print(
+                    f"[ERROR] [programmer]:[binary] is set to an unsupported value '{programmer_binary}'"
+                )
+                print(
+                    f"Supported values are: {self.SUPPORTED_PROGRAMMER_BINARIES}"
+                )
+                print(
+                    "Unable to proceed. Please check the configuration file and try again."
+                )
+                raise UnsupportedProgrammerBinaryError(
+                    f"Unable to use '{programmer_binary}' as a programmer binary"
+                )
+
+            command = self.FLASH_CMD.format(
+                programmer_binary=programmer_binary,
+                programmer=flashrom_programmer,
+                args=args,
             )
             print(f"Executing command: {command}")
 
@@ -473,4 +502,8 @@ class SPIWrongVoltage(Exception):
 
 
 class SonoffNotFound(Exception):
+    pass
+
+
+class UnsupportedProgrammerBinaryError(Exception):
     pass

@@ -996,7 +996,7 @@ def main():
                     automatically by this script, it is automatically checked \
                     in as well."
                 )
-            check_in_asset(snipeit_api, asset_id)
+                check_in_asset(snipeit_api, asset_id)
     elif args.command == "sonoff":
         sonoff_ip = ""
 

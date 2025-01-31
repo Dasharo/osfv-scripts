@@ -14,4 +14,4 @@ pwr_ctrl:
   flashing_power_state: "G3"
 
 # whether CMOS reset is required after flashing (optional - defaults to false)
-reset_cmos: false 
+reset_cmos: false

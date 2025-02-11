@@ -165,6 +165,7 @@ just some examples.
   ```
 
 - Turn on the power supply of the platform:
+
   ```bash
   osfv_cli rte --rte_ip <rte_ip_address> pwr psu on
   ```

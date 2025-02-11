@@ -164,7 +164,13 @@ just some examples.
   osfv_cli rte --rte_ip <rte_ip_address> rel tgl
   ```
 
-- Power on the platform (push power button)
+- Turn on the power supply of the platform:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> pwr psu on
+  ```
+
+- Power on the platform (push power button):
 
   ```bash
   osfv_cli rte --rte_ip <rte_ip_address> pwr on

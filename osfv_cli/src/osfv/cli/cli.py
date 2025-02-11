@@ -4,6 +4,7 @@ import argparse
 import json
 from copy import copy
 from importlib import metadata
+from time import sleep
 
 import osfv.libs.utils as utils
 import pexpect
@@ -275,6 +276,28 @@ def power_off(rte, args):
     rte.power_off(args.time)
 
 
+def power_on_ex(rte, args):
+    power_on(rte, args)
+    for attempt in range(20):
+        if check_pwr_led(rte, args) == "high":
+            print("Power on successful.")
+            return True
+        sleep(0.25)
+    print("Power on failed.")
+    return False
+
+
+def power_off_ex(rte, args):
+    power_off(rte, args)
+    for attempt in range(20):
+        if check_pwr_led(rte, args) == "low":
+            print("Power off successful.")
+            return True
+        sleep(0.25)
+    print("Power off failed.")
+    return False
+
+
 def reset(rte, args):
     print(f"Pressing reset button...")
     rte.reset(args.time)
@@ -303,6 +326,7 @@ def gpio_get(rte, args):
 def check_pwr_led(rte, args):
     state = rte.gpio_get(RTE.GPIO_PWR_LED)
     print(f"Power LED state: {'ON' if state == 'high' else 'OFF'}")
+    return state
 
 
 def gpio_set(rte, args):
@@ -760,8 +784,18 @@ def main():
         default=1,
         help="Power button press time in seconds (default: 1)",
     )
+    power_on_ex_parser = pwr_subparsers.add_parser(
+        "on_ex", help="Short power button press, to power on DUT"
+    )
+    power_on_ex_parser.add_argument(
+        "--time",
+        type=int,
+        default=1,
+        help="Power button press time in seconds (default: 1) AND verify if power LED did light up",
+    )
+
     power_off_parser = pwr_subparsers.add_parser(
-        "off", help="Long power button press, to power off DUT"
+        "off_ex", help="Long power button press, to power off DUT"
     )
     power_off_parser.add_argument(
         "--time",
@@ -769,6 +803,17 @@ def main():
         default=6,
         help="Power button press time in seconds (default: 6)",
     )
+    power_off_ex_parser = pwr_subparsers.add_parser(
+        "off",
+        help="Long power button press, to power off DUT and verify if power LED did turn off",
+    )
+    power_off_ex_parser.add_argument(
+        "--time",
+        type=int,
+        default=6,
+        help="Power button press time in seconds (default: 6)",
+    )
+
     reset_parser = pwr_subparsers.add_parser(
         "reset", help="Reset button press, to reset DUT"
     )
@@ -790,7 +835,7 @@ def main():
         "get", help="Display information on DUT's power state"
     )
     check_pwr_led_parser = pwr_subparsers.add_parser(
-        "check_led", help="Check the state of the DUT power LED"
+        "pwr_led", help="Check the state of the DUT power LED"
     )
 
     # GPIO subcommands
@@ -973,9 +1018,13 @@ def main():
                 power_on(rte, args)
             elif args.pwr_cmd == "off":
                 power_off(rte, args)
+            if args.pwr_cmd == "on_ex":
+                power_on_ex(rte, args)
+            elif args.pwr_cmd == "off_ex":
+                power_off_ex(rte, args)
             elif args.pwr_cmd == "reset":
                 reset(rte, args)
-            elif args.pwr_cmd == "check_led":
+            elif args.pwr_cmd == "pwr_led":
                 check_pwr_led(rte, args)
             elif args.pwr_cmd == "psu":
                 if args.psu_cmd == "on":

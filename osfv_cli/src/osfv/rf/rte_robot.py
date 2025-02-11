@@ -16,6 +16,10 @@ model_dict = {
     "pcengines-apu3": "APU3",
     "pcengines-apu4": "APU4",
     "pcengines-apu6": "APU6",
+    "pcengines-apu2-seabios": "APU2",
+    "pcengines-apu3-seabios": "APU3",
+    "pcengines-apu4-seabios": "APU4",
+    "pcengines-apu6-seabios": "APU6",
     "protectli-v1210": "V1210",
     "protectli-v1410": "V1410",
     "protectli-v1610": "V1610",
@@ -169,3 +173,11 @@ class RobotRTE:
         self.rte.gpio_set(int(gpio_no), state)
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state set to {state}")
+
+    @keyword(types=None)
+    def rte_check_power_led(self):
+        state = self.rte.gpio_get(RTE.GPIO_PWR_LED)
+        robot.api.logger.info(
+            f"Power LED state: {'ON' if state == 'high' else 'OFF'}"
+        )
+        return state

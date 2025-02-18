@@ -207,6 +207,15 @@ just some examples.
   > Replace `<rte_ip_address>` with the actual RTE IP address connected with
   > the DUT.
 
+### list_models command
+
+List supported DUT models, available models/*.yml files are verified for existence
+of all mandatory parameters, as described in next section.
+
+  ```bash
+  osfv_cli list_models
+  ```
+
 ## Adding new platform configs
 
 Platform configs hold information on power management, flash chip parameters,

@@ -8,6 +8,7 @@ from importlib import metadata
 import osfv.libs.utils as utils
 import pexpect
 import requests
+from osfv.libs.models import Models
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
@@ -578,6 +579,11 @@ def update_zabbix_assets(snipeit_api):
             print("Failed to add the host!")
 
 
+def list_models(args):
+    models = Models()
+    models.list_models()
+
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(
@@ -602,6 +608,9 @@ def main():
 
     rte_parser = subparsers.add_parser("rte", help="RTE commands")
     sonoff_parser = subparsers.add_parser("sonoff", help="Sonoff commands")
+    list_models_parser = subparsers.add_parser(
+        "list_models", help="List of supported models"
+    )
 
     # Sonoff subcommands
     sonoff_group = sonoff_parser.add_mutually_exclusive_group(required=True)
@@ -1036,7 +1045,8 @@ def main():
                 f"Since the asset {asset_id} has been checkout automatically by this script, it is automatically checked in as well."
             )
             check_in_asset(snipeit_api, asset_id)
-
+    elif args.command == "list_models":
+        list_models(args)
     else:
         parser.print_help()
 

@@ -6,6 +6,7 @@ import paramiko
 import requests
 import yaml
 from importlib_resources import files
+from osfv.libs.models import Models
 from osfv.libs.rtectrl_api import rtectrl
 from voluptuous import Any, Optional, Required, Schema
 
@@ -35,9 +36,10 @@ class RTE(rtectrl):
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
 
     def __init__(self, rte_ip, dut_model, sonoff):
+        self.models = Models()
         self.rte_ip = rte_ip
         self.dut_model = dut_model
-        self.dut_data = self.load_model_data()
+        self.dut_data = self.models.load_model_data(self.dut_model)[1]
         self.sonoff = sonoff
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
@@ -45,76 +47,6 @@ class RTE(rtectrl):
                     f"Missing value for 'sonoff_ip' or Sonoff not found in SnipeIT"
                 )
             )
-
-    def load_model_data(self):
-        file_path = os.path.join(
-            files("osfv"), "models", f"{self.dut_model}.yml"
-        )
-        # Check if the file exists
-        if not os.path.isfile(file_path):
-            raise UnsupportedDUTModel(
-                f"The {file_path} model is not yet supported"
-            )
-
-        # Load the YAML file
-        with open(file_path, "r") as file:
-            data = yaml.safe_load(file)
-
-        voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any(
-            "rte_1_1", "rte_1_0", "ch341a", "dediprog"
-        )
-        flashing_power_state_validator = Any("G3", "S5")
-
-        schema = Schema(
-            {
-                Required("programmer"): {
-                    Required("name"): programmer_name_validator,
-                },
-                Required("flash_chip"): {
-                    Required("voltage"): voltage_validator,
-                    Optional("model"): str,
-                },
-                Required("pwr_ctrl"): {
-                    Required("sonoff"): bool,
-                    Required("relay"): bool,
-                    Required(
-                        "flashing_power_state"
-                    ): flashing_power_state_validator,
-                },
-                Optional("reset_cmos", default=False): bool,
-                Optional("disable_wp", default=False): bool,
-            }
-        )
-
-        try:
-            schema(data)
-        except Exception as e:
-            exit(f"Model file is invalid: {e}")
-
-        # Check if required fields are present
-        required_fields = [
-            "pwr_ctrl",
-            "pwr_ctrl.sonoff",
-            "pwr_ctrl.relay",
-            "flash_chip",
-            "flash_chip.voltage",
-            "programmer",
-            "programmer.name",
-        ]
-        for field in required_fields:
-            current_field = data
-            keys = field.split(".")
-            for key in keys:
-                if key in current_field:
-                    current_field = current_field[key]
-                else:
-                    exit(
-                        f"Required field '{field}' is missing in model config."
-                    )
-
-        # Return the loaded data
-        return data
 
     def power_on(self, sleep=1):
         """
@@ -461,14 +393,6 @@ class RTE(rtectrl):
         Verify that if DUT is powered by Sonoff, Sonoff IP is not None
         """
         return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
-
-
-class IncompleteModelData(Exception):
-    pass
-
-
-class UnsupportedDUTModel(Exception):
-    pass
 
 
 class SPIWrongVoltage(Exception):

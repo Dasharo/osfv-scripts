@@ -1,6 +1,7 @@
 import osfv.libs.utils as utils
 import robot.api.logger
-from osfv.libs.rte import RTE, UnsupportedDUTModel
+from osfv.libs.models import UnsupportedDUTModel
+from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword

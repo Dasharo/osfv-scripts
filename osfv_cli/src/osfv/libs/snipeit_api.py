@@ -1,4 +1,5 @@
 import os
+import sys
 import secrets
 import string
 
@@ -6,8 +7,23 @@ import requests
 import unidecode
 import yaml
 
-
 class SnipeIT:
+    class DuplicatedIpException(Exception):
+        def __init__(self, counts, field_name, expected_ip):
+            # filling some data and composing an error message
+            self.count = int(counts[field_name])
+            self.field_name = field_name
+            self.expected_ip = expected_ip
+            self.message = "FATAL: You are trying to access an asset with " + self.field_name + \
+                ": " + self.expected_ip + " which is not exclusive. Please check Snipe-IT data."
+            
+            # disabling traceback, this is intentional failure.
+            sys.tracebacklimit = 0
+            super().__init__(self.message)
+    
+        def __str__(self):
+            return self.message
+
     def __init__(self):
         snipeit_cfg = self.load_snipeit_config()
         self.cfg_api_url = snipeit_cfg["url"]
@@ -53,7 +69,7 @@ class SnipeIT:
     def get_all_assets(self):
         page = 1
         all_assets = []
-
+        
         while True:
             response = requests.get(
                 f"{self.cfg_api_url}/hardware",
@@ -76,9 +92,73 @@ class SnipeIT:
 
         return all_assets
 
+    def __retieve_custom_field_value(self, custom_fields, expected_field_name):
+        my_field = next(
+            (
+                field_data["value"]
+                for field_name, field_data in custom_fields.items()
+                if field_name == expected_field_name
+            ),
+            None,
+        )
+        if my_field:
+            return my_field
+        else:
+            return None;
+        
+    def __count_customField(self, custom_fields, counts, \
+                                      field_name, expected_ip):
+        my_field = self.__retieve_custom_field_value(custom_fields, field_name)
+
+        if my_field:
+            if (my_field == expected_ip):
+                counts[field_name] += 1
+                if (counts[field_name] > 1):
+                    raise self.DuplicatedIpException(counts, field_name, expected_ip)
+        return None
+
+    # check by selected IP-fields (continue until second occurence of any)
+    def check_asset_for_ip_exclusivity(self, all_assets, ip=None, rte_ip=None, \
+                                       sonoff_ip=None, pikvm_ip=None):
+        # all IP-containing data fields
+        occurence_counts = {"IP":0, "RTE IP":0, "Sonoff IP":0, "PiKVM IP":0}
+        for asset in all_assets:
+            custom_fields = asset.get("custom_fields", {})
+            if custom_fields:
+                if ip:
+                    self.__count_customField(custom_fields, occurence_counts,
+                                             "IP", ip)
+                if rte_ip:
+                    self.__count_customField(custom_fields, occurence_counts,
+                                             "RTE IP", rte_ip)
+                if sonoff_ip:
+                    self.__count_customField(custom_fields, occurence_counts,
+                                             "Sonoff IP", sonoff_ip)
+                if pikvm_ip:
+                    self.__count_customField(custom_fields, occurence_counts,
+                                             "PiKVM IP", pikvm_ip)
+        return None
+
+    # check by asset ID, on any non-empty IP field
+    def check_asset_for_ip_exclusivity_by_id(self, asset_id):
+        status, asset_data = self.get_asset(asset_id)
+        if not status:
+            return None
+
+        custom_fields = asset_data.get("custom_fields", {})
+        if custom_fields:
+            ip = self.__retieve_custom_field_value(custom_fields, "IP")
+            rte_ip = self.__retieve_custom_field_value(custom_fields, "RTE IP")
+            sonoff_ip = self.__retieve_custom_field_value(custom_fields, "Sonoff IP")
+            pikvm_ip = self.__retieve_custom_field_value( custom_fields, "PiKVM IP")
+
+            self.check_asset_for_ip_exclusivity(self.get_all_assets(), ip, rte_ip, sonoff_ip, pikvm_ip)
+        return None
+                                     
     def get_asset_id_by_rte_ip(self, rte_ip):
         # Retrieve all assets
         all_assets = self.get_all_assets()
+        self.check_asset_for_ip_exclusivity(all_assets, None, rte_ip, None, None)
 
         # Search for asset with matching RTE IP
         for asset in all_assets:
@@ -101,6 +181,7 @@ class SnipeIT:
     def get_asset_id_by_sonoff_ip(self, rte_ip):
         # Retrieve all assets
         all_assets = self.get_all_assets()
+        self.check_asset_for_ip_exclusivity(all_assets, None, None, rte_ip, None)
 
         # Search for asset with matching RTE IP
         for asset in all_assets:
@@ -123,7 +204,8 @@ class SnipeIT:
     def get_sonoff_ip_by_rte_ip(self, rte_ip):
         # Retrieve all assets
         all_assets = self.get_all_assets()
-
+        self.check_asset_for_ip_exclusivity(all_assets, None, rte_ip, None, None)
+                
         # Search for asset with matching RTE IP
         for asset in all_assets:
             custom_fields = asset.get("custom_fields", {})
@@ -144,9 +226,12 @@ class SnipeIT:
         return None
 
     def get_pikvm_ip_by_rte_ip(self, rte_ip):
+        
+        
         # Retrieve all assets
         all_assets = self.get_all_assets()
-
+        self.check_asset_for_ip_exclusivity(all_assets, rte_ip, None, None, None)
+        
         # Search for asset with matching RTE IP
         for asset in all_assets:
             custom_fields = asset.get("custom_fields", {})
@@ -187,6 +272,8 @@ class SnipeIT:
         Raises:
         requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
+        self.check_asset_for_ip_exclusivity_by_id(asset_id)
+        
         status, asset_data = self.get_asset(asset_id)
 
         if not status:

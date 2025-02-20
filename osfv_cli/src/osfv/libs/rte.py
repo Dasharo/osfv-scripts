@@ -358,6 +358,9 @@ class RTE(rtectrl):
 
             # Print the command output in real-time
             while True:
+                # Sleep 100ms to prevent high CPU usage.
+                time.sleep(100 / 1000)
+
                 if channel.exit_status_ready():
                     break
                 if channel.recv_ready():

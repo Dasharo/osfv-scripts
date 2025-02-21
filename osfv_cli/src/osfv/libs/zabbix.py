@@ -24,8 +24,10 @@ class Zabbix:
     def get_headers(self):
         return {"Content-Type": "application/json"}
 
-    # Function to authenticate and retrieve the authentication token
     def authenticate(self):
+        """
+        Function to authenticate and retrieve the authentication token
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "user.login",
@@ -70,16 +72,20 @@ class Zabbix:
     def get_all_hosts(self):
         return self.format_hosts(self.get_all_hosts_json())
 
-    # converts hosts json to dictionary
     def format_hosts(self, hosts):
+        """
+        converts hosts json to dictionary
+        """
         result = {}
         for host in hosts["result"]:
             result[host["host"]] = host["interfaces"][0]["ip"]
 
         return result
 
-    # Function to add a new host with ICMP template
     def add_host(self, host_name, ip_address):
+        """
+        Adds a new host with ICMP template
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",

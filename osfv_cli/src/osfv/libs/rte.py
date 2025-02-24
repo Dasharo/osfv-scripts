@@ -59,6 +59,9 @@ class RTE(rtectrl):
         Args:
             sleep (int, optional): The duration (in seconds) to keep the
             power pin in the "low" state. Default is 1 second.
+
+        Returns:
+            None
         """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
@@ -71,6 +74,9 @@ class RTE(rtectrl):
         Args:
             sleep (int, optional): The duration (in seconds) to keep the power
             pin in the "low" state. Default is 6 seconds.
+
+        Returns:
+            None
         """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
         time.sleep(sleep)
@@ -83,6 +89,9 @@ class RTE(rtectrl):
         Args:
             sleep (int, optional): The duration (in seconds) to keep the reset
             pin in the "low" state. Default is 1 second.
+
+        Returns:
+            None
         """
         self.gpio_set(self.GPIO_RESET, "low", sleep)
         time.sleep(sleep)
@@ -110,8 +119,10 @@ class RTE(rtectrl):
 
         Args:
             relay_state (str): Desired state of the relay, either "on"
-                               (sets GPIO pin to "high") or "off"
-                               (sets GPIO pin to "low").
+            (sets GPIO pin to "high") or "off" (sets GPIO pin to "low").
+
+        Returns:
+            None
         """
         gpio_state = None
         if relay_state == self.PSU_STATE_ON:
@@ -122,8 +133,14 @@ class RTE(rtectrl):
 
     def reset_cmos(self):
         """
-        Resets the CMOS by setting the GPIO CMOS pin to "low" for 10 seconds,
-         then returning it to a "high-z" state.
+        Resets the CMOS by setting the GPIO CMOS pin to "low" for
+        10 seconds, then returning it to a "high-z" state.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         self.gpio_set(self.GPIO_CMOS, "low")
         time.sleep(10)
@@ -159,6 +176,12 @@ class RTE(rtectrl):
     def spi_disable(self):
         """
         Disable the SPI interface by setting the GPIO pins to a "high-z" state.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
@@ -230,8 +253,14 @@ class RTE(rtectrl):
 
     def discharge_psu(self):
         """
-        Push power button 5 times in the loop to make sure the charge
-        from PSU is dissipated.
+        Push power button 5 times in the loop to make sure
+        the charge from PSU is dissipated.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         for _ in range(5):
             self.power_off(3)
@@ -240,8 +269,14 @@ class RTE(rtectrl):
         """
         Move the DUT into specific power state required for external flashing
         operation. Defined in the model config file.
-        """
 
+        Args:
+            programmer (str): The programmer type, used to determine if SPI lines need to be enabled.
+            power_state (str): The desired power state for flashing, either "S5" (Soft off) or "G3" (Mechanical off.
+
+        Returns:
+            None.
+        """
         # Always start from the same state (PSU active)
         self.psu_on()
         time.sleep(5)
@@ -273,6 +308,12 @@ class RTE(rtectrl):
     def pwr_ctrl_after_flash(self, programmer):
         """
         Additional power actions to take after flashing.
+
+        Args:
+            programmer (str): The programmer type, used to determine if SPI lines need to be enabled.
+
+        Returns:
+            None.
         """
         if programmer == "rte_1_1":
             self.spi_disable()
@@ -280,8 +321,15 @@ class RTE(rtectrl):
 
     def flash_cmd(self, args, read_file=None, write_file=None):
         """
-        Send the firmware file to RTE and execute flashrom command over SSH to
-        flash the DUT.
+        Send the firmware file to RTE and execute flashrom command over SSH to flash the DUT.
+
+        Args:
+            args (str): Arguments to be passed to the flashrom command.
+            read_file (str, optional): Path to save the read firmware file after flashing. Defaults to None.
+            write_file (str, optional): Path to the firmware file to be written to the DUT. Defaults to None.
+
+        Returns:
+            None.
         """
         try:
             self.pwr_ctrl_before_flash(
@@ -371,7 +419,14 @@ class RTE(rtectrl):
 
     def flash_create_args(self, extra_args=""):
         """
-        Create flashrom arguments based on the DUT model config.
+        Creates flashrom arguments based on the DUT model configuration, including any extra arguments provided.
+        It explicitly sets the flash chip model if defined in the configuration and appends any additional arguments.
+
+        Args:
+            extra_args (str, optional): Additional arguments to be added to the flashrom command. Defaults to an empty string.
+
+        Returns:
+            str: The generated flashrom arguments as a string.
         """
         args = ""
 
@@ -388,27 +443,52 @@ class RTE(rtectrl):
     def flash_probe(self):
         """
         Execute flashrom with no commands to simply probe the flash chip.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         args = self.flash_create_args()
         return self.flash_cmd(args)
 
     def flash_read(self, read_file):
         """
-        Execute flashrom with read command to read the firmware from the DUT.
+        Executes the flashrom command to read the firmware from the DUT.
+
+        Args:
+            read_file (str): The file path where the firmware should be saved.
+
+        Returns:
+            int: The return code from the flashrom command execution.
         """
         args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
         return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
         """
-        Execute flashrom with erase command to erase the flash chip.
+        Executes the flashrom command to erase the flash chip on the DUT.
+
+        Args:
+            None.
+
+        Returns:
+            int: The return code from the flashrom command execution.
         """
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
     def flash_write(self, write_file, bios=False):
         """
-        Execute flashrom with write command to write firmware to the DUT.
+        Executes the flashrom command to write firmware to the DUT.
+
+        Args:
+            write_file (str): The path to the firmware file to write.
+            bios (bool, optional): If True, writes the BIOS image using the specific option. Defaults to False.
+
+        Returns:
+            The return code from the flashrom command execution.
         """
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
@@ -428,7 +508,13 @@ class RTE(rtectrl):
 
     def sonoff_sanity_check(self):
         """
-        Verify that if DUT is powered by Sonoff, Sonoff IP is not None.
+        Verifies that if the DUT is powered by Sonoff, the Sonoff IP is not None.
+
+        Args:
+            None.
+
+        Returns:
+            bool: True if the Sonoff is not used or the Sonoff IP is available; False otherwise.
         """
         return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
 

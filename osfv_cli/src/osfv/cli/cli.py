@@ -74,15 +74,13 @@ def check_in_asset(snipeit_api, asset_id):
         return False
 
 
-# List used assets
 def list_used_assets(snipeit_api, args):
     """
     Retrieves and displays all used assets.
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
-            - json (bool): If True, outputs the list in JSON format.
+        args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None
@@ -130,9 +128,8 @@ def list_my_assets(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following
-              attributes:
-            - json: A boolean indicating to output the list as json.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
     Returns:
         Boolean: False if no assets were assigned to the user, True otherwise
     """
@@ -157,9 +154,9 @@ def check_in_my(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following
-              attributes:
-            - yes: A boolean indicating to skip the confirmation prompt.
+        args (object): Arguments that may contain additional parameters
+        (not used in this function).
+
     Returns:
         None
     """
@@ -192,14 +189,14 @@ def check_in_my(snipeit_api, args):
     else:
         print(f"{len(my_assets)} assets checked in successfully.")
 
+
 def list_unused_assets(snipeit_api, args):
     """
     Retrieves all assets.
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
-            - json: A boolean indicating to output the list as json.
+        args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None
@@ -226,8 +223,7 @@ def list_all_assets(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
-            - json: A boolean indicating to output the list as json.
+        args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None
@@ -251,8 +247,7 @@ def list_for_zabbix(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
-            - json: A boolean indicating to output the list as json.
+        args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None
@@ -268,8 +263,16 @@ def list_for_zabbix(snipeit_api, args):
 
 def print_asset_details(asset):
     """
-    Print asset details including custom fields.
+    Prints details of a given asset, including its basic information, assigned user (if any),
+    and custom fields.
+
+    Args:
+        asset (dict): Dictionary containing asset details.
+
+    Returns:
+        None
     """
+
     print(
         f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]},'
         f'Name: {asset["name"]}, Serial: {asset["serial"]}'
@@ -290,6 +293,9 @@ def print_asset_details(asset):
 def get_zabbix_compatible_assets_from_asset(asset):
     """
     Extracts an asset to zabbix assets.
+
+    Args:
+        asset (dict): Dictionary containing asset details.
 
     Returns:
         The dictionary with asset tags as keys and asset data as value.
@@ -312,6 +318,9 @@ def print_asset_details_for_zabbix(asset):
     """
     Print asset details formatted as an input for Zabbix import script.
 
+    Args:
+        asset (dict): Dictionary containing asset details.
+
     Returns:
         None.
     """
@@ -323,6 +332,10 @@ def print_asset_details_for_zabbix(asset):
 def relay_toggle(rte, args):
     """
     Toggle the state of a relay controlled by the rte object.
+
+    Args:
+        rte: An object responsible for controlling the relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None.
@@ -340,6 +353,13 @@ def relay_toggle(rte, args):
 def relay_set(rte, args):
     """
     Sets the relay state based on the provided args.state value.
+
+    Args:
+        rte: An object responsible for controlling the relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
     """
     rte.relay_set(args.state)
     state = rte.relay_get()
@@ -347,11 +367,31 @@ def relay_set(rte, args):
 
 
 def relay_get(rte, args):
+    """
+    Get the state of the relay and print it.
+
+    Args:
+        rte (object): The object representing the relay control interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     state = rte.relay_get()
     print(f"Relay state: {state}")
 
 
 def power_on(rte, args):
+    """
+    Power on the DUT if the power supply is enabled.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     state = rte.psu_get()
     if state != rte.PSU_STATE_ON:
         print(f"Power supply state: {state} !")
@@ -364,6 +404,16 @@ def power_on(rte, args):
 
 
 def power_off(rte, args):
+    """
+    Power off the DUT.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Powering off...")
     rte.power_off(args.time)
 
@@ -391,26 +441,76 @@ def power_off_ex(rte, args):
 
 
 def reset(rte, args):
+    """
+    Reset the DUT by pressing the reset button.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Pressing reset button...")
     rte.reset(args.time)
 
 
 def psu_on(rte, args):
+    """
+    Enable the power supply to the DUT.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Enabling power supply...")
     rte.psu_on()
 
 
 def psu_off(rte, args):
+    """
+    Disable the power supply to the DUT.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Disabling power supply...")
     rte.psu_off()
 
 
 def psu_get(rte, args):
+    """
+    Retrieve and print the current power supply state.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     state = rte.psu_get()
     print(f"Power supply state: {state}")
 
 
 def gpio_get(rte, args):
+    """
+    Retrieve and print the state of a specified GPIO pin.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state: {state}")
 
@@ -422,24 +522,64 @@ def check_pwr_led(rte, args):
 
 
 def gpio_set(rte, args):
+    """
+    Set the state of a specified GPIO pin and print the new state.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     rte.gpio_set(args.gpio_no, args.state)
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state set to {state}")
 
 
 def gpio_list(rte, args):
+    """
+    Retrieve and print the list of available GPIO pins.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     response = json.dumps(rte.gpio_list(), indent=4)
     print(f"GPIO list")
     print(response)
 
 
 def rte_status(rte, args):
+    """
+    Set the state of a GPIO pin and print its new state.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     rte.gpio_set(args.gpio_no, args.state)
     state = rte.gpio_get(args.gpio_no)
     print(f"GPIO {args.gpio_no} state set to {state}")
 
 
 def open_dut_serial(rte, args):
+    """
+    Open a Telnet session to interact with the DUT serial interface.
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     host = args.rte_ip
     port = 13541
 
@@ -453,21 +593,61 @@ def open_dut_serial(rte, args):
 
 
 def spi_on(rte, args):
+    """
+    Enable SPI on the Device Under Test (DUT).
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Enabling SPI...")
     rte.spi_enable()
 
 
 def spi_off(rte, args):
+    """
+    Disable SPI on the Device Under Test (DUT).
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Disabling SPI...")
     rte.spi_disable()
 
 
 def flash_probe(rte, args):
+    """
+    Probe the flash memory on the Device Under Test (DUT).
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Probing flash...")
     rte.flash_probe()
 
 
 def flash_read(rte, args):
+    """
+    Read the flash content from the Device Under Test (DUT).
+
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None
+    """
     print(f"Reading from flash...")
     rte.flash_read(args.rom)
     print(f"Read flash content saved to {args.rom}")
@@ -476,6 +656,13 @@ def flash_read(rte, args):
 def flash_write(rte, args):
     """
     Write a specified ROM file to the flash memory using the rte object.
+
+    Args:
+        rte: An object responsible for handling the flash memory operations.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
     """
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
@@ -486,6 +673,16 @@ def flash_write(rte, args):
 
 
 def flash_erase(rte, args):
+    """
+    Erases the flash memory of the device under test (DUT) using the rte object.
+
+    Args:
+        rte: The object used to interact with the device, which includes methods for flash operations.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
+    """
     print(f"Erasing DUT flash...")
     rte.flash_erase()
     print(f"Flash erased")
@@ -494,6 +691,13 @@ def flash_erase(rte, args):
 def sonoff_on(sonoff, args):
     """
     Attempts to turn on the Sonoff relay and prints the response.
+
+    Args:
+        sonoff: An object responsible for controlling the Sonoff relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
     """
     print("Turning on Sonoff relay...")
     try:
@@ -504,6 +708,16 @@ def sonoff_on(sonoff, args):
 
 
 def sonoff_off(sonoff, args):
+    """
+    Attempts to turn off the Sonoff relay and prints the response.
+
+    Args:
+        sonoff: An object responsible for controlling the Sonoff relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
+    """
     print("Turning off Sonoff relay...")
     try:
         response = sonoff.turn_off()
@@ -513,6 +727,16 @@ def sonoff_off(sonoff, args):
 
 
 def sonoff_get(sonoff, args):
+    """
+    Retrieves the current state of the Sonoff relay and prints it.
+
+    Args:
+        sonoff: An object responsible for controlling the Sonoff relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
+    """
     print("Getting Sonoff relay state...")
     try:
         state = sonoff.get_state()
@@ -522,6 +746,16 @@ def sonoff_get(sonoff, args):
 
 
 def sonoff_tgl(sonoff, args):
+    """
+    Toggles the current state of the Sonoff relay.
+
+    Args:
+        sonoff: An object responsible for controlling the Sonoff relay.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+
+    Returns:
+        None.
+    """
     print("Toggling Sonoff relay state...")
     try:
         current_state = sonoff.get_state()
@@ -539,6 +773,15 @@ def sonoff_tgl(sonoff, args):
 
 
 def ask_to_proceed(message="Do you want to proceed (y/n): "):
+    """
+    Prompts the user with a yes/no question and returns the user's choice.
+
+    Args:
+        message (str, optional): The prompt message to display. Defaults to "Do you want to proceed (y/n): ".
+
+    Returns:
+        bool: True if the user enters 'y', False if the user enters 'n'.
+    """
     print("")
     while True:
         choice = input(message).lower()
@@ -550,10 +793,14 @@ def ask_to_proceed(message="Do you want to proceed (y/n): "):
 
 def update_zabbix_assets(snipeit_api):
     """
-    Update all zabbix assets.
+    Updates Zabbix with the latest asset data from Snipe-IT, ensuring the IP addresses
+    are synchronized between Snipe-IT and Zabbix.
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
+
+    Returns:
+        None.
     """
     zabbix = Zabbix()
     all_assets = snipeit_api.get_all_assets()

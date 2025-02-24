@@ -34,7 +34,7 @@ class rtectrl:
         Retrieves a list of all GPIO configurations from the RTE device.
 
         Returns:
-            list: A JSON response containing details of all GPIO configurations.
+            A JSON response containing details of all GPIO configurations.
         """
         response = self._get_request(f"/gpio").json()
         return response

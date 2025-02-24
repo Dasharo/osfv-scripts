@@ -12,7 +12,14 @@ class Sonoff:
     def sonoff_on(self):
         """
         Attempt to turn on the Sonoff relay and log the response.
-        If an error occurs, it logs the failure and the error message.
+
+        Logs the success or failure of the operation. If an error occurs, the failure and error message are logged.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
         robot.api.logger.info("Turning on Sonoff relay...")
         try:
@@ -27,7 +34,14 @@ class Sonoff:
     def sonoff_off(self):
         """
         Attempt to turn off the Sonoff relay and log the response.
-        If an error occurs, it logs the failure and the error message.
+
+        Logs the success or failure of the operation. If an error occurs, the failure and error message are logged.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
         robot.api.logger.info("Turning off Sonoff relay...")
         try:
@@ -42,7 +56,13 @@ class Sonoff:
     def sonoff_get(self):
         """
         Retrieve and logs the current state of the Sonoff relay.
-        If an error occurs, it log the failure and the error message.
+        If an error occurs, it logs the failure and the error message.
+
+        Args:
+            None
+
+        Returns:
+            str: The current state of the Sonoff relay (e.g., "low", "high").
         """
         state = None
         robot.api.logger.info("Getting Sonoff relay state...")
@@ -59,7 +79,13 @@ class Sonoff:
     def sonoff_tgl(self):
         """
         Toggle the state of the Sonoff relay based on its current state, either turning it on or off,
-        and log the action. If an error occurs, it log the failure and error message.
+        and log the action. If an error occurs, it logs the failure and error message.
+
+        Args:
+            None
+
+        Returns:
+            None
         """
         robot.api.logger.info("Toggling Sonoff relay state...")
         try:

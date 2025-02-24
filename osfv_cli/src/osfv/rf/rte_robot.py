@@ -75,7 +75,17 @@ class RobotRTE:
 
     def cli_model_from_osfv(self, osfv_model):
         """
-        Get osfv_cli model name from OSFV repo config name
+        Get osfv_cli model name from OSFV repo config name.
+
+        Args:
+            osfv_model (str): The model name from the OSFV repo config.
+
+        Returns:
+            str: The corresponding osfv_cli model name.
+
+        Raises:
+            TypeError: If the osfv_model argument is None.
+            UnsupportedDUTModel: If the provided osfv_model has no counterpart in osfv_cli.
         """
         if not osfv_model:
             raise TypeError(f"Expected a value for 'config', but got None")
@@ -89,8 +99,13 @@ class RobotRTE:
     @keyword(types=None)
     def rte_flash_read(self, fw_file):
         """
-        Reads DUT flash chip content into ``fw_file``  path.
-        Returns the result code from the flash_probe method of the rte object.
+        Reads DUT flash chip content into the specified ``fw_file`` path.
+
+        Args:
+            fw_file (str): The file path where the flash content will be saved.
+
+        Returns:
+            int: The result code from the flash_probe method of the rte object.
         """
         robot.api.logger.info(f"Reading from flash...")
         rc = self.rte.flash_read(fw_file)
@@ -101,7 +116,13 @@ class RobotRTE:
     def rte_flash_write(self, fw_file, bios=False):
         """
         Writes file from ``fw_file`` path into DUT flash chip.
-        Returns the result code from the flash_erase method of the rte object.
+
+        Args:
+            fw_file (str): The file path containing the firmware to be written to the flash chip.
+            bios (bool, optional): Whether to write the BIOS (default is False).
+
+        Returns:
+            int: The result code from the flash_erase method of the rte object.
         """
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         rc = self.rte.flash_write(fw_file, bios)
@@ -113,12 +134,30 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_flash_probe(self):
+        """
+        Probes the flash chip of the DUT.
+
+        Args:
+            None.
+
+        Returns:
+            int: The result code from the flash_probe method of the rte object.
+        """
         robot.api.logger.info(f"Probing flash...")
         rc = self.rte.flash_probe()
         return rc
 
     @keyword(types=None)
     def rte_flash_erase(self):
+        """
+        Erases the flash chip of the DUT.
+
+        Args:
+            None.
+
+        Returns:
+            int: The result code from the flash_erase method of the rte object.
+        """
         robot.api.logger.info(f"Erasing DUT flash...")
         rc = self.rte.flash_erase()
         robot.api.logger.info(f"Flash erased")
@@ -127,8 +166,13 @@ class RobotRTE:
     @keyword(types=None)
     def rte_relay_toggle(self):
         """
-        Toggle the relay state between "low" and "high" on the DUT.
-        Log the new state after toggling.
+        Toggle the relay state between "low" and "high" on the DUT and log the new state.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         state_str = self.rte.relay_get()
         if state_str == "low":
@@ -142,8 +186,13 @@ class RobotRTE:
     @keyword(types=None)
     def rte_relay_set(self, state):
         """
-        Set the relay to the specified state.
-        Log the new state after the operation.
+        Set the relay to the specified state and log the new state.
+
+        Args:
+            state (str): The desired relay state ("low" or "high").
+
+        Returns:
+            str: The current state of the relay after the operation.
         """
         self.rte.relay_set(state)
         state = self.rte.relay_get()
@@ -152,37 +201,97 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_relay_get(self):
+        """
+        Get the current state of the relay and log it.
+
+        Returns:
+            str: The current state of the relay ("low" or "high").
+        """
         state = self.rte.relay_get()
         robot.api.logger.info(f"Relay state: {state}")
         return state
 
     @keyword(types=None)
     def rte_power_on(self, time=1):
+        """
+        Power on the DUT for a specified amount of time and log the action.
+
+        Args:
+            time (int, optional): The duration in seconds to power on the DUT. Default is 1 second.
+
+        Returns:
+            None
+        """
         robot.api.logger.info(f"Powering on...")
         self.rte.power_on(time)
 
     @keyword(types=None)
     def rte_power_off(self, time=6):
+        """
+        Power off the DUT for a specified amount of time and log the action.
+
+        Args:
+            time: The duration in seconds to power off the DUT. Default is 6 seconds.
+
+        Returns:
+            None
+        """
         robot.api.logger.info(f"Powering off...")
         self.rte.power_off(time)
 
     @keyword(types=None)
     def rte_reset(self, time=1):
+        """
+        Press the reset button on the DUT for a specified amount of time and log the action.
+
+        Args:
+            time: The duration in seconds to press the reset button. Default is 1 second.
+
+        Returns:
+            None
+        """
         robot.api.logger.info(f"Pressing reset button...")
         self.rte.reset(time)
 
     @keyword(types=None)
     def rte_psu_on(self):
+        """
+        Enable the power supply for the DUT and log the action.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         robot.api.logger.info(f"Enabling power supply...")
         self.rte.psu_on()
 
     @keyword(types=None)
     def rte_psu_off(self):
+        """
+        Disable the power supply for the DUT and log the action.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
         robot.api.logger.info(f"Disabling power supply...")
         self.rte.psu_off()
 
     @keyword(types=None)
     def rte_psu_get(self):
+        """
+        Get the current state of the power supply for the DUT.
+
+        Args:
+            None
+
+        Returns:
+            The state of the power supply (e.g., True or False).
+        """
         return self.rte.psu_get()
 
     @keyword(types=None)
@@ -192,12 +301,31 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_gpio_get(self, gpio_no):
+        """
+        Get the state of a specified GPIO pin.
+
+        Args:
+            gpio_no (int): The GPIO pin number to check.
+
+        Returns:
+            str: The state of the GPIO pin.
+        """
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state: {state}")
         return state
 
     @keyword(types=None)
     def rte_gpio_set(self, gpio_no, state):
+        """
+        Set the state of a specified GPIO pin.
+
+        Args:
+            gpio_no (int): The GPIO pin number to set.
+            state (str): The state to set the GPIO pin to (e.g., "high" or "low").
+
+        Returns:
+            None
+        """
         self.rte.gpio_set(int(gpio_no), state)
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state set to {state}")

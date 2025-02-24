@@ -8,6 +8,12 @@ class SonoffDevice:
     def _get_request(self, endpoint):
         """
         Send a GET request to a specified endpoint on a Sonoff device using its IP address.
+
+        Args:
+            endpoint (str): The endpoint to which the GET request should be sent.
+
+        Returns:
+            dict: The parsed JSON response from the Sonoff device.
         """
         url = f"http://{self.sonoff_ip}{endpoint}"
         response = requests.request("GET", url)
@@ -18,6 +24,12 @@ class SonoffDevice:
     def _post_request(self, endpoint):
         """
         Send a POST request to a specified endpoint on a Sonoff device using its IP address.
+
+        Args:
+            endpoint (str): The endpoint to which the POST request should be sent.
+
+        Returns:
+            int: The HTTP status code of the response.
         """
         url = f"http://{self.sonoff_ip}{endpoint}"
         response = requests.request("POST", url)
@@ -29,6 +41,12 @@ class SonoffDevice:
     def turn_on(self):
         """
         Send a POST request to a Sonoff device to turn it on.
+
+        Args:
+            None.
+
+        Returns:
+            int: HTTP status code of the response.
         """
         endpoint = "/cm?cmnd=Power%20On"
         return self._post_request(endpoint)
@@ -36,6 +54,12 @@ class SonoffDevice:
     def turn_off(self):
         """
         Send a POST request to a Sonoff device to turn it off.
+
+        Args:
+            None.
+
+        Returns:
+            int: HTTP status code of the response.
         """
         endpoint = "/cm?cmnd=Power%20off"
         return self._post_request(endpoint)
@@ -43,6 +67,12 @@ class SonoffDevice:
     def get_state(self):
         """
         Send a GET request to a Sonoff device to retrieve its power state.
+
+        Args:
+            None.
+
+        Returns:
+            str: The current power state of the Sonoff device, typically "ON" or "OFF".
         """
         endpoint = "/cm?cmnd=Power"
         response = self._get_request(endpoint)

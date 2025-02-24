@@ -200,6 +200,8 @@ class SnipeIT:
                     None,
                 )
                 if rte_ip_field == rte_ip:
+                    # re-run exclusivty check by asset ID
+                    self.check_asset_for_ip_exclusivity_by_id(asset["id"])
                     return asset["id"]
 
         # No asset found with matching RTE IP
@@ -225,6 +227,8 @@ class SnipeIT:
                     None,
                 )
                 if rte_ip_field == rte_ip:
+                    # re-run exclusivty check by asset ID
+                    self.check_asset_for_ip_exclusivity_by_id(asset["id"])
                     return asset["id"]
 
         # No asset found with matching RTE IP

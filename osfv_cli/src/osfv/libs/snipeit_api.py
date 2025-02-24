@@ -199,7 +199,7 @@ class SnipeIT:
         Retrieve all assets with matching rte_ip.
 
         Parameters:
-            rte_ip (str): The IP adress of the rte device.
+            rte_ip (str): The IP address of the rte device.
 
         Returns:
             an asset with matching asset id.
@@ -622,7 +622,7 @@ class SnipeIT:
             last_name (str): The last name of the deleted user.
 
         Returns:
-            None.
+
         """
         email = (
             f"{unidecode.unidecode(first_name.lower())}."

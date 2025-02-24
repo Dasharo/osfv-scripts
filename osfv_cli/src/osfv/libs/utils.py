@@ -7,7 +7,7 @@ def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
     directly or fetches the Sonoff device IP based on the rte_ip from the snipeit_api.
 
     Returns:
-        a touple with sonoff and sonoff_ip strings.
+        a tuple with sonoff and sonoff_ip strings.
     """
     sonoff_ip = ""
     sonoff = None

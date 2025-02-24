@@ -2,6 +2,13 @@ from osfv.libs.sonoff_api import SonoffDevice
 
 
 def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
+    """
+    Initialize a Sonoff device instance. It either uses the build in init_sonoff_ip
+    directly or fetches the Sonoff device IP based on the rte_ip from the snipeit_api.
+
+    Returns:
+        a touple with sonoff and sonoff_ip strings.
+    """
     sonoff_ip = ""
     sonoff = None
     if not snipeit_api:

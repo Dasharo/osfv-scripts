@@ -17,6 +17,17 @@ from osfv.libs.zabbix import Zabbix
 
 
 def check_out_asset(snipeit_api, asset_id):
+    """
+    Attempts to check out an asset..
+    It checks if the asset is already checked out by the user.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        asset_id (str): The unique identifier of the asset to be checked out.
+
+    Returns:
+        None
+    """
     success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
 
     if already_checked_out:
@@ -37,7 +48,16 @@ def check_out_asset(snipeit_api, asset_id):
 
 
 def check_in_asset(snipeit_api, asset_id):
-    # Check in an asset
+    """
+    Check in an asset.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        asset_id (str): The unique identifier of the asset to be checked out.
+
+    Returns:
+        The check in success status.
+    """
     success, data = snipeit_api.check_in_asset(asset_id)
 
     if success:
@@ -51,6 +71,14 @@ def check_in_asset(snipeit_api, asset_id):
 
 # List used assets
 def list_used_assets(snipeit_api, args):
+    """
+    Retrieves all used assets.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - json: A boolean indicating to output the list as json.
+    """
     all_assets = snipeit_api.get_all_assets()
     used_assets = [
         asset for asset in all_assets if asset["assigned_to"] is not None
@@ -156,9 +184,18 @@ def check_in_my(snipeit_api, args):
     else:
         print(f"{len(my_assets)} assets checked in successfully.")
 
-
-# List unused assets
 def list_unused_assets(snipeit_api, args):
+    """
+    Retrieves all assets.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - json: A boolean indicating to output the list as json.
+
+    Returns:
+        None
+    """
     all_assets = snipeit_api.get_all_assets()
     unused_assets = [
         asset for asset in all_assets if asset["assigned_to"] is None
@@ -176,6 +213,17 @@ def list_unused_assets(snipeit_api, args):
 
 
 def list_all_assets(snipeit_api, args):
+    """
+    Retrieves all assets using.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - json: A boolean indicating to output the list as json.
+
+    Returns:
+        None
+    """
     all_assets = snipeit_api.get_all_assets()
 
     if not all_assets:
@@ -189,8 +237,15 @@ def list_all_assets(snipeit_api, args):
             print_asset_details(asset)
 
 
-# Print asset details as JSON with specific custom fields
 def list_for_zabbix(snipeit_api, args):
+    """
+    Print asset details as JSON with specific custom fields.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+        args: Command-line arguments object which contains the following attributes:
+            - json: A boolean indicating to output the list as json.
+    """
     all_assets = snipeit_api.get_all_assets()
 
     if all_assets:
@@ -200,8 +255,10 @@ def list_for_zabbix(snipeit_api, args):
         print("No assets found.")
 
 
-# Print asset details including custom fields
 def print_asset_details(asset):
+    """
+    Print asset details including custom fields.
+    """
     print(
         f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]},'
         f'Name: {asset["name"]}, Serial: {asset["serial"]}'
@@ -219,8 +276,13 @@ def print_asset_details(asset):
     print()
 
 
-# extracts an asset to zabbix assets
 def get_zabbix_compatible_assets_from_asset(asset):
+    """
+    Extracts an asset to zabbix assets.
+
+    Returns:
+        The dictionary with asset tags as keys and asset data as value.
+    """
     result = {}
     custom_fields = asset.get("custom_fields", {})
     if custom_fields:
@@ -235,14 +297,25 @@ def get_zabbix_compatible_assets_from_asset(asset):
     return result
 
 
-# Print asset details formatted as an input for Zabbix import script
 def print_asset_details_for_zabbix(asset):
+    """
+    Print asset details formatted as an input for Zabbix import script.
+
+    Returns:
+        None.
+    """
     assets = get_zabbix_compatible_assets_from_asset(asset)
     for key in assets.keys():
         print(f"{key}: {assets[key]}")
 
 
 def relay_toggle(rte, args):
+    """
+    Toggle the state of a relay controlled by the rte object.
+
+    Returns:
+        None.
+    """
     state_str = rte.relay_get()
     if state_str == RTE.PSU_STATE_OFF:
         new_state_str = RTE.PSU_STATE_ON
@@ -254,6 +327,9 @@ def relay_toggle(rte, args):
 
 
 def relay_set(rte, args):
+    """
+    Sets the relay state based on the provided args.state value.
+    """
     rte.relay_set(args.state)
     state = rte.relay_get()
     print(f"Relay state set to {state}")
@@ -387,6 +463,9 @@ def flash_read(rte, args):
 
 
 def flash_write(rte, args):
+    """
+    Write a specified ROM file to the flash memory using the rte object.
+    """
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
     if rc == 0:
@@ -402,6 +481,9 @@ def flash_erase(rte, args):
 
 
 def sonoff_on(sonoff, args):
+    """
+    Attempts to turn on the Sonoff relay and prints the response.
+    """
     print("Turning on Sonoff relay...")
     try:
         response = sonoff.turn_on()
@@ -456,6 +538,12 @@ def ask_to_proceed(message="Do you want to proceed (y/n): "):
 
 
 def update_zabbix_assets(snipeit_api):
+    """
+    Update all zabbix assets.
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+    """
     zabbix = Zabbix()
     all_assets = snipeit_api.get_all_assets()
 

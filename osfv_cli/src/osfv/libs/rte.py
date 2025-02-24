@@ -47,6 +47,9 @@ class RTE(rtectrl):
             )
 
     def load_model_data(self):
+        """
+        Load and validate a YAML configuration file based on the device under test (DUT) model.
+        """
         file_path = os.path.join(
             files("osfv"), "models", f"{self.dut_model}.yml"
         )
@@ -193,7 +196,7 @@ class RTE(rtectrl):
 
     def spi_enable(self):
         """
-        Enables the SPI interface by configuring GPIO pins based on the voltage level required by the flash chip.
+        Enable the SPI interface by configuring GPIO pins based on the voltage level required by the flash chip.
         """
         voltage = self.dut_data["flash_chip"]["voltage"]
 
@@ -213,7 +216,7 @@ class RTE(rtectrl):
 
     def spi_disable(self):
         """
-        Disables the SPI interface by setting the GPIO pins to a "high-z" state.
+        Disable the SPI interface by setting the GPIO pins to a "high-z" state.
         """
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
@@ -253,7 +256,7 @@ class RTE(rtectrl):
 
     def psu_get(self):
         """
-        Get PSU state
+        Get PSU state.
         """
         state = None
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
@@ -264,7 +267,7 @@ class RTE(rtectrl):
 
     def discharge_psu(self):
         """
-        Push power button 5 times in the loop to make sure the charge from PSU is dissipated
+        Push power button 5 times in the loop to make sure the charge from PSU is dissipated.
         """
         for _ in range(5):
             self.power_off(3)
@@ -417,28 +420,28 @@ class RTE(rtectrl):
 
     def flash_probe(self):
         """
-        Execute flashrom with no commands to simply probe the flash chip
+        Execute flashrom with no commands to simply probe the flash chip.
         """
         args = self.flash_create_args()
         return self.flash_cmd(args)
 
     def flash_read(self, read_file):
         """
-        Execute flashrom with read command to read the firmware from the DUT
+        Execute flashrom with read command to read the firmware from the DUT.
         """
         args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
         return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
         """
-        Execute flashrom with erase command to erase the flash chip
+        Execute flashrom with erase command to erase the flash chip.
         """
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
     def flash_write(self, write_file, bios=False):
         """
-        Execute flashrom with write command to write firmware to the DUT
+        Execute flashrom with write command to write firmware to the DUT.
         """
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
@@ -458,7 +461,7 @@ class RTE(rtectrl):
 
     def sonoff_sanity_check(self):
         """
-        Verify that if DUT is powered by Sonoff, Sonoff IP is not None
+        Verify that if DUT is powered by Sonoff, Sonoff IP is not None.
         """
         return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
 

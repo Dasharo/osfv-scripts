@@ -44,8 +44,14 @@ class SnipeIT:
         "SNIPEIT_CONFIG_FILE_PATH", os.path.expanduser("~/.osfv/snipeit.yml")
     )
 
-    # Retrieve API configuration from YAML file
+
     def load_snipeit_config(self):
+        """
+        Retrieves API configuration from YAML file.
+
+        Returns:
+            a configuration object extracted form YAML file.
+        """
         try:
             with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
                 config = yaml.safe_load(file)
@@ -72,8 +78,14 @@ class SnipeIT:
 
         return cfg
 
-    # Retrieve all assets
+
     def get_all_assets(self):
+        """
+        Retrieve all assets.
+
+        Returns:
+            a list with all the assets.
+        """
         page = 1
         all_assets = []
 
@@ -183,7 +195,16 @@ class SnipeIT:
         return None
 
     def get_asset_id_by_rte_ip(self, rte_ip):
-        # Retrieve all assets
+        """
+        Retrieve all assets with matching rte_ip.
+
+        Parameters:
+            rte_ip (str): The IP adress of the rte device.
+
+        Returns:
+            an asset with matching asset id.
+            None if there is no match.
+        """
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(
             all_assets, None, rte_ip, None, None
@@ -210,7 +231,7 @@ class SnipeIT:
         return None
 
     def get_asset_id_by_sonoff_ip(self, rte_ip):
-        # Retrieve all assets
+        # Retrieve all assets with matching rte_ip.
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(
             all_assets, None, None, rte_ip, None
@@ -233,11 +254,11 @@ class SnipeIT:
                     self.check_asset_for_ip_exclusivity_by_id(asset["id"])
                     return asset["id"]
 
-        # No asset found with matching RTE IP
+        # No asset found with a specified RTE IP
         return None
 
     def get_sonoff_ip_by_rte_ip(self, rte_ip):
-        # Retrieve all assets
+        # Retrieve all assets with matching rte_ip.
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(
             all_assets, None, rte_ip, None, None
@@ -263,7 +284,7 @@ class SnipeIT:
         return None
 
     def get_pikvm_ip_by_rte_ip(self, rte_ip):
-        # Retrieve all assets
+        # Retrieve all assets with matching rte_ip.
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(
             all_assets, None, rte_ip, None, None
@@ -288,7 +309,7 @@ class SnipeIT:
         # No asset found with matching PiKVM IP
         return None
 
-    # Check out an asset
+
     def check_out_asset(self, asset_id):
         """
         Checks out an asset to the current user.
@@ -298,7 +319,7 @@ class SnipeIT:
         to this user, the method will simply confirm this status.
         Otherwise, it will make an HTTP POST request to check out the asset.
 
-        Parameters:
+        Args:
         asset_id (str): The unique identifier of the asset to be checked out.
 
         Returns:
@@ -348,8 +369,17 @@ class SnipeIT:
         else:
             return False, response_json, False
 
-    # Check in an asset
+
     def check_in_asset(self, asset_id):
+        """
+        Check in an asset.
+
+        Args:
+            asset_id (str): The unique identifier of the asset to be checked out.
+
+        Returns:
+            success status with a response object form server.
+        """
         response = requests.post(
             f"{self.cfg_api_url}/hardware/{asset_id}/checkin",
             headers=self.headers,
@@ -366,6 +396,16 @@ class SnipeIT:
             return False, response_json
 
     def get_asset(self, asset_id):
+        """
+        Retrieve asset information from a hardware configuration API by sending
+        a GET request with a specified asset_id.
+
+        Args:
+            asset_id (str): The unique identifier of the asset to be checked out.
+
+        Returns:
+            success status with a response object form server.
+        """
         response = requests.get(
             f"{self.cfg_api_url}/hardware/{asset_id}",
             headers=self.headers,
@@ -381,6 +421,9 @@ class SnipeIT:
             return False, response_json
 
     def get_asset_model_name(self, asset_id):
+        """
+        Retrieve the model name of an asset by calling get_asset(asset_id).
+        """
         status, data = self.get_asset(asset_id)
 
         if not status:
@@ -389,6 +432,9 @@ class SnipeIT:
         return True, data["model"]["name"]
 
     def get_company_id(self, company_name):
+        """
+        Retrieve the ID of a company by sending a GET request to fetch all companies from the API.
+        """
         response = requests.get(
             f"{self.cfg_api_url}/companies", headers=self.headers, timeout=10
         )
@@ -407,6 +453,9 @@ class SnipeIT:
             return None
 
     def get_group_id(self, group_name):
+        """
+        Retrieve the ID of a user group by sending a GET request to the API.
+        """
         response = requests.get(
             f"{self.cfg_api_url}/groups", headers=self.headers, timeout=10
         )
@@ -425,11 +474,26 @@ class SnipeIT:
             return None
 
     def generate_password(self, length=16):
+        """
+        Generate a random password of a specified length (default is 16 characters).
+
+        Args:
+            length (int): length of a new password.
+
+        Returns:
+            a string with new password.
+        """
         characters = string.ascii_letters + string.digits + string.punctuation
         password = "".join(secrets.choice(characters) for i in range(length))
         return password
 
     def get_users(self):
+        """
+        Retrieve a list of users from the API, fetching results in paginated chunks of 50 users per request.
+
+        Returns:
+            The list of all the users.
+        """
         page = 1
         users = []
 
@@ -458,6 +522,13 @@ class SnipeIT:
             return users
 
     def get_user_id(self, username):
+        """
+        Retrieve the list of users using get_users()
+        and then searches for a user with the specified username.
+
+        Returns:
+            None.
+        """
         users = self.get_users()
         if users:
             for user in users:
@@ -466,6 +537,18 @@ class SnipeIT:
             return None
 
     def user_add(self, first_name, last_name, company_name):
+        """
+        Create a new user by generating an email, username,
+        and password based on the provided arguments.
+
+        Args:
+            first_name (str): The first name of the new user.
+            last_name (str): The last name of the new user.
+            company_name (str): The name of the company assigned to the user.
+
+        Returns:
+            None.
+        """
         email = (
             f"{unidecode.unidecode(first_name.lower())}."
             f"{unidecode.unidecode(last_name.lower())}@3mdeb.com"
@@ -531,6 +614,16 @@ class SnipeIT:
             print(response_json)
 
     def user_del(self, first_name, last_name):
+        """
+        Delete a user with matching first_name and last_name.
+
+        Args:
+            first_name (str): The first name of the deleted user.
+            last_name (str): The last name of the deleted user.
+
+        Returns:
+            None.
+        """
         email = (
             f"{unidecode.unidecode(first_name.lower())}."
             f"{unidecode.unidecode(last_name.lower())}@3mdeb.com"

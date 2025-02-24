@@ -51,6 +51,82 @@ class RTE(rtectrl):
                 )
             )
 
+<<<<<<< HEAD
+=======
+    def load_model_data(self):
+        """
+        Load and validate a YAML configuration file based on the device under test (DUT) model.
+        """
+        file_path = os.path.join(
+            files("osfv"), "models", f"{self.dut_model}.yml"
+        )
+        # Check if the file exists
+        if not os.path.isfile(file_path):
+            raise UnsupportedDUTModel(
+                f"The {file_path} model is not yet supported"
+            )
+
+        # Load the YAML file
+        with open(file_path, "r") as file:
+            data = yaml.safe_load(file)
+
+        voltage_validator = Any("1.8V", "3.3V")
+        programmer_name_validator = Any(
+            "rte_1_1", "rte_1_0", "ch341a", "dediprog"
+        )
+        flashing_power_state_validator = Any("G3", "S5")
+
+        schema = Schema(
+            {
+                Required("programmer"): {
+                    Required("name"): programmer_name_validator,
+                },
+                Required("flash_chip"): {
+                    Required("voltage"): voltage_validator,
+                    Optional("model"): str,
+                },
+                Required("pwr_ctrl"): {
+                    Required("sonoff"): bool,
+                    Required("relay"): bool,
+                    Required(
+                        "flashing_power_state"
+                    ): flashing_power_state_validator,
+                },
+                Optional("reset_cmos", default=False): bool,
+                Optional("disable_wp", default=False): bool,
+            }
+        )
+
+        try:
+            schema(data)
+        except Exception as e:
+            exit(f"Model file is invalid: {e}")
+
+        # Check if required fields are present
+        required_fields = [
+            "pwr_ctrl",
+            "pwr_ctrl.sonoff",
+            "pwr_ctrl.relay",
+            "flash_chip",
+            "flash_chip.voltage",
+            "programmer",
+            "programmer.name",
+        ]
+        for field in required_fields:
+            current_field = data
+            keys = field.split(".")
+            for key in keys:
+                if key in current_field:
+                    current_field = current_field[key]
+                else:
+                    exit(
+                        f"Required field '{field}' is missing in model config."
+                    )
+
+        # Return the loaded data
+        return data
+
+>>>>>>> 7f69c2c9e4ea (libs/ add: docstring documentation in remaining files)
     def power_on(self, sleep=1):
         """
         Turns the power on by setting the power button pin to "low" for a
@@ -132,7 +208,7 @@ class RTE(rtectrl):
     def spi_enable(self):
         """
         Enables the SPI interface by configuring GPIO pins based on the voltage
-         level required by the flash chip.
+        level required by the flash chip.
         """
         voltage = self.dut_data["flash_chip"]["voltage"]
 
@@ -152,7 +228,7 @@ class RTE(rtectrl):
 
     def spi_disable(self):
         """
-        Disables the SPI interface by setting the GPIO pins to a "high-z" state.
+        Disable the SPI interface by setting the GPIO pins to a "high-z" state.
         """
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
@@ -194,7 +270,7 @@ class RTE(rtectrl):
 
     def psu_get(self):
         """
-        Get PSU state
+        Get PSU state.
         """
         state = None
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
@@ -206,7 +282,7 @@ class RTE(rtectrl):
     def discharge_psu(self):
         """
         Push power button 5 times in the loop to make sure the charge
-        from PSU is dissipated
+        from PSU is dissipated.
         """
         for _ in range(5):
             self.power_off(3)
@@ -362,28 +438,28 @@ class RTE(rtectrl):
 
     def flash_probe(self):
         """
-        Execute flashrom with no commands to simply probe the flash chip
+        Execute flashrom with no commands to simply probe the flash chip.
         """
         args = self.flash_create_args()
         return self.flash_cmd(args)
 
     def flash_read(self, read_file):
         """
-        Execute flashrom with read command to read the firmware from the DUT
+        Execute flashrom with read command to read the firmware from the DUT.
         """
         args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
         return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
         """
-        Execute flashrom with erase command to erase the flash chip
+        Execute flashrom with erase command to erase the flash chip.
         """
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
     def flash_write(self, write_file, bios=False):
         """
-        Execute flashrom with write command to write firmware to the DUT
+        Execute flashrom with write command to write firmware to the DUT.
         """
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
@@ -403,7 +479,7 @@ class RTE(rtectrl):
 
     def sonoff_sanity_check(self):
         """
-        Verify that if DUT is powered by Sonoff, Sonoff IP is not None
+        Verify that if DUT is powered by Sonoff, Sonoff IP is not None.
         """
         return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
 

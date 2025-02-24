@@ -179,6 +179,7 @@ def check_in_my(snipeit_api, args):
     else:
         print(f"{len(my_assets)} assets checked in successfully.")
 
+
 def list_unused_assets(snipeit_api, args):
     """
     Retrieves all assets.

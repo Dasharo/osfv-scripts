@@ -22,7 +22,6 @@ class SnipeIT:
         "SNIPEIT_CONFIG_FILE_PATH", os.path.expanduser("~/.osfv/snipeit.yml")
     )
 
-
     def load_snipeit_config(self):
         """
         Retrieves API configuration from YAML file.
@@ -54,7 +53,6 @@ class SnipeIT:
             )
 
         return cfg
-
 
     def get_all_assets(self):
         """
@@ -187,7 +185,6 @@ class SnipeIT:
         # No asset found with matching PiKVM IP
         return None
 
-
     def check_out_asset(self, asset_id):
         """
         Checks out an asset to the current user.
@@ -239,7 +236,6 @@ class SnipeIT:
             return True, response_json, False
         else:
             return False, response_json, False
-
 
     def check_in_asset(self, asset_id):
         """

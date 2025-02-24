@@ -45,6 +45,23 @@ Check Out
     ...    --rte_ip
     ...    ${rte_ip}
     ...    env:SNIPEIT_CONFIG_FILE_PATH=${snipeit_config}
+    Log    ${snipeit_config}
+    Log    ${result.stdout}
+    Log    ${result.stderr}
+    RETURN    ${result}
+
+Check Out By Asset ID
+    [Documentation]    Check out asset using osfv_cli as user defined
+    ...    in ~/.osfv.snipeit.yml
+    [Arguments]    ${asset_id}    ${snipeit_config}=%{HOME}/.osfv/snipeit.yml
+    ${result}=    Run Process
+    ...    osfv_cli
+    ...    snipeit
+    ...    check_out
+    ...    --asset_id
+    ...    ${asset_id}
+    ...    env:SNIPEIT_CONFIG_FILE_PATH=${snipeit_config}
+    Log    ${snipeit_config}
     Log    ${result.stdout}
     Log    ${result.stderr}
     RETURN    ${result}

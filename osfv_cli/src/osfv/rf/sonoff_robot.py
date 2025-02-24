@@ -10,6 +10,10 @@ class Sonoff:
 
     @keyword(types=None)
     def sonoff_on(self):
+        """
+        Attempt to turn on the Sonoff relay and log the response.
+        If an error occurs, it logs the failure and the error message.
+        """
         robot.api.logger.info("Turning on Sonoff relay...")
         try:
             response = self.sonoff.turn_on()
@@ -21,6 +25,10 @@ class Sonoff:
 
     @keyword(types=None)
     def sonoff_off(self):
+        """
+        Attempt to turn off the Sonoff relay and log the response.
+        If an error occurs, it logs the failure and the error message.
+        """
         robot.api.logger.info("Turning off Sonoff relay...")
         try:
             response = self.sonoff.turn_off()
@@ -32,6 +40,10 @@ class Sonoff:
 
     @keyword(types=None)
     def sonoff_get(self):
+        """
+        Retrieve and logs the current state of the Sonoff relay.
+        If an error occurs, it log the failure and the error message.
+        """
         state = None
         robot.api.logger.info("Getting Sonoff relay state...")
         try:
@@ -45,6 +57,10 @@ class Sonoff:
 
     @keyword(types=None)
     def sonoff_tgl(self):
+        """
+        Toggle the state of the Sonoff relay based on its current state, either turning it on or off,
+        and log the action. If an error occurs, it log the failure and error message.
+        """
         robot.api.logger.info("Toggling Sonoff relay state...")
         try:
             response = self.sonoff.get_state()

@@ -22,10 +22,21 @@ class Zabbix:
             return
 
     def get_headers(self):
+        """
+        Get headers form the server.
+
+        Returns:
+            a dictionary containing the headers for an HTTP request.
+        """
         return {"Content-Type": "application/json"}
 
-    # Function to authenticate and retrieve the authentication token
     def authenticate(self):
+        """
+        Authenticate and retrieve the authentication token.
+
+        Returns:
+            a response object form server.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "user.login",
@@ -51,6 +62,12 @@ class Zabbix:
             raise ValueError("Invalid response from Zabbix API authentication")
 
     def get_all_hosts_json(self):
+        """
+        Retrieve a list of hosts.
+
+        Returns:
+            a response object form server.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",
@@ -68,18 +85,39 @@ class Zabbix:
         return response.json()
 
     def get_all_hosts(self):
+        """
+        Retrieve all hosts from the API.
+
+        Returns:
+            a response object form server.
+        """
         return self.format_hosts(self.get_all_hosts_json())
 
-    # converts hosts json to dictionary
     def format_hosts(self, hosts):
+        """
+        Convert hosts json to dictionary.
+        """
         result = {}
         for host in hosts["result"]:
             result[host["host"]] = host["interfaces"][0]["ip"]
 
         return result
 
-    # Function to add a new host with ICMP template
     def add_host(self, host_name, ip_address):
+        """
+        Add a new host with ICMP template.
+
+        Args:
+            host_name: The name of the host to be identified in the sever.
+            ip_address: IP address to be assigned to the host.
+
+        Returns:
+            a response object form server with added hostid.
+
+        Rises:
+            Failed to add host: If there is an error in response.
+            Invalid response from Zabbix API host creation: If there is an unspecified error.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",
@@ -145,6 +183,15 @@ class Zabbix:
             raise ValueError("Invalid response from Zabbix API host creation")
 
     def get_host_id_by_name(self, host_name):
+        """
+        Retrieve the host ID for a given host name.
+
+        Args:
+            host_name: The name of the host to be identified in the sever.
+
+        Returns:
+            a response object form server with added hostid.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",
@@ -162,6 +209,15 @@ class Zabbix:
         return data["result"][0]["hostid"] if data.get("result") else None
 
     def get_host_interface_id(self, host_name):
+        """
+        Retrieve the interface ID of a given host by querying the API.
+
+        Args:
+            host_name: The name of the host to be identified in the sever.
+
+        Returns:
+            a response object form server with interfaces and interfaceid.
+        """
         payload = {
             "jsonrpc": "2.0",
             "method": "host.get",
@@ -186,6 +242,16 @@ class Zabbix:
         )
 
     def update_host_ip(self, host_name, new_ip):
+        """
+        Update IP of the host.
+
+        Args:
+            host_name: The name of the host to be identified in the sever.
+            new_ip: New IP address to be assigned to the host.
+
+        Returns:
+            a response object form server.
+        """
         interface_id = self.get_host_interface_id(host_name)
         if not interface_id:
             return {"error": "Could not find the host or its interface."}
@@ -204,6 +270,15 @@ class Zabbix:
         return response.json()
 
     def remove_host_by_name(self, host_name):
+        """
+        Remove the selected host.
+
+        Args:
+            host_name: The name of the removed host.
+
+        Returns:
+            a response object form server.
+        """
         host_id = self.get_host_id_by_name(host_name)
         if not host_id:
             return {"error": "Could not find the host."}

@@ -88,7 +88,10 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_flash_read(self, fw_file):
-        """Reads DUT flash chip content into ``fw_file``  path"""
+        """
+        Reads DUT flash chip content into ``fw_file``  path.
+        Returns the result code from the flash_probe method of the rte object.
+        """
         robot.api.logger.info(f"Reading from flash...")
         rc = self.rte.flash_read(fw_file)
         robot.api.logger.info(f"Read flash content saved to {fw_file}")
@@ -96,7 +99,10 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_flash_write(self, fw_file, bios=False):
-        """Writes file from ``fw_file`` path into DUT flash chip"""
+        """
+        Writes file from ``fw_file`` path into DUT flash chip.
+        Returns the result code from the flash_erase method of the rte object.
+        """
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         rc = self.rte.flash_write(fw_file, bios)
         if rc == 0:
@@ -120,6 +126,10 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_relay_toggle(self):
+        """
+        Toggle the relay state between "low" and "high" on the DUT.
+        Log the new state after toggling.
+        """
         state_str = self.rte.relay_get()
         if state_str == "low":
             new_state_str = "high"
@@ -131,6 +141,10 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_relay_set(self, state):
+        """
+        Set the relay to the specified state.
+        Log the new state after the operation.
+        """
         self.rte.relay_set(state)
         state = self.rte.relay_get()
         robot.api.logger.info(f"Relay state set to {state}")

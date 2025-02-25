@@ -46,7 +46,8 @@ class RTE(rtectrl):
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
                 exit(
-                    f"Missing value for 'sonoff_ip' or Sonoff not found in SnipeIT"
+                    f"Missing value for 'sonoff_ip' or Sonoff not found "
+                    f"in SnipeIT"
                 )
             )
 
@@ -104,11 +105,13 @@ class RTE(rtectrl):
 
     def relay_set(self, relay_state):
         """
-        Sets the state of the relay by configuring the GPIO relay pin accordingly.
+        Sets the state of the relay by configuring the GPIO relay pin
+        accordingly.
 
         Args:
-            relay_state (str): Desired state of the relay, either "on" (sets GPIO pin to "high")
-                               or "off" (sets GPIO pin to "low").
+            relay_state (str): Desired state of the relay, either "on"
+                               (sets GPIO pin to "high") or "off"
+                               (sets GPIO pin to "low").
         """
         gpio_state = None
         if relay_state == self.PSU_STATE_ON:
@@ -119,7 +122,8 @@ class RTE(rtectrl):
 
     def reset_cmos(self):
         """
-        Resets the CMOS by setting the GPIO CMOS pin to "low" for 10 seconds, then returning it to a "high-z" state.
+        Resets the CMOS by setting the GPIO CMOS pin to "low" for 10 seconds,
+         then returning it to a "high-z" state.
         """
         self.gpio_set(self.GPIO_CMOS, "low")
         time.sleep(10)
@@ -127,7 +131,8 @@ class RTE(rtectrl):
 
     def spi_enable(self):
         """
-        Enables the SPI interface by configuring GPIO pins based on the voltage level required by the flash chip.
+        Enables the SPI interface by configuring GPIO pins based on the voltage
+         level required by the flash chip.
         """
         voltage = self.dut_data["flash_chip"]["voltage"]
 
@@ -154,7 +159,8 @@ class RTE(rtectrl):
 
     def psu_on(self):
         """
-        Connect main power supply to the DUT by setting either relay or Sonoff to ON state.
+        Connect main power supply to the DUT by setting either relay
+        or Sonoff to ON state.
         """
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_on()
@@ -170,7 +176,8 @@ class RTE(rtectrl):
 
     def psu_off(self):
         """
-        Disconnect main power supply from the DUT by setting either relay or Sonoff to OFF state.
+        Disconnect main power supply from the DUT by setting either relay
+        or Sonoff to OFF state.
         """
         # TODO: rework using abstract interfaces for power control?
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
@@ -198,14 +205,16 @@ class RTE(rtectrl):
 
     def discharge_psu(self):
         """
-        Push power button 5 times in the loop to make sure the charge from PSU is dissipated
+        Push power button 5 times in the loop to make sure the charge
+        from PSU is dissipated
         """
         for _ in range(5):
             self.power_off(3)
 
     def pwr_ctrl_before_flash(self, programmer, power_state):
         """
-        Move the DUT into specific power state required for external flashing operation. Defined in the model config file.
+        Move the DUT into specific power state required for external flashing
+        operation. Defined in the model config file.
         """
 
         # Always start from the same state (PSU active)
@@ -232,7 +241,8 @@ class RTE(rtectrl):
             self.discharge_psu()
         else:
             exit(
-                f"Power state: '{power_state}' is not supported. Please check model config."
+                f"Power state: '{power_state}' is not supported. Please check "
+                f"model config."
             )
 
     def pwr_ctrl_after_flash(self, programmer):
@@ -245,7 +255,8 @@ class RTE(rtectrl):
 
     def flash_cmd(self, args, read_file=None, write_file=None):
         """
-        Send the firmware file to RTE and execute flashrom command over SSH to flash the DUT.
+        Send the firmware file to RTE and execute flashrom command over SSH to
+        flash the DUT.
         """
         try:
             self.pwr_ctrl_before_flash(

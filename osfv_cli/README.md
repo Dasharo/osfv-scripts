@@ -252,6 +252,25 @@ follows:
 - `disable_wp`: - optional; true or false (false by default), whether flash WP
    is required before flashing.
 
+## Known issues
+
+### Problems with password-protected SSH keys
+
+If your default SSH key is password-protected, make sure that 'SSH_AUTH_SOCK'
+variable is either empty or deleted. Otherwise, you will be asked for key's
+passphrase; despite correct answer, SSH code may throw time-out exception or
+crash. To avoid this issue, you may either make variable empty:
+
+  ```bash
+SSH_AUTH_SOCK=""
+  ```
+
+or delete the variable:
+
+  ```bash
+unset SSH_AUTH_SOCK
+  ```
+
 ## Development
 
 You can test local changes by running `poetry shell` first. Then, all

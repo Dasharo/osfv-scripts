@@ -93,7 +93,8 @@ class Zabbix:
         result = response.json()
         if "result" in result and len(result["result"]) > 0:
             print(
-                f"A host with name '{host_name}' already exists. Skipping host creation."
+                f"A host with name '{host_name}' already exists. Skipping host "
+                f"creation."
             )
             return result["result"][0]["hostid"]
 
@@ -104,7 +105,8 @@ class Zabbix:
         result = response.json()
         if "result" in result and len(result["result"]) > 0:
             print(
-                f"A host with IP address '{ip_address}' already exists. Skipping host creation."
+                f"A host with IP address '{ip_address}' already exists. "
+                f"Skipping host creation."
             )
             return result["result"][0]["hostid"]
 

@@ -109,7 +109,8 @@ class Models:
                 else:
                     if exit_on_failure:
                         exit(
-                            f"Required field '{field}' is missing in model config."
+                            f"Required field '{field}' is missing in model "
+                            f"config."
                         )
                     else:
                         model_YML_status = False

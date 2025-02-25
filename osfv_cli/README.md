@@ -254,17 +254,12 @@ follows:
 
 ## Known issues
 
-- SSH key error:
+### Problems with password-protected SSH keys
 
-If your default SSH key is password-protected, please make sure that
-
-  ```bash
-SSH_AUTH_SOCK
-  ```
-
+If your default SSH key is password-protected, make sure that 'SSH_AUTH_SOCK'
 variable is either empty or deleted. Otherwise, you will be asked for key's
-passphrase; despite correct answer, SSH code may crash. To avoid this issue,
-you may either make variable empty:
+passphrase; despite correct answer, SSH code may throw time-out exception or
+crash. To avoid this issue, you may either make variable empty:
 
   ```bash
 SSH_AUTH_SOCK=""

@@ -50,7 +50,9 @@ class SnipeIT:
             with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
                 config = yaml.safe_load(file)
         except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found")
+            raise FileNotFoundError(
+                f"Configuration file not found. Create one based on: https://github.com/Dasharo/osfv-scripts/tree/main/osfv_cli"
+            )
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML: {e}")
 

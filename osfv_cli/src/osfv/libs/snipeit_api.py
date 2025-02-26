@@ -66,7 +66,8 @@ class SnipeIT:
             raise ValueError("Incomplete API configuration in the YAML file")
         if not isinstance(cfg["user_id"], int):
             raise ValueError(
-                f'User ID configuration in the YAML file should be int: {cfg["user_id"]}'
+                f"User ID configuration in the YAML file should be int: "
+                f'{cfg["user_id"]}'
             )
 
         return cfg
@@ -91,7 +92,8 @@ class SnipeIT:
                 page += 1
             else:
                 print(
-                    f"Error retrieving assets. Status code: {response.status_code}"
+                    f"Error retrieving assets. Status code: "
+                    f"{response.status_code}"
                 )
                 print(response.json())
                 break
@@ -291,8 +293,9 @@ class SnipeIT:
         """
         Checks out an asset to the current user.
 
-        This method attempts to check out the specified asset to the user identified by `self.cfg_user_id`.
-        If the asset is already checked out to this user, the method will simply confirm this status.
+        This method attempts to check out the specified asset to the user
+        identified by `self.cfg_user_id`. If the asset is already checked out
+        to this user, the method will simply confirm this status.
         Otherwise, it will make an HTTP POST request to check out the asset.
 
         Parameters:
@@ -300,12 +303,16 @@ class SnipeIT:
 
         Returns:
         tuple:
-            bool: Indicates if the checkout operation was initiated (True) or not (False).
-            dict or None: The JSON response from the API if the checkout was initiated, otherwise None.
-            bool: Indicates if the asset was already checked out to the current user (True) or not (False).
+            bool: Indicates if the checkout operation was initiated (True)
+                  or not (False).
+            dict or None: The JSON response from the API if the checkout was
+                          initiated, otherwise None.
+            bool: Indicates if the asset was already checked out to the current
+                  user (True) or not (False).
 
         Raises:
-        requests.exceptions.RequestException: If the HTTP request to the API fails.
+        requests.exceptions.RequestException: If the HTTP request to the API
+                                              fails.
         """
         self.check_asset_for_ip_exclusivity_by_id(asset_id)
 
@@ -393,7 +400,8 @@ class SnipeIT:
             return None
         else:
             print(
-                f"Error retrieving companies. Status code: {response.status_code}"
+                f"Error retrieving companies. Status code: "
+                f"{response.status_code}"
             )
             print(response.json())
             return None
@@ -410,7 +418,8 @@ class SnipeIT:
             return None
         else:
             print(
-                f"Error retrieving user groups. Status code: {response.status_code}"
+                f"Error retrieving user groups. Status code: "
+                f"{response.status_code}"
             )
             print(response.json())
             return None
@@ -440,7 +449,8 @@ class SnipeIT:
                 page += 1
             else:
                 print(
-                    f"Error retrieving users. Status code: {response.status_code}"
+                    f"Error retrieving users. Status code: "
+                    f"{response.status_code}"
                 )
                 print(response.json())
                 break
@@ -456,7 +466,10 @@ class SnipeIT:
             return None
 
     def user_add(self, first_name, last_name, company_name):
-        email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        email = (
+            f"{unidecode.unidecode(first_name.lower())}."
+            f"{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        )
         username = (
             f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
         )
@@ -479,8 +492,8 @@ class SnipeIT:
             print(f"Company {company_name} not found in Snipe-IT.")
             return
 
-        # For some reason, with our SnipeIT instance the group IT assignment does
-        # not work and we still need to do this manually...
+        # For some reason, with our SnipeIT instance the group IT assignment
+        # does not work and we still need to do this manually...
         data = {
             "first_name": first_name,
             "last_name": last_name,
@@ -518,7 +531,10 @@ class SnipeIT:
             print(response_json)
 
     def user_del(self, first_name, last_name):
-        email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        email = (
+            f"{unidecode.unidecode(first_name.lower())}."
+            f"{unidecode.unidecode(last_name.lower())}@3mdeb.com"
+        )
         username = (
             f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
         )
@@ -541,6 +557,7 @@ class SnipeIT:
             print(f"User {username} deleted successfully!")
         else:
             print(
-                f"Failed to delete user {username}. Status code: {response.status_code}"
+                f"Failed to delete user {username}. Status code: "
+                f"{response.status_code}"
             )
             print(response_json)

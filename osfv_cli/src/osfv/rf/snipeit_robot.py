@@ -44,5 +44,6 @@ def snipeit_get_asset_model(rte_ip):
         return data
     else:
         raise AssertionError(
-            f"Error getting model name of asset: {asset_id}. Response data: {data}"
+            f"Error getting model name of asset: {asset_id}. "
+            f"Response data: {data}"
         )

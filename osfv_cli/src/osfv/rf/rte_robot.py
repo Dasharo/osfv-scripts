@@ -56,14 +56,21 @@ class RobotRTE:
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip, self.snipeit_api
             )
-            self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
+            # bug: https://github.com/Dasharo/open-source-firmware-validation/issues/646
+            # Some RTE-less platforms still need to use this class to
+            # instantiate sonoff and/or snipeit.
+            # Ideally these would go to a separate class.
+            if self.rte_ip != "0.0.0.0":
+                self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
         else:
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip
             )
-            self.rte = RTE(
-                rte_ip, self.cli_model_from_osfv(config), self.sonoff
-            )
+            # bug: as above
+            if self.rte_ip != "0.0.0.0":
+                self.rte = RTE(
+                    rte_ip, self.cli_model_from_osfv(config), self.sonoff
+                )
 
     def cli_model_from_osfv(self, osfv_model):
         """

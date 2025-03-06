@@ -47,10 +47,21 @@ class SnipeIT:
 
     def load_snipeit_config(self):
         """
-        Retrieves API configuration from YAML file.
+        Loads the Snipe-IT API configuration from a YAML file.
+
+        This method attempts to read and parse the YAML configuration file specified by `self.SNIPEIT_CONFIG_FILE_PATH`.
+        It extracts the API URL, token, and user ID, performing validation to ensure required fields are present
+        and correctly formatted.
 
         Returns:
-            a configuration object extracted form YAML file.
+        dict: A dictionary containing the API configuration with the following keys:
+            - "url" (str): The API base URL.
+            - "token" (str): The API authentication token.
+            - "user_id" (int): The user ID.
+
+        Raises:
+        FileNotFoundError: If the configuration file is not found.
+        ValueError: If the YAML file is empty, contains invalid YAML syntax, or has missing/incorrect fields.
         """
         try:
             with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
@@ -81,10 +92,16 @@ class SnipeIT:
 
     def get_all_assets(self):
         """
-        Retrieve all assets.
+        Retrieves all hardware assets from the Snipe-IT API.
+
+        This method makes paginated requests to the Snipe-IT API to fetch all available hardware assets.
+        It continues requesting data until all pages have been retrieved.
 
         Returns:
-            a list with all the assets.
+        list: A list of dictionaries, where each dictionary represents an asset.
+
+        Raises:
+        requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
         page = 1
         all_assets = []
@@ -196,14 +213,20 @@ class SnipeIT:
 
     def get_asset_id_by_rte_ip(self, rte_ip):
         """
-        Retrieve all assets with matching rte_ip.
+        Retrieves the asset ID associated with a given RTE IP.
+
+        This method first checks for duplicate occurrences of the provided RTE IP among all assets.
+        Then, it searches for the asset that contains the specified RTE IP in its custom fields.
+        If a matching asset is found, it performs a secondary exclusivity check by asset ID before returning the asset's ID.
 
         Parameters:
-            rte_ip (str): The IP address of the rte device.
+        rte_ip (str): The RTE IP address to search for.
 
         Returns:
-            an asset with matching asset id.
-            None if there is no match.
+        str or None: The asset ID if found, otherwise None.
+
+        Raises:
+        DuplicatedIpException: If the RTE IP appears more than once across all assets.
         """
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(
@@ -231,6 +254,22 @@ class SnipeIT:
         return None
 
     def get_asset_id_by_sonoff_ip(self, rte_ip):
+        """
+        Retrieves the asset ID associated with a given Sonoff IP.
+
+        This method first checks for duplicate occurrences of the provided Sonoff IP among all assets.
+        Then, it searches for the asset that contains the specified Sonoff IP in its custom fields.
+        If a matching asset is found, it performs a secondary exclusivity check by asset ID before returning the asset's ID.
+
+        Parameters:
+        sonoff_ip (str): The Sonoff IP address to search for.
+
+        Returns:
+        str or None: The asset ID if found, otherwise None.
+
+        Raises:
+        DuplicatedIpException: If the Sonoff IP appears more than once across all assets.
+        """
         # Retrieve all assets with matching rte_ip.
         all_assets = self.get_all_assets()
         self.check_asset_for_ip_exclusivity(

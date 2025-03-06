@@ -49,14 +49,19 @@ def check_out_asset(snipeit_api, asset_id):
 
 def check_in_asset(snipeit_api, asset_id):
     """
-    Check in an asset.
+    Checks in an asset to the system by its asset ID.
 
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        asset_id (str): The unique identifier of the asset to be checked out.
+    This method attempts to check in the specified asset identified by `asset_id` by making an HTTP POST request.
+    If the check-in is successful, it returns a success flag and the JSON response from the API.
+    If the check-in fails, it returns a failure flag and the error message from the API.
+
+    Parameters:
+    asset_id (str): The unique identifier of the asset to be checked in.
 
     Returns:
-        The check in success status.
+    tuple:
+        bool: Indicates if the check-in operation was successful (True) or not (False).
+        dict: The JSON response from the API, either containing success information or error details.
     """
     success, data = snipeit_api.check_in_asset(asset_id)
 
@@ -72,12 +77,15 @@ def check_in_asset(snipeit_api, asset_id):
 # List used assets
 def list_used_assets(snipeit_api, args):
     """
-    Retrieves all used assets.
+    Retrieves and displays all used assets.
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
         args: Command-line arguments object which contains the following attributes:
-            - json: A boolean indicating to output the list as json.
+            - json (bool): If True, outputs the list in JSON format.
+
+    Returns:
+        None
     """
     all_assets = snipeit_api.get_all_assets()
     used_assets = [
@@ -245,6 +253,9 @@ def list_for_zabbix(snipeit_api, args):
         snipeit_api: The API client used to interact with the Snipe-IT API.
         args: Command-line arguments object which contains the following attributes:
             - json: A boolean indicating to output the list as json.
+
+    Returns:
+        None
     """
     all_assets = snipeit_api.get_all_assets()
 

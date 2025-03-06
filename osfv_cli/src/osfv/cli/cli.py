@@ -29,7 +29,8 @@ def check_out_asset(snipeit_api, asset_id):
         print(f"Error checking out asset {asset_id}")
         print(f"Response data: {data}")
         exit(
-            f"Exiting to avoid conflict. Check who is working on this device and contact them first."
+            f"Exiting to avoid conflict. Check who is working on this device"
+            f" and contact them first."
         )
 
     return already_checked_out
@@ -93,7 +94,8 @@ def list_my_assets(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
+        args: Command-line arguments object which contains the following
+              attributes:
             - json: A boolean indicating to output the list as json.
     Returns:
         Boolean: False if no assets were assigned to the user, True otherwise
@@ -119,7 +121,8 @@ def check_in_my(snipeit_api, args):
 
     Args:
         snipeit_api: The API client used to interact with the Snipe-IT API.
-        args: Command-line arguments object which contains the following attributes:
+        args: Command-line arguments object which contains the following
+              attributes:
             - yes: A boolean indicating to skip the confirmation prompt.
     Returns:
         None
@@ -200,7 +203,8 @@ def list_for_zabbix(snipeit_api, args):
 # Print asset details including custom fields
 def print_asset_details(asset):
     print(
-        f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]}, Name: {asset["name"]}, Serial: {asset["serial"]}'
+        f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]},'
+        f'Name: {asset["name"]}, Serial: {asset["serial"]}'
     )
 
     if asset["assigned_to"]:
@@ -265,7 +269,8 @@ def power_on(rte, args):
     if state != rte.PSU_STATE_ON:
         print(f"Power supply state: {state} !")
         print(
-            'If you wanted to power on the DUT, you need to enable power supply first ("pwr psu on"), pushing the power button is not enough!'
+            "If you wanted to power on the DUT, you need to enable power suppl"
+            'y first ("pwr psu on"), pushing the power button is not enough!'
         )
     print(f"Powering on...")
     rte.power_on(args.time)
@@ -507,12 +512,14 @@ def update_zabbix_assets(snipeit_api):
                 == snipeit_assets[snipeit_assets_keys[j]]
             ):
                 print(
-                    f"{snipeit_assets_keys[i]} has the same IP as {snipeit_assets_keys[j]}!"
+                    f"{snipeit_assets_keys[i]} has the same IP as "
+                    f"{snipeit_assets_keys[j]}!"
                 )
                 snipeit_configuration_error = True
             if snipeit_assets_keys[i] == snipeit_assets_keys[j]:
                 print(
-                    f"There are at least 2 assets with name {snipeit_assets_keys[i]} present!"
+                    f"There are at least 2 assets with name "
+                    f"{snipeit_assets_keys[i]} present!"
                 )
                 snipeit_configuration_error = True
 
@@ -521,7 +528,8 @@ def update_zabbix_assets(snipeit_api):
             symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols
         ):
             print(
-                f"{snipeit_assets_keys[i]} contains forbidden symbols! They are going to be changed to '_'."
+                f"{snipeit_assets_keys[i]} contains forbidden symbols! They "
+                f"are going to be changed to '_'."
             )
             new_key = copy(snipeit_assets_keys[i])
             for s in forbidden_symbols:
@@ -533,7 +541,8 @@ def update_zabbix_assets(snipeit_api):
 
     if snipeit_configuration_error:
         print(
-            "\nSnipeIT configuration errors have been detected! Fix them and then continue."
+            "\nSnipeIT configuration errors have been detected! "
+            "Fix them and then continue."
         )
         return
 
@@ -561,7 +570,8 @@ def update_zabbix_assets(snipeit_api):
 
     if keys_not_present_in_snipeit.__len__() > 0:
         print(
-            "\nAssets present in Zabbix but not in SnipeIT (these will be removed):"
+            "\nAssets present in Zabbix but not in SnipeIT "
+            "(these will be removed):"
         )
         print("\n".join(keys_not_present_in_snipeit))
 
@@ -570,7 +580,8 @@ def update_zabbix_assets(snipeit_api):
     for key in common_keys:
         if snipeit_assets[key] != current_zabbix_assets[key]:
             print(
-                f"{key} has wrong IP! (Zabbix one will be updated from {current_zabbix_assets[key]} to {snipeit_assets[key]})"
+                f"{key} has wrong IP! (Zabbix one will be updated from "
+                f"{current_zabbix_assets[key]} to {snipeit_assets[key]})"
             )
             keys_for_ip_change.append(key)
 
@@ -750,8 +761,10 @@ def main():
     rte_parser.add_argument(
         "--skip-snipeit",
         action="store_true",
-        help="Skips Snipe-IT related actions like checkout and check-in. \
-            Useful for OSFV homelab.",
+        help=(
+            f"Skips Snipe-IT related actions like checkout and check-in. "
+            f"Useful for OSFV homelab."
+        ),
     )
     rte_subparsers = rte_parser.add_subparsers(
         title="subcommands", dest="rte_cmd", help="RTE subcommands"
@@ -983,7 +996,8 @@ def main():
                     )
                 else:
                     exit(
-                        f"failed to retrieve model name from snipe-it. check again arguments, or try providing model manually."
+                        f"failed to retrieve model name from snipe-it. check "
+                        f"again arguments, or try providing model manually."
                     )
             else:
                 exit(f"model name not present. check again arguments.")
@@ -992,7 +1006,8 @@ def main():
 
         if not args.skip_snipeit:
             print(
-                f"Using rte command is invasive action, checking first if the device is not used..."
+                f"Using rte command is invasive action, checking first if the "
+                f"device is not used..."
             )
             already_checked_out = check_out_asset(snipeit_api, asset_id)
 
@@ -1053,16 +1068,16 @@ def main():
         if not args.skip_snipeit:
             if already_checked_out:
                 print(
-                    f"Since the asset {asset_id} has been checkout manually \
-                    by you prior running this script, it will NOT be checked \
-                    in automatically. Please return the device when work is \
-                    finished."
+                    f"Since the asset {asset_id} has been checkout manually "
+                    f"by you prior running this script, it will NOT be checked "
+                    f"in automatically. Please return the device when work is "
+                    f"finished."
                 )
             else:
                 print(
-                    f"Since the asset {asset_id} has been checkout \
-                    automatically by this script, it is automatically checked \
-                    in as well."
+                    f"Since the asset {asset_id} has been checkout "
+                    f"automatically by this script, it is automatically "
+                    f"checked in as well."
                 )
                 check_in_asset(snipeit_api, asset_id)
     elif args.command == "sonoff":
@@ -1080,7 +1095,8 @@ def main():
             print(f"No asset found with RTE IP: {args.rte_ip}")
 
         print(
-            f"Using rte command is invasive action, checking first if the device is not used..."
+            f"Using rte command is invasive action, checking first if the "
+            f"device is not used..."
         )
         already_checked_out = check_out_asset(snipeit_api, asset_id)
 
@@ -1097,11 +1113,15 @@ def main():
 
         if already_checked_out:
             print(
-                f"Since the asset {asset_id} has been checkout manually by you prior running this script, it will NOT be checked in automatically. Please return the device when work is finished."
+                f"Since the asset {asset_id} has been checkout manually by "
+                f"you prior running this script, it will NOT be checked in "
+                f"automatically. Please return the device when work is "
+                f"finished."
             )
         else:
             print(
-                f"Since the asset {asset_id} has been checkout automatically by this script, it is automatically checked in as well."
+                f"Since the asset {asset_id} has been checkout automatically "
+                f"by this script, it is automatically checked in as well."
             )
             check_in_asset(snipeit_api, asset_id)
     elif args.command == "list_models":

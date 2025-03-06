@@ -8,7 +8,8 @@ headers = {"Content-Type": "application/json", "Accept": "application/json"}
 
 class rtectrl:
     """
-    A class to control and interact with GPIO pins on an RTE device using its REST API.
+    A class to control and interact with GPIO pins on an RTE device
+    using its REST API.
 
     Attributes:
         GPIO_MIN (int): Minimum valid GPIO number (0).
@@ -82,7 +83,8 @@ class rtectrl:
             state_str (str): Desired state for the GPIO pin.
                              For pins 1-12: "low" or "high-z".
                              For pins 0, 13-19: "high" or "low".
-            sleep (int, optional): Duration in seconds for which to maintain the state. Default is 0.
+            sleep (int, optional): Duration in seconds for which to maintain the
+                                   state. Default is 0.
 
         Raises:
             GPIOWrongNumberError: If the GPIO number is outside the valid range.
@@ -146,7 +148,8 @@ class rtectrl:
 
     def _patch_request(self, endpoint, data):
         """
-        Sends a PATCH request to the specified API endpoint with the provided data.
+        Sends a PATCH request to the specified API endpoint with the
+        provided data.
 
         Args:
             endpoint (str): API endpoint to send the PATCH request to.

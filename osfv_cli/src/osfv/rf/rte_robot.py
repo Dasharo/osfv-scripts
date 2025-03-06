@@ -51,7 +51,8 @@ class RobotRTE:
                 )
             else:
                 raise AssertionError(
-                    f"Failed to retrieve model name from Snipe-IT. Check again arguments, or try providing model manually."
+                    f"Failed to retrieve model name from Snipe-IT. Check again "
+                    f"arguments, or try providing model manually."
                 )
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip, self.snipeit_api

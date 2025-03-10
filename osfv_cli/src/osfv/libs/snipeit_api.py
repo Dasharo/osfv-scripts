@@ -30,6 +30,9 @@ class SnipeIT:
         It extracts the API URL, token, and user ID, performing validation to ensure required fields are present
         and correctly formatted.
 
+        Args:
+            None.
+
         Returns:
         dict: A dictionary containing the API configuration with the following keys:
             - "url" (str): The API base URL.
@@ -37,8 +40,8 @@ class SnipeIT:
             - "user_id" (int): The user ID.
 
         Raises:
-        FileNotFoundError: If the configuration file is not found.
-        ValueError: If the YAML file is empty, contains invalid YAML syntax, or has missing/incorrect fields.
+            FileNotFoundError: If the configuration file is not found.
+            ValueError: If the YAML file is empty, contains invalid YAML syntax, or has missing/incorrect fields.
         """
         try:
             with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
@@ -72,11 +75,14 @@ class SnipeIT:
         This method makes paginated requests to the Snipe-IT API to fetch all available hardware assets.
         It continues requesting data until all pages have been retrieved.
 
+        Args:
+            None.
+
         Returns:
-        list: A list of dictionaries, where each dictionary represents an asset.
+            list: A list of dictionaries, where each dictionary represents an asset.
 
         Raises:
-        requests.exceptions.RequestException: If the HTTP request to the API fails.
+            requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
         page = 1
         all_assets = []
@@ -111,14 +117,14 @@ class SnipeIT:
         Then, it searches for the asset that contains the specified RTE IP in its custom fields.
         If a matching asset is found, it performs a secondary exclusivity check by asset ID before returning the asset's ID.
 
-        Parameters:
-        rte_ip (str): The RTE IP address to search for.
+        Aegs:
+            rte_ip (str): The RTE IP address to search for.
 
         Returns:
-        str or None: The asset ID if found, otherwise None.
+            str or None: The asset ID if found, otherwise None.
 
         Raises:
-        DuplicatedIpException: If the RTE IP appears more than once across all assets.
+            DuplicatedIpException: If the RTE IP appears more than once across all assets.
         """
         all_assets = self.get_all_assets()
 
@@ -233,16 +239,16 @@ class SnipeIT:
         Otherwise, it will make an HTTP POST request to check out the asset.
 
         Args:
-        asset_id (str): The unique identifier of the asset to be checked out.
+            asset_id (str): The unique identifier of the asset to be checked out.
 
         Returns:
-        tuple:
-            bool: Indicates if the checkout operation was initiated (True) or not (False).
-            dict or None: The JSON response from the API if the checkout was initiated, otherwise None.
-            bool: Indicates if the asset was already checked out to the current user (True) or not (False).
+            tuple:
+                bool: Indicates if the checkout operation was initiated (True) or not (False).
+                dict or None: The JSON response from the API if the checkout was initiated, otherwise None.
+                bool: Indicates if the asset was already checked out to the current user (True) or not (False).
 
         Raises:
-        requests.exceptions.RequestException: If the HTTP request to the API fails.
+            requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
         status, asset_data = self.get_asset(asset_id)
 
@@ -328,7 +334,14 @@ class SnipeIT:
 
     def get_asset_model_name(self, asset_id):
         """
-        Retrieve the model name of an asset by calling get_asset(asset_id).
+        Retrieve the model name of an asset by calling the get_asset method.
+
+        Args:
+            asset_id (str): The unique identifier of the asset.
+
+        Returns:
+            tuple: A tuple where the first element is a boolean indicating the success (True/False),
+                and the second element is either the model name or an error message.
         """
         status, data = self.get_asset(asset_id)
 
@@ -340,6 +353,12 @@ class SnipeIT:
     def get_company_id(self, company_name):
         """
         Retrieve the ID of a company by sending a GET request to fetch all companies from the API.
+
+        Args:
+            company_name (str): The name of the company for which to retrieve the ID.
+
+        Returns:
+            str or None: The company ID if found, otherwise None if the company doesn't exist or if there was an error retrieving the data.
         """
         response = requests.get(
             f"{self.cfg_api_url}/companies", headers=self.headers, timeout=10
@@ -359,7 +378,14 @@ class SnipeIT:
 
     def get_group_id(self, group_name):
         """
-        Retrieve the ID of a user group by sending a GET request to the API.
+        Retrieve the ID of a user group by sending a GET request to fetch all groups from the API.
+
+        Args:
+            group_name (str): The name of the group for which to retrieve the ID.
+
+        Returns:
+            str or None: The group ID if found, otherwise None if the group doesn't exist
+            or if there was an error retrieving the data.
         """
         response = requests.get(
             f"{self.cfg_api_url}/groups", headers=self.headers, timeout=10
@@ -382,7 +408,7 @@ class SnipeIT:
         Generate a random password of a specified length (default is 16 characters).
 
         Args:
-            length (int): length of a new password.
+            length (int, optional): length of a new password.
 
         Returns:
             a string with new password.
@@ -394,6 +420,9 @@ class SnipeIT:
     def get_users(self):
         """
         Retrieve a list of users from the API, fetching results in paginated chunks of 50 users per request.
+
+        Args:
+            None.
 
         Returns:
             The list of all the users.
@@ -426,11 +455,13 @@ class SnipeIT:
 
     def get_user_id(self, username):
         """
-        Retrieve the list of users using get_users()
-        and then searches for a user with the specified username.
+        Retrieve the ID of a user by calling get_users() and searching for a user with the specified username.
+
+        Args:
+            username (str): The username of the user to search for.
 
         Returns:
-            None.
+            str or None: The user ID if the user is found, otherwise None if the user doesn't exist.
         """
         users = self.get_users()
         if users:
@@ -522,7 +553,7 @@ class SnipeIT:
             last_name (str): The last name of the deleted user.
 
         Returns:
-
+            None.
         """
         email = f"{unidecode.unidecode(first_name.lower())}.{unidecode.unidecode(last_name.lower())}@3mdeb.com"
         username = (

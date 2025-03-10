@@ -25,6 +25,9 @@ class Zabbix:
         """
         Get headers form the server.
 
+        Args:
+            None.
+
         Returns:
             a dictionary containing the headers for an HTTP request.
         """
@@ -33,6 +36,9 @@ class Zabbix:
     def authenticate(self):
         """
         Authenticate and retrieve the authentication token.
+
+        Args:
+            None.
 
         Returns:
             a response object form server.
@@ -65,6 +71,9 @@ class Zabbix:
         """
         Retrieve a list of hosts.
 
+        Args:
+            None.
+
         Returns:
             a response object form server.
         """
@@ -88,6 +97,9 @@ class Zabbix:
         """
         Retrieve all hosts from the API.
 
+        Args:
+            None.
+
         Returns:
             a response object form server.
         """
@@ -95,7 +107,13 @@ class Zabbix:
 
     def format_hosts(self, hosts):
         """
-        Convert hosts json to dictionary.
+        Convert a JSON object containing host information to a dictionary mapping host names to their IP addresses.
+
+        Args:
+            hosts (dict): A JSON object containing a list of hosts with their details.
+
+        Returns:
+            dict: A dictionary where keys are host names and values are their respective IP addresses.
         """
         result = {}
         for host in hosts["result"]:
@@ -112,7 +130,7 @@ class Zabbix:
             ip_address: IP address to be assigned to the host.
 
         Returns:
-            a response object form server with added hostid.
+            str: a response object form server with added hostid.
 
         Rises:
             Failed to add host: If there is an error in response.

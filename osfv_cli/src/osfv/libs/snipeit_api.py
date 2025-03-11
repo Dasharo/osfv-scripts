@@ -358,7 +358,8 @@ class SnipeIT:
             company_name (str): The name of the company for which to retrieve the ID.
 
         Returns:
-            str or None: The company ID if found, otherwise None if the company doesn't exist or if there was an error retrieving the data.
+            str or None: The company ID if found, otherwise None if the company
+            doesn't exist or if there was an error retrieving the data.
         """
         response = requests.get(
             f"{self.cfg_api_url}/companies", headers=self.headers, timeout=10
@@ -405,10 +406,10 @@ class SnipeIT:
 
     def generate_password(self, length=16):
         """
-        Generate a random password of a specified length (default is 16 characters).
+        Generate a random password.
 
         Args:
-            length (int, optional): length of a new password.
+            length (int, optional): length of a new password, default value is 16.
 
         Returns:
             a string with new password.

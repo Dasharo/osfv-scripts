@@ -393,7 +393,7 @@ def power_on(rte, args):
         print(
             'If you wanted to power on the DUT, you need to enable power supply first ("pwr psu on"), pushing the power button is not enough!'
         )
-    print(f"Powering on...")``
+    print(f"Powering on...")
     rte.power_on(args.time)
 
 
@@ -473,7 +473,7 @@ def psu_get(rte, args):
 
 
 def gpio_get(rte, args):
-        """
+    """
     Retrieve and print the state of a specified GPIO pin.
 
     Args:

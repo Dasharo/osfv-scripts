@@ -341,13 +341,13 @@ class RTE(rtectrl):
 
     def pwr_ctrl_before_flash(self, programmer, power_state):
         """
-        Moves the Device Under Test (DUT) into the required power state for external flashing operations,
+        Moves the DUT into the required power state for external flashing operations,
         based on the model configuration file. The function handles power sequencing and ensures the DUT is
         in the correct state (S5 or G3) before flashing.
 
         Args:
             programmer (str): The programmer type, used to determine if SPI lines need to be enabled.
-            power_state (str): The desired power state for flashing, either "S5" (off) or "G3" (powered off).
+            power_state (str): The desired power state for flashing, either "S5" (Soft off) or "G3" (Mechanical off.
 
         Returns:
             None.
@@ -526,7 +526,7 @@ class RTE(rtectrl):
 
     def flash_read(self, read_file):
         """
-        Executes the flashrom command to read the firmware from the DUT and saves it to the specified file.
+        Executes the flashrom command to read the firmware from the DUT.
 
         Args:
             read_file (str): The file path where the firmware should be saved.
@@ -559,7 +559,7 @@ class RTE(rtectrl):
             bios (bool, optional): If True, writes the BIOS image using the specific option. Defaults to False.
 
         Returns:
-            int: The return code from the flashrom command execution.
+            The return code from the flashrom command execution.
         """
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")

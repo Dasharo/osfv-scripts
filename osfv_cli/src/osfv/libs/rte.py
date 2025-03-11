@@ -20,7 +20,7 @@ class RTE(rtectrl):
     GPIO_RESET = 8
     GPIO_POWER = 9
 
-    GPIO_CMOS = 12
+    GPIO_CMOS = 11
 
     GPIO_PWR_LED = 13
 

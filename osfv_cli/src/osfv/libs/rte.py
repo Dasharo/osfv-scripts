@@ -50,9 +50,6 @@ class RTE(rtectrl):
         """
         Loads and validates a YAML configuration file based on the device under test (DUT) model.
 
-        The function loads a YAML file specific to the DUT model, validates its contents using a schema, and checks
-        for the presence of required fields. If any issues are found, an exception is raised or the program exits.
-
         Args:
             None.
 
@@ -227,7 +224,8 @@ class RTE(rtectrl):
 
     def spi_enable(self):
         """
-        Enable the SPI interface by configuring GPIO pins based on the voltage level required by the flash chip.
+        Enable the SPI interface by configuring GPIO pins based on the
+        voltage level required by the flash chip.
 
         Args:
             None.
@@ -266,7 +264,8 @@ class RTE(rtectrl):
 
     def psu_on(self):
         """
-        Connect main power supply to the DUT by setting either relay or Sonoff to ON state.
+        Connect main power supply to the DUT by setting either relay
+        or Sonoff to ON state.
 
         Args:
             None.
@@ -288,7 +287,8 @@ class RTE(rtectrl):
 
     def psu_off(self):
         """
-        Disconnect main power supply from the DUT by setting either relay or Sonoff to OFF state.
+        Disconnect main power supply from the DUT by setting either relay
+        or Sonoff to OFF state.
 
         Args:
             None.
@@ -317,7 +317,8 @@ class RTE(rtectrl):
             None.
 
         Returns:
-            str or None: The state of the PSU, which could be "ON", "OFF", or None if no valid PSU state is found.
+            str or None: The state of the PSU, which could be "ON", "OFF"
+            or None if no valid PSU state is found.
         """
         state = None
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:

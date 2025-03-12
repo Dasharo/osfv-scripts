@@ -51,82 +51,6 @@ class RTE(rtectrl):
                 )
             )
 
-<<<<<<< HEAD
-=======
-    def load_model_data(self):
-        """
-        Load and validate a YAML configuration file based on the device under test (DUT) model.
-        """
-        file_path = os.path.join(
-            files("osfv"), "models", f"{self.dut_model}.yml"
-        )
-        # Check if the file exists
-        if not os.path.isfile(file_path):
-            raise UnsupportedDUTModel(
-                f"The {file_path} model is not yet supported"
-            )
-
-        # Load the YAML file
-        with open(file_path, "r") as file:
-            data = yaml.safe_load(file)
-
-        voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any(
-            "rte_1_1", "rte_1_0", "ch341a", "dediprog"
-        )
-        flashing_power_state_validator = Any("G3", "S5")
-
-        schema = Schema(
-            {
-                Required("programmer"): {
-                    Required("name"): programmer_name_validator,
-                },
-                Required("flash_chip"): {
-                    Required("voltage"): voltage_validator,
-                    Optional("model"): str,
-                },
-                Required("pwr_ctrl"): {
-                    Required("sonoff"): bool,
-                    Required("relay"): bool,
-                    Required(
-                        "flashing_power_state"
-                    ): flashing_power_state_validator,
-                },
-                Optional("reset_cmos", default=False): bool,
-                Optional("disable_wp", default=False): bool,
-            }
-        )
-
-        try:
-            schema(data)
-        except Exception as e:
-            exit(f"Model file is invalid: {e}")
-
-        # Check if required fields are present
-        required_fields = [
-            "pwr_ctrl",
-            "pwr_ctrl.sonoff",
-            "pwr_ctrl.relay",
-            "flash_chip",
-            "flash_chip.voltage",
-            "programmer",
-            "programmer.name",
-        ]
-        for field in required_fields:
-            current_field = data
-            keys = field.split(".")
-            for key in keys:
-                if key in current_field:
-                    current_field = current_field[key]
-                else:
-                    exit(
-                        f"Required field '{field}' is missing in model config."
-                    )
-
-        # Return the loaded data
-        return data
-
->>>>>>> 7f69c2c9e4ea (libs/ add: docstring documentation in remaining files)
     def power_on(self, sleep=1):
         """
         Turns the power on by setting the power button pin to "low" for a
@@ -207,8 +131,14 @@ class RTE(rtectrl):
 
     def spi_enable(self):
         """
-        Enables the SPI interface by configuring GPIO pins based on the voltage
-        level required by the flash chip.
+        Enable the SPI interface by configuring GPIO pins based on the
+        voltage level required by the flash chip.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         voltage = self.dut_data["flash_chip"]["voltage"]
 
@@ -237,6 +167,12 @@ class RTE(rtectrl):
         """
         Connect main power supply to the DUT by setting either relay
         or Sonoff to ON state.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
             self.sonoff.turn_on()
@@ -254,6 +190,12 @@ class RTE(rtectrl):
         """
         Disconnect main power supply from the DUT by setting either relay
         or Sonoff to OFF state.
+
+        Args:
+            None.
+
+        Returns:
+            None.
         """
         # TODO: rework using abstract interfaces for power control?
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:
@@ -270,7 +212,14 @@ class RTE(rtectrl):
 
     def psu_get(self):
         """
-        Get PSU state.
+        Get the current state of the Power Supply Unit (PSU).
+
+        Args:
+            None.
+
+        Returns:
+            str or None: The state of the PSU, which could be "ON", "OFF"
+            or None if no valid PSU state is found.
         """
         state = None
         if self.dut_data["pwr_ctrl"]["sonoff"] is True:

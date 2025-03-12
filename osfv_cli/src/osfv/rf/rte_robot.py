@@ -172,6 +172,11 @@ class RobotRTE:
         return self.rte.psu_get()
 
     @keyword(types=None)
+    def rte_clear_cmos(self):
+        robot.api.logger.info(f"Clearing CMOS...")
+        self.rte.reset_cmos()
+
+    @keyword(types=None)
     def rte_gpio_get(self, gpio_no):
         state = self.rte.gpio_get(int(gpio_no))
         robot.api.logger.info(f"GPIO {gpio_no} state: {state}")

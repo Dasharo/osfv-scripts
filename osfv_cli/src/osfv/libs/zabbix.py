@@ -41,7 +41,7 @@ class Zabbix:
             None.
 
         Returns:
-            a response object form server.
+            a response object from server.
         """
         payload = {
             "jsonrpc": "2.0",
@@ -75,7 +75,7 @@ class Zabbix:
             None.
 
         Returns:
-            a response object form server.
+            a response object from server.
         """
         payload = {
             "jsonrpc": "2.0",
@@ -101,7 +101,7 @@ class Zabbix:
             None.
 
         Returns:
-            a response object form server.
+            a response object from server.
         """
         return self.format_hosts(self.get_all_hosts_json())
 
@@ -130,7 +130,7 @@ class Zabbix:
             ip_address: IP address to be assigned to the host.
 
         Returns:
-            str: a response object form server with added hostid.
+            str: a response object from server with added hostid.
 
         Rises:
             Failed to add host: If there is an error in response.
@@ -208,7 +208,7 @@ class Zabbix:
             host_name: The name of the host to be identified in the sever.
 
         Returns:
-            a response object form server with added hostid.
+            a response object from server with added hostid.
         """
         payload = {
             "jsonrpc": "2.0",
@@ -234,7 +234,7 @@ class Zabbix:
             host_name: The name of the host to be identified in the sever.
 
         Returns:
-            a response object form server with interfaces and interfaceid.
+            a response object from server with interfaces and interfaceid.
         """
         payload = {
             "jsonrpc": "2.0",
@@ -268,7 +268,7 @@ class Zabbix:
             new_ip: New IP address to be assigned to the host.
 
         Returns:
-            a response object form server.
+            a response object from server.
         """
         interface_id = self.get_host_interface_id(host_name)
         if not interface_id:
@@ -292,10 +292,10 @@ class Zabbix:
         Remove the selected host.
 
         Args:
-            host_name: The name of the removed host.
+            host_name: The name of the host to be removed.
 
         Returns:
-            a response object form server.
+            a response object from server.
         """
         host_id = self.get_host_id_by_name(host_name)
         if not host_id:

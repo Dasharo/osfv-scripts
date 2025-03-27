@@ -272,7 +272,7 @@ class RTE(rtectrl):
 
         Args:
             programmer (str): The programmer type, used to determine if SPI lines need to be enabled.
-            power_state (str): The desired power state for flashing, either "S5" (Soft off) or "G3" (Mechanical off.
+            power_state (str): The desired power state for flashing, either "S5" (Soft off) or "G3" (Mechanical off).
 
         Returns:
             None.
@@ -419,11 +419,14 @@ class RTE(rtectrl):
 
     def flash_create_args(self, extra_args=""):
         """
-        Creates flashrom arguments based on the DUT model configuration, including any extra arguments provided.
-        It explicitly sets the flash chip model if defined in the configuration and appends any additional arguments.
+        Creates flashrom arguments based on the DUT model configuration,
+        including any extra arguments provided.
+        It explicitly sets the flash chip model if defined in the configuration
+        and appends and appends additional arguments, if provided.
 
         Args:
-            extra_args (str, optional): Additional arguments to be added to the flashrom command. Defaults to an empty string.
+            extra_args (str, optional): Additional arguments to be added
+            to the flashrom command. Defaults to an empty string.
 
         Returns:
             str: The generated flashrom arguments as a string.
@@ -442,7 +445,8 @@ class RTE(rtectrl):
 
     def flash_probe(self):
         """
-        Execute flashrom with no commands to simply probe the flash chip.
+        Execute flashrom with platform-specific programmer without
+        arguments to simply probe the flash chip.
 
         Args:
             None.
@@ -508,7 +512,7 @@ class RTE(rtectrl):
 
     def sonoff_sanity_check(self):
         """
-        Verifies that if the DUT is powered by Sonoff, the Sonoff IP is not None.
+        Verifies Sonoff IP is not None, if the DUT is powered by Sonoff.
 
         Args:
             None.

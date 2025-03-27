@@ -13,7 +13,8 @@ class Sonoff:
         """
         Attempt to turn on the Sonoff relay and log the response.
 
-        Logs the success or failure of the operation. If an error occurs, the failure and error message are logged.
+        Logs the success or failure of the operation. If an error occurs,
+        the failure and error message are logged.
 
         Args:
             None
@@ -35,7 +36,8 @@ class Sonoff:
         """
         Attempt to turn off the Sonoff relay and log the response.
 
-        Logs the success or failure of the operation. If an error occurs, the failure and error message are logged.
+        Logs the success or failure of the operation. If an error occurs,
+        the failure and error message are logged.
 
         Args:
             None
@@ -81,7 +83,7 @@ class Sonoff:
         Toggle the state of the Sonoff relay based on its current state, either turning it on or off,
         and log the action. If an error occurs, it logs the failure and error message.
 
-        Args:
+        Args:Attempt to turn on the Sonoff relay and log the response.
             None
 
         Returns:

@@ -261,9 +261,12 @@ class SnipeIT:
         """
         Retrieves the asset ID associated with a given Sonoff IP.
 
-        This method first checks for duplicate occurrences of the provided Sonoff IP among all assets.
-        Then, it searches for the asset that contains the specified Sonoff IP in its custom fields.
-        If a matching asset is found, it performs a secondary exclusivity check by asset ID before returning the asset's ID.
+        Firstly, this method checks for duplicate occurrences of the
+        provided Sonoff IP among all assets.
+        Then, it searches for the asset that contains the specified
+        Sonoff IP in its custom fields.
+        If a matching asset is found, it performs a secondary exclusivity
+        check by asset ID before returning the asset's ID.
 
         Parameters:
         sonoff_ip (str): The Sonoff IP address to search for.
@@ -415,7 +418,7 @@ class SnipeIT:
             asset_id (str): The unique identifier of the asset to be checked out.
 
         Returns:
-            success status with a response object form server.
+            success status with a response object from server.
         """
         response = requests.post(
             f"{self.cfg_api_url}/hardware/{asset_id}/checkin",
@@ -441,7 +444,7 @@ class SnipeIT:
             asset_id (str): The unique identifier of the asset to be checked out.
 
         Returns:
-            success status with a response object form server.
+            success status with a response object from server.
         """
         response = requests.get(
             f"{self.cfg_api_url}/hardware/{asset_id}",

@@ -75,7 +75,7 @@ class RobotRTE:
 
     def cli_model_from_osfv(self, osfv_model):
         """
-        Get osfv_cli model name from OSFV repo config name.
+        Get osfv_cli model name from its counterpart in OSFV repo config.
 
         Args:
             osfv_model (str): The model name from the OSFV repo config.
@@ -105,7 +105,7 @@ class RobotRTE:
             fw_file (str): The file path where the flash content will be saved.
 
         Returns:
-            int: The result code from the flash_probe method of the rte object.
+            int: The result code from the flash_read method of the rte object.
         """
         robot.api.logger.info(f"Reading from flash...")
         rc = self.rte.flash_read(fw_file)
@@ -122,7 +122,7 @@ class RobotRTE:
             bios (bool, optional): Whether to write the BIOS (default is False).
 
         Returns:
-            int: The result code from the flash_erase method of the rte object.
+            int: The result code from the flash_write method of the rte object.
         """
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         rc = self.rte.flash_write(fw_file, bios)
@@ -135,7 +135,7 @@ class RobotRTE:
     @keyword(types=None)
     def rte_flash_probe(self):
         """
-        Probes the flash chip of the DUT.
+        Probe the flash chip of the DUT.
 
         Args:
             None.
@@ -150,7 +150,7 @@ class RobotRTE:
     @keyword(types=None)
     def rte_flash_erase(self):
         """
-        Erases the flash chip of the DUT.
+        Erase the flash chip of the DUT.
 
         Args:
             None.
@@ -214,10 +214,11 @@ class RobotRTE:
     @keyword(types=None)
     def rte_power_on(self, time=1):
         """
-        Power on the DUT for a specified amount of time and log the action.
+        Press the power button for a specified amount of time passed in argument.
 
         Args:
-            time (int, optional): The duration in seconds to power on the DUT. Default is 1 second.
+            time (int, optional): The duration in seconds to press the power button on the DUT.
+            Default is 1 second.
 
         Returns:
             None
@@ -228,7 +229,9 @@ class RobotRTE:
     @keyword(types=None)
     def rte_power_off(self, time=6):
         """
-        Power off the DUT for a specified amount of time and log the action.
+        Press the power button for a specified amount of time passed in argument.
+        Keeping the power button pressed for at least 4 seconds causes
+        a forced shutdown of the DUT.
 
         Args:
             time: The duration in seconds to power off the DUT. Default is 6 seconds.
@@ -256,7 +259,7 @@ class RobotRTE:
     @keyword(types=None)
     def rte_psu_on(self):
         """
-        Enable the power supply for the DUT and log the action.
+        Turn the power supply on for the DUT and log the action.
 
         Args:
             None
@@ -270,7 +273,7 @@ class RobotRTE:
     @keyword(types=None)
     def rte_psu_off(self):
         """
-        Disable the power supply for the DUT and log the action.
+        Turn the power supply off for the DUT and log the action.
 
         Args:
             None

@@ -690,86 +690,86 @@ def flash_erase(rte, args):
 
 def sonoff_on(sonoff, args):
     """
-    Attempts to turn on the Sonoff relay and prints the response.
+    Attempts to turn on the Sonoff power switch and prints the response.
 
     Args:
-        sonoff: An object responsible for controlling the Sonoff relay.
+        sonoff: An object responsible for controlling the Sonoff power switch.
         args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None.
     """
-    print("Turning on Sonoff relay...")
+    print("Turning on Sonoff power switch...")
     try:
         response = sonoff.turn_on()
         print(response)
     except requests.exceptions.RequestException as e:
-        print(f"Failed to turn on Sonoff relay. Error: {e}")
+        print(f"Failed to turn on Sonoff power switch. Error: {e}")
 
 
 def sonoff_off(sonoff, args):
     """
-    Attempts to turn off the Sonoff relay and prints the response.
+    Attempts to turn off the Sonoff power switch and prints the response.
 
     Args:
-        sonoff: An object responsible for controlling the Sonoff relay.
+        sonoff: An object responsible for controlling the Sonoff power switch.
         args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None.
     """
-    print("Turning off Sonoff relay...")
+    print("Turning off Sonoff power switch...")
     try:
         response = sonoff.turn_off()
         print(response)
     except requests.exceptions.RequestException as e:
-        print(f"Failed to turn off Sonoff relay. Error: {e}")
+        print(f"Failed to turn off Sonoff power switch. Error: {e}")
 
 
 def sonoff_get(sonoff, args):
     """
-    Retrieves the current state of the Sonoff relay and prints it.
+    Retrieves the current state of the Sonoff power switch and prints it.
 
     Args:
-        sonoff: An object responsible for controlling the Sonoff relay.
+        sonoff: An object responsible for controlling the Sonoff power switch.
         args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None.
     """
-    print("Getting Sonoff relay state...")
+    print("Getting Sonoff power switch state...")
     try:
         state = sonoff.get_state()
-        print(f"Sonoff relay state: {state}")
+        print(f"Sonoff power switch state: {state}")
     except requests.exceptions.RequestException as e:
-        print(f"Failed to get Sonoff relay state. Error: {e}")
+        print(f"Failed to get Sonoff power switch state. Error: {e}")
 
 
 def sonoff_tgl(sonoff, args):
     """
-    Toggles the current state of the Sonoff relay.
+    Toggles the current state of the Sonoff power switch.
 
     Args:
-        sonoff: An object responsible for controlling the Sonoff relay.
+        sonoff: An object responsible for controlling the Sonoff power switch.
         args (object): Arguments that may contain additional parameters (not used in this function).
 
     Returns:
         None.
     """
-    print("Toggling Sonoff relay state...")
+    print("Toggling Sonoff power switch state...")
     try:
         current_state = sonoff.get_state()
 
         if current_state == "ON":
             response = sonoff.turn_off()
-            print("Sonoff relay state toggled off.")
+            print("Sonoff power switch state toggled off.")
         elif current_state == "OFF":
             response = sonoff.turn_on()
-            print("Sonoff relay state toggled on.")
+            print("Sonoff power switch state toggled on.")
         else:
-            print(f"Unexpected Sonoff relay state: {current_state}")
+            print(f"Unexpected Sonoff power switch state: {current_state}")
     except requests.exceptions.RequestException as e:
-        print(f"Failed to toggle Sonoff relay state. Error: {e}")
+        print(f"Failed to toggle Sonoff power switch state. Error: {e}")
 
 
 def ask_to_proceed(message="Do you want to proceed (y/n): "):

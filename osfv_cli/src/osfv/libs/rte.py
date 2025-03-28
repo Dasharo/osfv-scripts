@@ -422,7 +422,7 @@ class RTE(rtectrl):
         Creates flashrom arguments based on the DUT model configuration,
         including any extra arguments provided.
         It explicitly sets the flash chip model if defined in the configuration
-        and appends and appends additional arguments, if provided.
+        and appends additional arguments, if provided.
 
         Args:
             extra_args (str, optional): Additional arguments to be added

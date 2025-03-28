@@ -75,10 +75,11 @@ class RobotRTE:
 
     def cli_model_from_osfv(self, osfv_model):
         """
-        Get osfv_cli model name from its counterpart in OSFV repo config.
+        Check if the .yml file with the name matching osfv_model exists
+        in the src/osfv/models/ directory.
 
         Args:
-            osfv_model (str): The model name from the OSFV repo config.
+            osfv_model (str): The model name.
 
         Returns:
             str: The corresponding osfv_cli model name.

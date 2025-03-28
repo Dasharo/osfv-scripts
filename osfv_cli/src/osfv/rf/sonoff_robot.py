@@ -83,7 +83,7 @@ class Sonoff:
         Toggle the state of the Sonoff power switch based on its current state, either turning it on or off,
         and log the action. If an error occurs, it logs the failure and error message.
 
-        Args:Attempt to turn on the Sonoff power switch and log the response.
+        Args:
             None
 
         Returns:

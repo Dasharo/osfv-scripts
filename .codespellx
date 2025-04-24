@@ -1,1 +1,1 @@
-            f"{self.cfg_api_url}/hardware/{asset_id}/checkin",
+            f"{self.cfg_api_url}/hardware/{asset_id}/checkin"

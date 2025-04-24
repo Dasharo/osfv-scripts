@@ -6,6 +6,8 @@ import sys
 import requests
 import unidecode
 import yaml
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 
 class SnipeIT:
@@ -39,10 +41,79 @@ class SnipeIT:
             "Accept": "application/json",
             "Authorization": f"Bearer {self.cfg_api_token}",
         }
+        self.session = self._init_session()
 
     SNIPEIT_CONFIG_FILE_PATH = os.getenv(
         "SNIPEIT_CONFIG_FILE_PATH", os.path.expanduser("~/.osfv/snipeit.yml")
     )
+
+    def _init_session(self):
+        session = requests.Session()
+        retries = Retry(
+            total=3,
+            backoff_factor=1,
+            status_forcelist=[500, 502, 503, 504],
+            allowed_methods=["GET"],
+            raise_on_status=False,
+        )
+        adapter = HTTPAdapter(max_retries=retries)
+        session.mount("http://", adapter)
+        session.mount("https://", adapter)
+        return session
+
+    def _request(
+        self,
+        method,
+        url,
+        params=None,
+        data=None,
+        json=None,
+        headers=None,
+        max_retries=3,
+        timeout=10,
+    ):
+        delay = 2
+        for attempt in range(max_retries):
+            try:
+                response = self.session.request(
+                    method=method,
+                    url=url,
+                    headers=headers or self.headers,
+                    params=params,
+                    data=data,
+                    json=json,
+                    timeout=timeout,
+                )
+
+                response_json = response.json()
+
+                if (
+                    response.status_code == 200
+                    and response_json.get("status") != "error"
+                ):
+                    return True, response_json
+                else:
+                    return False, response_json
+
+            except requests.exceptions.Timeout:
+                print(
+                    f"[Timeout] {method.upper()} {url} — retrying in {delay}s (attempt {attempt + 1}/{max_retries})"
+                )
+                time.sleep(delay)
+                delay *= 2
+
+            except requests.exceptions.RequestException as e:
+                return False, {"error": str(e)}
+
+        return False, {
+            "error": f"{method.upper()} {url} failed after {max_retries} retries"
+        }
+
+    def _request_get(self, url, **kwargs):
+        return self._request("GET", url, **kwargs)
+
+    def _request_post(self, url, **kwargs):
+        return self._request("POST", url, **kwargs)
 
     def load_snipeit_config(self):
         """
@@ -111,24 +182,17 @@ class SnipeIT:
         all_assets = []
 
         while True:
-            response = requests.get(
+            success, data = self._request_get(
                 f"{self.cfg_api_url}/hardware",
-                headers=self.headers,
                 params={"limit": 500, "offset": (page - 1) * 500},
-                timeout=10,
             )
-            if response.status_code == 200:
-                data = response.json()
+            if success:
                 all_assets.extend(data["rows"])
                 if "total_pages" not in data or data["total_pages"] <= page:
                     break
                 page += 1
             else:
-                print(
-                    f"Error retrieving assets. Status code: "
-                    f"{response.status_code}"
-                )
-                print(response.json())
+                print(f"Error retrieving assets: {data}")
                 break
 
         return all_assets
@@ -394,21 +458,11 @@ class SnipeIT:
             "assigned_user": self.cfg_user_id,
             "checkout_to_type": "user",
         }
-        response = requests.post(
+        success, response = self._request_post(
             f"{self.cfg_api_url}/hardware/{asset_id}/checkout",
-            headers=self.headers,
             json=data,
-            timeout=10,
         )
-        response_json = response.json()
-
-        if (
-            response.status_code == 200
-            and response_json.get("status") != "error"
-        ):
-            return True, response_json, False
-        else:
-            return False, response_json, False
+        return success, response, False
 
     def check_in_asset(self, asset_id):
         """
@@ -420,20 +474,9 @@ class SnipeIT:
         Returns:
             success status with a response object from server.
         """
-        response = requests.post(
-            f"{self.cfg_api_url}/hardware/{asset_id}/checkin",
-            headers=self.headers,
-            timeout=10,
+        return self._request_post(
+            f"{self.cfg_api_url}/hardware/{asset_id}/checkin"
         )
-        response_json = response.json()
-
-        if (
-            response.status_code == 200
-            and response_json.get("status") != "error"
-        ):
-            return True, response_json
-        else:
-            return False, response_json
 
     def get_asset(self, asset_id):
         """
@@ -446,19 +489,7 @@ class SnipeIT:
         Returns:
             success status with a response object from server.
         """
-        response = requests.get(
-            f"{self.cfg_api_url}/hardware/{asset_id}",
-            headers=self.headers,
-            timeout=10,
-        )
-        response_json = response.json()
-        if (
-            response.status_code == 200
-            and response_json.get("status") != "error"
-        ):
-            return True, response_json
-        else:
-            return False, response_json
+        return self._request_get(f"{self.cfg_api_url}/hardware/{asset_id}")
 
     def get_asset_model_name(self, asset_id):
         """
@@ -489,21 +520,14 @@ class SnipeIT:
             str or None: The company ID if found, otherwise None if the company
             doesn't exist or if there was an error retrieving the data.
         """
-        response = requests.get(
-            f"{self.cfg_api_url}/companies", headers=self.headers, timeout=10
-        )
-        if response.status_code == 200:
-            companies_data = response.json()
-            for company in companies_data["rows"]:
+        success, data = self._request_get(f"{self.cfg_api_url}/companies")
+        if success:
+            for company in data["rows"]:
                 if company["name"] == company_name:
                     return company["id"]
             return None
         else:
-            print(
-                f"Error retrieving companies. Status code: "
-                f"{response.status_code}"
-            )
-            print(response.json())
+            print(f"Error retrieving companies: {data}")
             return None
 
     def get_group_id(self, group_name):
@@ -517,21 +541,14 @@ class SnipeIT:
             str or None: The group ID if found, otherwise None if the group doesn't exist
             or if there was an error retrieving the data.
         """
-        response = requests.get(
-            f"{self.cfg_api_url}/groups", headers=self.headers, timeout=10
-        )
-        if response.status_code == 200:
-            groups_data = response.json()
-            for group in groups_data["rows"]:
+        success, data = self._request_get(f"{self.cfg_api_url}/groups")
+        if success:
+            for group in data["rows"]:
                 if group["name"] == group_name:
                     return group["id"]
             return None
         else:
-            print(
-                f"Error retrieving user groups. Status code: "
-                f"{response.status_code}"
-            )
-            print(response.json())
+            print(f"Error retrieving user groups: {data}")
             return None
 
     def generate_password(self, length=16):
@@ -562,25 +579,17 @@ class SnipeIT:
         users = []
 
         while True:
-            response = requests.get(
+            success, data = self._request_get(
                 f"{self.cfg_api_url}/users",
-                headers=self.headers,
                 params={"limit": 50, "offset": (page - 1) * 50},
-                timeout=10,
             )
-            # print(response.json())
-            if response.status_code == 200:
-                data = response.json()
+            if success:
                 users.extend(data["rows"])
                 if "total" not in data or data["total"] <= page:
                     break
                 page += 1
             else:
-                print(
-                    f"Error retrieving users. Status code: "
-                    f"{response.status_code}"
-                )
-                print(response.json())
+                print(f"Error retrieving users: {data}")
                 break
 
             return users
@@ -656,28 +665,19 @@ class SnipeIT:
         }
         print(data)
 
-        response = requests.post(
+        success, response = self._request_post(
             f"{self.cfg_api_url}/users",
-            headers=self.headers,
             json=data,
-            timeout=10,
         )
-        response_json = response.json()
-        if (
-            response.status_code == 200
-            and response_json.get("status") != "error"
-        ):
-            user_info = response.json()["payload"]
+        if success:
+            user_info = response["payload"]
             user_id = user_info["id"]
             print(f"User created successfully!")
             print(f"Username: {username}")
             print(f"Password: {password}")
             print(f"User ID: {user_id}")
         else:
-            print(
-                f"Failed to create user. Status code: {response.status_code}"
-            )
-            print(response_json)
+            print(f"Failed to create user: {data}")
 
     def user_del(self, first_name, last_name):
         """
@@ -703,20 +703,10 @@ class SnipeIT:
             print(f"Failed to find user with username: {username}")
             return
 
-        response = requests.delete(
-            f"{self.cfg_api_url}/users/{user_id}",
-            headers=self.headers,
-            timeout=10,
+        success, response = self._request(
+            "DELETE", f"{self.cfg_api_url}/users/{user_id}"
         )
-        response_json = response.json()
-        if (
-            response.status_code == 200
-            and response_json.get("status") != "error"
-        ):
+        if success:
             print(f"User {username} deleted successfully!")
         else:
-            print(
-                f"Failed to delete user {username}. Status code: "
-                f"{response.status_code}"
-            )
-            print(response_json)
+            print(f"Failed to delete user {username}: {response}")

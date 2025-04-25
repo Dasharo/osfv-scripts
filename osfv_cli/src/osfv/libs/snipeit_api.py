@@ -174,9 +174,6 @@ class SnipeIT:
 
         Returns:
             list: A list of dictionaries, where each dictionary represents an asset.
-
-        Raises:
-            requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
         page = 1
         all_assets = []
@@ -436,8 +433,6 @@ class SnipeIT:
                 bool: Indicates if the checkout operation was initiated (True) or not (False).
                 dict or None: The JSON response from the API if the checkout was initiated, otherwise None.
                 bool: Indicates if the asset was already checked out to the current user (True) or not (False).
-
-        Raises:
             requests.exceptions.RequestException: If the HTTP request to the API fails.
         """
         self.check_asset_for_ip_exclusivity_by_id(asset_id)

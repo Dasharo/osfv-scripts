@@ -1,0 +1,17 @@
+---
+flash_chip:
+  # flash chip voltage (required)
+  voltage: "1.8V"
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  # whether power is controlled via Sonoff plug (required)
+  sonoff: true
+  # whether power is controller via on-board RTE relay (required)
+  relay: false
+  flashing_power_state: "G3"
+
+# whether CMOS reset is required after flashing (optional - defaults to false)
+reset_cmos: false

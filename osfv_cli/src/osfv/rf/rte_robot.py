@@ -4,7 +4,7 @@ from osfv.libs.models import UnsupportedDUTModel
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
-from robot.api.deco import keyword
+from robot.api.deco import keyword, library
 
 model_dict = {
     "odroid-h4-plus": "H4-PLUS",
@@ -41,6 +41,7 @@ model_dict = {
 }
 
 
+@library(scope="GLOBAL")
 class RobotRTE:
     def __init__(self, rte_ip, snipeit: bool, sonoff_ip=None, config=None):
         self.rte_ip = rte_ip

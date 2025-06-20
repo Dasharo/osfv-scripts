@@ -275,3 +275,33 @@ unset SSH_AUTH_SOCK
 
 You can test local changes by running `poetry shell` first. Then, all
 `osfv_cli` calls will use the local files in repository, not installed package.
+
+## Tests
+
+OSFV CLI tests can be found in the `test` directory.
+The tests are written in [Robot Framework](https://robotframework.org/),
+
+### Dependencies
+
+Install the dependencies:
+
+```shell
+pip install -r requirements.txt
+```
+
+### Required configs
+
+To test some functionalities related to SnipeIT, it is required to
+use a configuration of a second SnipeIT user. The configuration
+should be located at `~/.osfv-robot/snipeit.yaml`.
+The API key and User ID must be valid, and different
+from the one at `~/.osfv/snipeit.yaml`.
+For details on SnipeIT configuration see [Customize the configuration](#customize-the-configuration).
+
+### Running tests
+
+When all the prerequisites are met, the test can be run:
+
+```shell
+robot test
+```

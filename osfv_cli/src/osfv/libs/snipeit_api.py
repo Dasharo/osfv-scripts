@@ -42,6 +42,8 @@ class SnipeIT:
             "Authorization": f"Bearer {self.cfg_api_token}",
         }
         self.session = self._init_session()
+        self.all_assets = None
+        self.assets_cache = {}
 
     SNIPEIT_CONFIG_FILE_PATH = os.getenv(
         "SNIPEIT_CONFIG_FILE_PATH", os.path.expanduser("~/.osfv/snipeit.yml")
@@ -175,6 +177,8 @@ class SnipeIT:
         Returns:
             list: A list of dictionaries, where each dictionary represents an asset.
         """
+        if self.all_assets is not None:
+            return self.all_assets
         page = 1
         all_assets = []
 
@@ -191,7 +195,9 @@ class SnipeIT:
             else:
                 print(f"Error retrieving assets: {data}")
                 break
-
+        self.all_assets = all_assets
+        for asset in all_assets:
+            self.assets_cache[asset["id"]] = (success, asset)
         return all_assets
 
     def __retieve_custom_field_value(self, custom_fields, expected_field_name):
@@ -484,7 +490,11 @@ class SnipeIT:
         Returns:
             success status with a response object from server.
         """
-        return self._request_get(f"{self.cfg_api_url}/hardware/{asset_id}")
+        if asset_id not in self.assets_cache:
+            self.assets_cache[asset_id] = self._request_get(
+                f"{self.cfg_api_url}/hardware/{asset_id}"
+            )
+        return self.assets_cache[asset_id]
 
     def get_asset_model_name(self, asset_id):
         """

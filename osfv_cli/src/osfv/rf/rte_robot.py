@@ -15,7 +15,7 @@ model_dict = {
     "msi-pro-z790-p-ddr5": "MSI PRO Z790-P DDR5",
     "novacustom-ns50mu": "NS50MU",
     "novacustom-v540tu": "V540TU",
-    "novacustom-nuc_box": "NUC BOX",
+    "novacustom-nuc_box": "NUC BOX-125H",
     "pcengines-apu2": "APU2",
     "pcengines-apu3": "APU3",
     "pcengines-apu4": "APU4",

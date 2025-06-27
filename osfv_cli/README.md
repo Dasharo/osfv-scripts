@@ -283,10 +283,11 @@ The tests are written in [Robot Framework](https://robotframework.org/),
 
 ### Dependencies
 
-Install the dependencies:
+Enter development shell with test dependencies:
 
 ```shell
-pip install -r requirements.txt
+poetry install --with test
+poetry shell
 ```
 
 ### Required configs

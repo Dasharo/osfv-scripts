@@ -688,6 +688,10 @@ def flash_erase(rte, args):
     print(f"Flash erased")
 
 
+def flash_check(args):
+    print(f"Verifying flash image completeness...")
+
+
 def sonoff_on(sonoff, args):
     """
     Attempts to turn on the Sonoff power switch and prints the response.

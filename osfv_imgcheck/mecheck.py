@@ -35,10 +35,10 @@ def get_region_data(pIndex, pName):
     reg_base = (REGIONS[pIndex] << 12) & 0x07FFF000
     reg_limit = ((REGIONS[pIndex] >> 4) & 0x07FFF000) | 0x00000FFF
 
-    # if
-    print(pName + "_FLREG: {0:#0{1}x}".format(REGIONS[pIndex], 0x0A))
-    print(pName + "_BASE: {0:#0{1}x}".format(reg_base, 0x0A))
-    print(pName + "_LIMIT: {0:#0{1}x}".format(reg_limit, 0x0A))
+    if VERBOSITY > 0x00:
+        print(pName + "_FLREG: {0:#0{1}x}".format(REGIONS[pIndex], 0x0A))
+        print(pName + "_BASE: {0:#0{1}x}".format(reg_base, 0x0A))
+        print(pName + "_LIMIT: {0:#0{1}x}".format(reg_limit, 0x0A))
 
     reg_data = imageData[reg_base : (reg_limit + 0x01)]
     return reg_data
@@ -74,14 +74,13 @@ def main():
     parser.add_argument(
         "-v",
         "--verbosity",
-        help="increase output verbosity (0 or 1)",
-        action="append",
-        type=int,
+        help="increase output verbosity",
+        action="store_true",
     )
     parser.add_argument(
         "-l",
         "--list",
-        help="list known region names",
+        help="list known region namesand exit",
         action="store_true",
         dest="list",
     )
@@ -106,7 +105,7 @@ def main():
     )
     parser.add_argument(
         "-x",
-        "--dry",
+        "--dry-run",
         help="failed region checks won't change exit status",
         action="store_true",
         dest="dry",
@@ -115,7 +114,7 @@ def main():
     args = parser.parse_args()
     if args.verbosity:
         print("verbosity changed to: " + str(args.verbosity))
-        VERBOSITY = args.verbosity
+        VERBOSITY = 0x01
     if args.list:
         print("Known regions:")
         for reg_name in REGION_INDICES:
@@ -136,16 +135,18 @@ def main():
                 )[0x0]
                 if valsig != FLVALSIG:
                     sys.exit("Invalid image, no FLVALSIG found!")
-            print("FLVALSIG: {0:#0{1}x}".format(valsig, 0x0A))
+            if VERBOSITY > 0x00:
+                print("FLVALSIG: {0:#0{1}x}".format(valsig, 0x0A))
 
             FLMAP0 = struct.unpack(
                 "<I",
                 imageData[(valsig_offset + 0x04) : (valsig_offset + 0x08)],
             )[0x00]
-            print("FLMAP0: {0:#0{1}x}".format(FLMAP0, 0x0A))
-
             FRBA = (FLMAP0 >> 0x0C) & 0x00000FF0
-            print("FRBA: {0:#0{1}x}".format(FRBA, 0x06))
+
+            if VERBOSITY > 0x00:
+                print("FLMAP0: {0:#0{1}x}".format(FLMAP0, 0x0A))
+                print("FRBA: {0:#0{1}x}".format(FRBA, 0x06))
 
             region_format = f"<{NUMBER_OF_REGIONS}I"
             REGIONS = struct.unpack(
@@ -157,16 +158,19 @@ def main():
             try:
                 check_region_index = REGION_INDICES.index(check_region_name)
             except ValueError:
-                sys.exit("Unsupported flash region: " + check_region_name)
+                sys.exit('Unknown flash region: "' + check_region_name + '"')
             check_region(check_region_index, check_region_name)
     if args.region_to_dump:
         for dump_region_name in args.region_to_dump:
             try:
                 dump_region_index = REGION_INDICES.index(dump_region_name)
             except ValueError:
-                sys.exit("Unsupported flash region: " + dump_region_name)
+                sys.exit('Unknown flash region: "' + dump_region_name + '"')
             dump_region(dump_region_index, dump_region_name)
 
+
+# todo: exit status negative in case of failed descriptor content, get data, check,
+# or file operation
 
 if __name__ == "__main__":
     main()

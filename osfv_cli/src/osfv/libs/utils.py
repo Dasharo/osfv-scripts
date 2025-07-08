@@ -1,3 +1,5 @@
+import os
+
 from osfv.libs.sonoff_api import SonoffDevice
 
 
@@ -25,3 +27,30 @@ def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
         sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(rte_ip)
     sonoff = SonoffDevice(sonoff_ip)
     return sonoff, sonoff_ip
+
+
+def check_flash_image_regions(rom, dry_run=False, regions=["me"]):
+    """
+    Call ../osfv_mecheck/mecheck.py program to verify existence of given regions
+    and data content of them.
+
+    Args:
+    rom (str): Dasharo flash image file path.
+    dry_run (bool):
+    regions ([str]):
+
+    Returns:
+    """
+    command_line = f"../osfv_mecheck/mecheck.py {rom}"
+    for region in regions:
+        command_line += f" -c {region}"
+    if dry_run:
+        command_line += " -x"
+    print(f"Verifying flash image completeness of {rom} ...")
+    return_code = os.system(command_line)
+    if return_code != 0:
+        ("mecheck.py failed.")
+        return False
+    else:
+        print("OK")
+        return True

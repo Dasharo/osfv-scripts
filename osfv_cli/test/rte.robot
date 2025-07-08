@@ -7,10 +7,19 @@ Documentation       The goal of this suite is to evaluate the most important fea
 ...                 of setup can be evaluated before proceeding with another release
 ...                 of the osfv-scripts.
 
+Library             OperatingSystem
 Library             Process
 Resource            ../test/common/keywords.robot
 
 Suite Setup         Run Keyword    Check In Test Devices
+
+
+*** Variables ***
+${MECHECK_TMP_DIR}=         /tmp/mecheck_images
+${MECHECK_NO_ME_URL}=       https://dl.3mdeb.com/open-source-firmware/Dasharo/protectli_vault_glk/v1.1.1/protectli_vp2410_v1.1.1.rom
+${MECHECK_ME_URL}=          https://dl.3mdeb.com/open-source-firmware/Dasharo/protectli_vault_adl/uefi/v0.9.2/protectli_vp66xx_v0.9.2.rom
+${MECHECK_NO_ME_ROM}=       ${MECHECK_TMP_DIR}/vp2410.rom
+${MECHECK_ME_ROM}=          ${MECHECK_TMP_DIR}/vp66xx.rom
 
 
 *** Test Cases ***
@@ -99,3 +108,57 @@ Test Flash Probe - Asset Checked Out By Someone Else
     ...    list_my
     ...    env:SNIPEIT_CONFIG_FILE_PATH=%{HOME}/.osfv-robot/snipeit.yml
     Should Match    ${list_result.stdout}    *Asset ID: ${ASSET_ID_APU2}*
+
+Test Flash Check - No ME in image
+    Check Out    ${RTE_IP_VP2420}
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    Create Directory    ${MECHECK_TMP_DIR}
+
+    ${wget_output}=    Run Process
+    ...    wget
+    ...    ${MECHECK_NO_ME_URL}
+    ...    -O
+    ...    ${MECHECK_NO_ME_ROM}
+    ${cli_output}=    Run Process
+    ...    osfv_cli
+    ...    rte
+    ...    --rte_ip
+    ...    ${RTE_IP_VP2420}
+    ...    flash
+    ...    check
+    ...    --rom
+    ...    ${MECHECK_NO_ME_ROM}
+    Should Contain    ${cli_output.stderr}    FATAL: mecheck.py failed.
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - Complete image
+    Check Out    ${RTE_IP_VP2420}
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    Create Directory    ${MECHECK_TMP_DIR}
+
+    ${wget_output}=    Run Process
+    ...    wget
+    ...    ${MECHECK_ME_URL}
+    ...    -O
+    ...    ${MECHECK_ME_ROM}
+    ${cli_output}=    Run Process
+    ...    osfv_cli
+    ...    rte
+    ...    --rte_ip
+    ...    ${RTE_IP_VP2420}
+    ...    flash
+    ...    check
+    ...    --rom
+    ...    ${MECHECK_ME_ROM}
+    Should Not Contain    ${cli_output.stderr}    FATAL: mecheck.py failed.
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - No ME in image but DRY check
+    Check Out    ${RTE_IP_VP2420}
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - Complete image but DRY check
+    Check Out    ${RTE_IP_VP2420}
+    Check In    ${RTE_IP_VP2420}

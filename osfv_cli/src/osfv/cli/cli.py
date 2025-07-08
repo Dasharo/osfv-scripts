@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import os
 from copy import copy
 from importlib import metadata
 from time import sleep
@@ -664,6 +665,8 @@ def flash_write(rte, args):
     Returns:
         None.
     """
+    if utils.check_flash_image_regions(args.rom, args.dry_mecheck) == False:
+        exit("FATAL: mecheck.py failed.")
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
     if rc == 0:
@@ -689,7 +692,9 @@ def flash_erase(rte, args):
 
 
 def flash_check(args):
-    print(f"Verifying flash image completeness...")
+    """ """
+    if utils.check_flash_image_regions(args.rom, args.dry_mecheck) == False:
+        exit("FATAL: mecheck.py failed.")
 
 
 def sonoff_on(sonoff, args):
@@ -1278,10 +1283,33 @@ def main():
         action="store_true",
         help='Adds "-i bios --ifd" to flashrom command',
     )
+    flash_write_parser.add_argument(
+        "-x",
+        "--dry-mecheck",
+        help="Failed flash region checks won't change exit status",
+        action="store_true",
+        dest="dry_mecheck",
+    )
+    flash_check_parser = flash_subparsers.add_parser(
+        "check",
+        help="Check flash image completeness for ME region existence with mecheck.py",
+    )
+    flash_check_parser.add_argument(
+        "--rom",
+        type=str,
+        default="write.rom",
+        help="Path to read firmware file (default: write.rom)",
+    )
+    flash_check_parser.add_argument(
+        "-x",
+        "--dry-mecheck",
+        help="Failed flash region checks won't change exit status",
+        action="store_true",
+        dest="dry_mecheck",
+    )
     flash_erase_parser = flash_subparsers.add_parser(
         "erase", help="Erase DUT flash with flashrom"
     )
-
     args = parser.parse_args()
 
     snipeit_api = SnipeIT()
@@ -1412,6 +1440,8 @@ def main():
                 flash_read(rte, args)
             elif args.flash_cmd == "write":
                 flash_write(rte, args)
+            elif args.flash_cmd == "check":
+                flash_check(args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
 

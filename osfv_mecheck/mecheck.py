@@ -45,6 +45,8 @@ def get_region_data(pIndex, pName):
 
 
 def check_region(pIndex, pName):
+    global EXIT_CODE
+
     reg_data = get_region_data(pIndex, pName)
     if reg_data != None:
         iterator = list(repeat(reg_data[0], len(reg_data)))
@@ -54,15 +56,16 @@ def check_region(pIndex, pName):
                     reg_data[0], 0x04
                 )
             )
-        EXIT_CODE = 1
+            EXIT_CODE = 1
     else:
         if VERBOSITY > 0:
-            print("FATAL: region check failed.")
+            print("FATAL: region data access failed.")
         EXIT_CODE = 1
 
 
 def dump_region(pIndex, pName):
-    # try
+    global EXIT_CODE
+
     reg_data = get_region_data(pIndex, pName)
     if reg_data != None:
         with open(pName + "_dump.bin", mode="wb") as meFile:
@@ -182,6 +185,10 @@ def main():
                 EXIT_CODE = 1
                 continue
             dump_region(dump_region_index, dump_region_name)
+    if args.dry:
+        if VERBOSITY > 0:
+            print("WARNING: this is dry run with exit status overridden.")
+        EXIT_CODE = 0
     sys.exit(EXIT_CODE)
 
 

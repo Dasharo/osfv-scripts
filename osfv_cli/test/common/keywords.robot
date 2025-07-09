@@ -19,6 +19,8 @@ ${RTE_IP_VP4630}=       192.168.10.244
 
 ${RTE_IP_Z690}=         192.168.10.199
 
+${MECHECK_TMP_DIR}=     /tmp/mecheck_images
+
 
 *** Keywords ***
 Run Flash Probe
@@ -81,3 +83,41 @@ Check In
     Log    ${result.stdout}
     Log    ${result.stderr}
     RETURN    ${result}
+
+Download And Check Flash Image
+    [Documentation]    This keyword downloads Dasharo flash image and runs osfv_cli
+    ...    with flash check command, eventually in dry mode with enforced success
+    ...    command status.
+    [Arguments]    ${rte_ip}    ${image_url}    ${dry_mode}=${FALSE}
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    Create Directory    ${MECHECK_TMP_DIR}
+    ${wget_output}=    Run Process
+    ...    wget
+    ...    ${image_url}
+    ...    -O
+    ...    ${MECHECK_TMP_DIR}/coreboot.rom
+    File Should Exist    ${MECHECK_TMP_DIR}/coreboot.rom
+    IF    ${dry_mode} == ${TRUE}
+        ${cli_output}=    Run Process
+        ...    osfv_cli
+        ...    rte
+        ...    --rte_ip
+        ...    ${rte_ip}
+        ...    flash
+        ...    check
+        ...    --rom
+        ...    ${MECHECK_TMP_DIR}/coreboot.rom
+        ...    -x
+    ELSE
+        ${cli_output}=    Run Process
+        ...    osfv_cli
+        ...    rte
+        ...    --rte_ip
+        ...    ${rte_ip}
+        ...    flash
+        ...    check
+        ...    --rom
+        ...    ${MECHECK_TMP_DIR}/coreboot.rom
+    END
+    Remove Directory    ${MECHECK_TMP_DIR}    True
+    RETURN    ${cli_output.stderr}

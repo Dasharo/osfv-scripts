@@ -1310,6 +1310,7 @@ def main():
     flash_erase_parser = flash_subparsers.add_parser(
         "erase", help="Erase DUT flash with flashrom"
     )
+
     args = parser.parse_args()
 
     snipeit_api = SnipeIT()

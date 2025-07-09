@@ -32,14 +32,17 @@ def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
 def check_flash_image_regions(rom, dry_run=False, regions=["me"]):
     """
     Call ../osfv_mecheck/mecheck.py program to verify existence of given regions
-    and data content of them.
+    and data content of them (if described memory area is not filled with single
+    byte value).
 
     Args:
     rom (str): Dasharo flash image file path.
-    dry_run (bool):
-    regions ([str]):
+    dry_run (bool): Append "-x" option to enforce positive command status, but
+                    error messages are still displayed.
+    regions ([str]): Each region string from this list is added to command line
+                     with "-c" option.
 
-    Returns:
+    Returns: True in case of command return code 0 or False otherwise.
     """
     command_line = f"../osfv_mecheck/mecheck.py {rom}"
     for region in regions:

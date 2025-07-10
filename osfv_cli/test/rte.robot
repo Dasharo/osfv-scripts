@@ -127,7 +127,7 @@ Test Flash Check - No ME in image but DRY check
     ...    in dry mode.
     Check Out    ${RTE_IP_VP2420}
     ${cli_check_out}=    Download And Check Flash Image    ${RTE_IP_VP2420}
-    ...    ${MECHECK_ME_URL}
+    ...    ${MECHECK_NO_ME_URL}
     ...    ${TRUE}
     Should Not Contain    ${cli_check_out}    FATAL: mecheck.py failed.
     Check In    ${RTE_IP_VP2420}

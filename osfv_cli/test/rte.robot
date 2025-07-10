@@ -7,10 +7,16 @@ Documentation       The goal of this suite is to evaluate the most important fea
 ...                 of setup can be evaluated before proceeding with another release
 ...                 of the osfv-scripts.
 
+Library             OperatingSystem
 Library             Process
 Resource            ../test/common/keywords.robot
 
 Suite Setup         Run Keyword    Check In Test Devices
+
+
+*** Variables ***
+${MECHECK_NO_ME_URL}=       https://dl.3mdeb.com/open-source-firmware/Dasharo/protectli_vault_glk/v1.1.1/protectli_vp2410_v1.1.1.rom
+${MECHECK_ME_URL}=          https://dl.3mdeb.com/open-source-firmware/Dasharo/protectli_vault_adl/uefi/v0.9.2/protectli_vp66xx_v0.9.2.rom
 
 
 *** Test Cases ***
@@ -99,3 +105,39 @@ Test Flash Probe - Asset Checked Out By Someone Else
     ...    list_my
     ...    env:SNIPEIT_CONFIG_FILE_PATH=%{HOME}/.osfv-robot/snipeit.yml
     Should Match    ${list_result.stdout}    *Asset ID: ${ASSET_ID_APU2}*
+
+Test Flash Check - No ME in image
+    [Documentation]    Check image containing descriptor but no ME region
+    Check Out    ${RTE_IP_VP2420}
+    ${cli_check_out}=    Download And Check Flash Image    ${RTE_IP_VP2420}
+    ...    ${MECHECK_NO_ME_URL}
+    Should Contain    ${cli_check_out}    FATAL: mecheck.py failed.
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - Complete image
+    [Documentation]    Check image containing descriptor and ME region
+    Check Out    ${RTE_IP_VP2420}
+    ${cli_check_out}=    Download And Check Flash Image    ${RTE_IP_VP2420}
+    ...    ${MECHECK_ME_URL}
+    Should Not Contain    ${cli_check_out}    FATAL: mecheck.py failed.
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - No ME in image but DRY check
+    [Documentation]    Check image containing descriptor but no ME region
+    ...    in dry mode.
+    Check Out    ${RTE_IP_VP2420}
+    ${cli_check_out}=    Download And Check Flash Image    ${RTE_IP_VP2420}
+    ...    ${MECHECK_NO_ME_URL}
+    ...    ${TRUE}
+    Should Not Contain    ${cli_check_out}    FATAL: mecheck.py failed.
+    Check In    ${RTE_IP_VP2420}
+
+Test Flash Check - Complete image but DRY check
+    [Documentation]    Check image containing descriptor and ME region in
+    ...    dry mode.
+    Check Out    ${RTE_IP_VP2420}
+    ${cli_check_out}=    Download And Check Flash Image    ${RTE_IP_VP2420}
+    ...    ${MECHECK_ME_URL}
+    ...    ${TRUE}
+    Should Not Contain    ${cli_check_out}    FATAL: mecheck.py failed.
+    Check In    ${RTE_IP_VP2420}

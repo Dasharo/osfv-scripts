@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import os
 import struct
 import sys
 from itertools import repeat
@@ -30,7 +31,13 @@ FLVALSIG = 0x0FF0A55A
 
 def get_region_data(pIndex, pName):
     if REGIONS[pIndex] == 0x00007FFF:
-        print('Region "' + pName + '" at index ' + str(pIndex) + " is empty!")
+        print(
+            'FAILURE: Region "'
+            + pName
+            + '" at index '
+            + str(pIndex)
+            + " is empty!"
+        )
         return None
     reg_base = (REGIONS[pIndex] << 12) & 0x07FFF000
     reg_limit = ((REGIONS[pIndex] >> 4) & 0x07FFF000) | 0x00000FFF
@@ -52,14 +59,15 @@ def check_region(pIndex, pName):
         iterator = list(repeat(reg_data[0], len(reg_data)))
         if iterator == reg_data:
             print(
-                "Invalid region content, filled with: {0:#0{1}x}".format(
+                "FAILURE: Invalid region content, filled with: {0:#0{1}x}".format(
                     reg_data[0], 0x04
                 )
             )
             EXIT_CODE = 1
+        print(f'SUCCESS: region "{pName}" is present and contains some data.')
     else:
         if VERBOSITY > 0:
-            print("FATAL: region data access failed.")
+            print("FAILURE: region data access failed.")
         EXIT_CODE = 1
 
 
@@ -93,7 +101,7 @@ def main():
     parser.add_argument(
         "-l",
         "--list",
-        help="list known region namesand exit",
+        help="list known region names and exit",
         action="store_true",
         dest="list",
     )
@@ -124,9 +132,13 @@ def main():
         dest="dry",
     )
 
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(0)
+
     args = parser.parse_args()
     if args.verbosity:
-        print("verbosity changed to: " + str(args.verbosity))
+        print("Verbosity increased.")
         VERBOSITY = 1
     if args.list:
         print("Known regions:")
@@ -134,6 +146,9 @@ def main():
             print(reg_name)
         sys.exit(0)
     if args.flash_image_file:
+        if not os.path.isfile(args.flash_image_file):
+            print(f"FATAL: file does not exist: {args.flash_image_file}")
+            sys.exit(1)
         with open(
             args.flash_image_file,
             mode="rb",
@@ -147,7 +162,7 @@ def main():
                     "<I", imageData[valsig_offset : (valsig_offset + 0x04)]
                 )[0x00]
                 if valsig != FLVALSIG:
-                    print("Invalid image, no FLVALSIG found!")
+                    print("FATAL: Invalid image, no FLVALSIG found!")
                     sys.exit(1)
             if VERBOSITY > 0:
                 print("FLVALSIG: {0:#0{1}x}".format(valsig, 0x0A))
@@ -167,12 +182,19 @@ def main():
                 region_format,
                 imageData[FRBA : (FRBA + (0x04 * NUMBER_OF_REGIONS))],
             )
+    else:
+        print(f"FATAL: flash image file name not provided.")
+        sys.exit(1)
     if args.region_to_check:
         for check_region_name in args.region_to_check:
             try:
                 check_region_index = REGION_INDICES.index(check_region_name)
             except ValueError:
-                print('Unknown flash region: "' + check_region_name + '"')
+                print(
+                    'FAILURE: Unknown flash region: "'
+                    + check_region_name
+                    + '"'
+                )
                 EXIT_CODE = 1
                 continue
             check_region(check_region_index, check_region_name)
@@ -181,7 +203,9 @@ def main():
             try:
                 dump_region_index = REGION_INDICES.index(dump_region_name)
             except ValueError:
-                print('Unknown flash region: "' + dump_region_name + '"')
+                print(
+                    'FAILURE: Unknown flash region: "' + dump_region_name + '"'
+                )
                 EXIT_CODE = 1
                 continue
             dump_region(dump_region_index, dump_region_name)

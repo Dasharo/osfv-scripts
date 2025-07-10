@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import os
 from copy import copy
 from importlib import metadata
 from time import sleep
@@ -660,12 +659,23 @@ def flash_write(rte, args):
 
     Args:
         rte: An object responsible for handling the flash memory operations.
-        args (object): Arguments that may contain additional parameters (not used in this function).
+        args (object): Arguments that may contain additional parameters:
+        args.rom (str): Flash image file path & name
+        args.dry_mecheck (bool): runs mecheck.py in dry run mode;
+                                 command status is always positive and does not
+                                 affect flash write process
+        args.verbosity (bool): increases mecheck.py verbosity
+
 
     Returns:
         None.
     """
-    if utils.check_flash_image_regions(args.rom, args.dry_mecheck) == False:
+    if (
+        utils.check_flash_image_regions(
+            args.rom, args.dry_mecheck, args.verbosity
+        )
+        == False
+    ):
         exit("FATAL: mecheck.py failed.")
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
@@ -692,8 +702,25 @@ def flash_erase(rte, args):
 
 
 def flash_check(args):
-    """ """
-    if utils.check_flash_image_regions(args.rom, args.dry_mecheck) == False:
+    """
+    Checks for existence & sane content of ME region in flash image.
+
+    Args:
+        args (object): Arguments that may contain additional parameters:
+        args.rom (str): Flash image file path & name
+        args.dry_mecheck (bool): runs mecheck.py in dry run mode;
+                                 command status is always positive
+        args.verbosity (bool): increases mecheck.py verbosity
+
+    Returns:
+        None.
+    """
+    if (
+        utils.check_flash_image_regions(
+            args.rom, args.dry_mecheck, args.verbosity
+        )
+        == False
+    ):
         exit("FATAL: mecheck.py failed.")
 
 
@@ -1288,7 +1315,12 @@ def main():
         "--dry-mecheck",
         help="Failed flash region checks won't change exit status",
         action="store_true",
-        dest="dry_mecheck",
+    )
+    flash_write_parser.add_argument(
+        "-V",
+        "--verbosity",
+        help="Increase mecheck.py verbosity",
+        action="store_true",
     )
     flash_check_parser = flash_subparsers.add_parser(
         "check",
@@ -1305,7 +1337,12 @@ def main():
         "--dry-mecheck",
         help="Failed flash region checks won't change exit status",
         action="store_true",
-        dest="dry_mecheck",
+    )
+    flash_check_parser.add_argument(
+        "-V",
+        "--verbosity",
+        help="Increase mecheck.py verbosity",
+        action="store_true",
     )
     flash_erase_parser = flash_subparsers.add_parser(
         "erase", help="Erase DUT flash with flashrom"

@@ -1,5 +1,6 @@
 import os
 
+from osfv.libs.flash_image import FlashImage
 from osfv.libs.sonoff_api import SonoffDevice
 
 
@@ -33,30 +34,39 @@ def check_flash_image_regions(
     rom, dry_run=False, verbose=False, regions=["me"]
 ):
     """
-    Call ../osfv_mecheck/mecheck.py program to verify existence of given regions
+    Use osfv.libs.flash_image library to verify existence of given regions
     and data content of them (if described memory area is not filled with single
     byte value).
 
     Args:
     rom (str): Dasharo flash image file path.
-    dry_run (bool): Append "-x" option to enforce positive command status, but
-                    error messages are still displayed.
-    regions ([str]): Each region string from this list is added to command line
-                     with "-c" option.
+    dry_run (bool): Enforce positive exit status, but error messages are still
+                    displayed.
+    regions ([str]): Each region string from this list is verified with
+                     FlashImage.check_region() method.
 
-    Returns: True in case of command return code 0 or False otherwise.
+    Returns: True in case of FlashImage exit status 0 or False otherwise.
     """
-    command_line = f"../osfv_mecheck/mecheck.py {rom}"
-    for region in regions:
-        command_line += f" -c {region}"
-    if dry_run:
-        command_line += " -x"
+
+    flash_image = FlashImage()
+
     if verbose:
-        command_line += " -v"
+        flash_image.set_verbosity(1)
+
     print(f"Verifying flash image completeness of {rom} ...")
-    return_code = os.system(command_line)
-    if return_code != 0:
-        ("mecheck.py failed.")
+    flash_image.load_image_file(rom)
+
+    for check_region_name in regions:
+        check_region_index = flash_image.get_region_index(check_region_name)
+        if check_region_index == None:
+            continue
+        flash_image.check_region(check_region_index, check_region_name)
+
+    if dry_run:
+        flash_image.set_exit_code(0)
+
+    if flash_image.get_exit_code() != 0:
+        print("ME check failed.")
         return False
     else:
         print("OK")

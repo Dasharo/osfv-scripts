@@ -661,10 +661,10 @@ def flash_write(rte, args):
         rte: An object responsible for handling the flash memory operations.
         args (object): Arguments that may contain additional parameters:
         args.rom (str): Flash image file path & name
-        args.dry_mecheck (bool): runs mecheck.py in dry run mode;
-                                 command status is always positive and does not
+        args.dry_mecheck (bool): runs ME check in dry run mode;
+                                 check status is always positive and does not
                                  affect flash write process
-        args.verbosity (bool): increases mecheck.py verbosity
+        args.verbosity (bool): increases osfv.libs.flash_image verbosity
 
 
     Returns:
@@ -676,7 +676,7 @@ def flash_write(rte, args):
         )
         == False
     ):
-        exit("FATAL: mecheck.py failed.")
+        exit("FATAL: ME check failed.")
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
     if rc == 0:
@@ -699,29 +699,6 @@ def flash_erase(rte, args):
     print(f"Erasing DUT flash...")
     rte.flash_erase()
     print(f"Flash erased")
-
-
-def flash_check(args):
-    """
-    Checks for existence & sane content of ME region in flash image.
-
-    Args:
-        args (object): Arguments that may contain additional parameters:
-        args.rom (str): Flash image file path & name
-        args.dry_mecheck (bool): runs mecheck.py in dry run mode;
-                                 command status is always positive
-        args.verbosity (bool): increases mecheck.py verbosity
-
-    Returns:
-        None.
-    """
-    if (
-        utils.check_flash_image_regions(
-            args.rom, args.dry_mecheck, args.verbosity
-        )
-        == False
-    ):
-        exit("FATAL: mecheck.py failed.")
 
 
 def sonoff_on(sonoff, args):
@@ -1004,6 +981,29 @@ def update_zabbix_assets(snipeit_api):
 def list_models(args):
     models = Models()
     models.list_models()
+
+
+def flash_image_check(args):
+    """
+    Checks for existence & sane content of ME region in flash image.
+
+    Args:
+        args (object): Arguments that may contain additional parameters:
+        args.rom (str): Flash image file path & name
+        args.dry_mecheck (bool): runs osfv.libs.flash_image in dry run mode;
+                                 exit status is always positive
+        args.verbosity (bool): increases osfv.libs.flash_image verbosity
+
+    Returns:
+        None.
+    """
+    if (
+        utils.check_flash_image_regions(
+            args.rom, args.dry_mecheck, args.verbosity
+        )
+        == False
+    ):
+        exit("FATAL: ME check failed.")
 
 
 # Main function
@@ -1313,39 +1313,40 @@ def main():
     flash_write_parser.add_argument(
         "-x",
         "--dry-mecheck",
-        help="Failed flash region checks won't change exit status",
+        help="Failed flash region checks won't forbid flashing",
         action="store_true",
     )
     flash_write_parser.add_argument(
         "-V",
         "--verbosity",
-        help="Increase mecheck.py verbosity",
+        help="Increase osfv.libs.flash_image verbosity",
         action="store_true",
     )
-    flash_check_parser = flash_subparsers.add_parser(
-        "check",
-        help="Check flash image completeness for ME region existence with mecheck.py",
+    flash_erase_parser = flash_subparsers.add_parser(
+        "erase", help="Erase DUT flash with flashrom"
     )
-    flash_check_parser.add_argument(
+
+    flash_image_check_parser = subparsers.add_parser(
+        "flash_image_check",
+        help="Check flash image completeness: descriptor & ME region existence",
+    )
+    flash_image_check_parser.add_argument(
         "--rom",
         type=str,
         default="write.rom",
         help="Path to read firmware file (default: write.rom)",
     )
-    flash_check_parser.add_argument(
+    flash_image_check_parser.add_argument(
         "-x",
         "--dry-mecheck",
         help="Failed flash region checks won't change exit status",
         action="store_true",
     )
-    flash_check_parser.add_argument(
+    flash_image_check_parser.add_argument(
         "-V",
         "--verbosity",
-        help="Increase mecheck.py verbosity",
+        help="Increase osfv.libs.flash_image verbosity",
         action="store_true",
-    )
-    flash_erase_parser = flash_subparsers.add_parser(
-        "erase", help="Erase DUT flash with flashrom"
     )
 
     args = parser.parse_args()
@@ -1479,7 +1480,7 @@ def main():
             elif args.flash_cmd == "write":
                 flash_write(rte, args)
             elif args.flash_cmd == "check":
-                flash_check(args)
+                flash_image_check(args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
 
@@ -1542,6 +1543,8 @@ def main():
                 f"by this script, it is automatically checked in as well."
             )
             check_in_asset(snipeit_api, asset_id)
+    elif args.command == "flash_image_check":
+        flash_image_check(args)
     elif args.command == "list_models":
         list_models(args)
     else:

@@ -13,8 +13,6 @@ ${ASSET_ID_FW4C}=       42
 
 ${RTE_IP_V1410}=        192.168.10.198
 
-${RTE_IP_VP2420}=       192.168.10.221
-
 ${RTE_IP_VP4630}=       192.168.10.244
 
 ${RTE_IP_Z690}=         192.168.10.199
@@ -88,7 +86,7 @@ Download And Check Flash Image
     [Documentation]    This keyword downloads Dasharo flash image and runs osfv_cli
     ...    with flash check command, eventually in dry mode with enforced success
     ...    command status.
-    [Arguments]    ${rte_ip}    ${image_url}    ${dry_mode}=${FALSE}
+    [Arguments]    ${image_url}    ${dry_mode}=${FALSE}
     Remove Directory    ${MECHECK_TMP_DIR}    True
     Create Directory    ${MECHECK_TMP_DIR}
     ${wget_output}=    Run Process
@@ -100,24 +98,16 @@ Download And Check Flash Image
     IF    ${dry_mode} == ${TRUE}
         ${cli_output}=    Run Process
         ...    osfv_cli
-        ...    rte
-        ...    --rte_ip
-        ...    ${rte_ip}
-        ...    flash
-        ...    check
+        ...    flash_image_check
         ...    --rom
         ...    ${MECHECK_TMP_DIR}/coreboot.rom
         ...    -x
     ELSE
         ${cli_output}=    Run Process
         ...    osfv_cli
-        ...    rte
-        ...    --rte_ip
-        ...    ${rte_ip}
-        ...    flash
-        ...    check
+        ...    flash_image_check
         ...    --rom
         ...    ${MECHECK_TMP_DIR}/coreboot.rom
     END
     Remove Directory    ${MECHECK_TMP_DIR}    True
-    RETURN    ${cli_output.stderr}
+    RETURN    ${cli_output}

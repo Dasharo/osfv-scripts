@@ -1,4 +1,5 @@
 ---
+# Flashing is not supported
 flash_chip:
   voltage: "1.8V"
 

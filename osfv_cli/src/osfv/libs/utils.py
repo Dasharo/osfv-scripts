@@ -30,6 +30,19 @@ def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
     return sonoff, sonoff_ip
 
 
+def get_list_of_known_image_regions():
+    """
+    Gets list of flash region names known by FlashImage class from osfv.libs.flash_image library.
+
+    Args: None
+
+    Returns: List of known flash region names.
+    """
+    flash_image = FlashImage()
+
+    return flash_image.get_known_regions_list()
+
+
 def check_flash_image_regions(
     rom, dry_run=False, verbose=False, regions=["me"]
 ):
@@ -66,8 +79,36 @@ def check_flash_image_regions(
         flash_image.set_exit_code(0)
 
     if flash_image.get_exit_code() != 0:
-        print("ME check failed.")
+        print("Region check failed.")
         return False
     else:
         print("OK")
         return True
+
+
+def dump_flash_image_regions(rom, verbose=False, regions=[]):
+    """
+    Use osfv.libs.flash_image library to verify existence of given regions
+    and data content of them (if described memory area is not filled with single
+    byte value).
+
+    Args:
+    rom (str): Dasharo flash image file path.
+    regions ([str]): Each region string from this list is dumped to a file with
+                     FlashImage.dump_region() method.
+
+    Returns: None
+    """
+
+    flash_image = FlashImage()
+
+    if verbose:
+        flash_image.set_verbosity(1)
+
+    print(f"Dumping flash image regions of {rom} ...")
+    flash_image.load_image_file(rom)
+    for dump_region_name in regions:
+        dump_region_index = flash_image.get_region_index(dump_region_name)
+        if dump_region_index == None:
+            continue
+        flash_image.dump_region(dump_region_index, dump_region_name)

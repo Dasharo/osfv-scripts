@@ -989,21 +989,38 @@ def flash_image_check(args):
 
     Args:
         args (object): Arguments that may contain additional parameters:
+        args.list (bool): List known regions and exit
         args.rom (str): Flash image file path & name
         args.dry_mecheck (bool): runs osfv.libs.flash_image in dry run mode;
                                  exit status is always positive
         args.verbosity (bool): increases osfv.libs.flash_image verbosity
+        args.regions_to_check [str]: list of regions to check
+        args.regions_to_dump [str]: list of regions to dump to separate files
 
     Returns:
         None.
     """
+
+    regions_to_check = ["me"]
+
+    if args.list:
+        print("Known flash regions:")
+        for reg_name in utils.get_list_of_known_image_regions():
+            print(reg_name)
+        exit()
+    if args.regions_to_check:
+        regions_to_check = args.regions_to_check
+    if args.regions_to_dump:
+        utils.dump_flash_image_regions(
+            args.rom, args.verbosity, args.regions_to_dump
+        )
     if (
         utils.check_flash_image_regions(
-            args.rom, args.dry_mecheck, args.verbosity
+            args.rom, args.dry_mecheck, args.verbosity, regions_to_check
         )
         == False
     ):
-        exit("FATAL: ME check failed.")
+        exit("flash_image_check failed.")
 
 
 # Main function
@@ -1348,6 +1365,29 @@ def main():
         help="Increase osfv.libs.flash_image verbosity",
         action="store_true",
     )
+    flash_image_check_parser.add_argument(
+        "-l",
+        "--list",
+        help="list known region names and exit",
+        action="store_true",
+        dest="list",
+    )
+    flash_image_check_parser.add_argument(
+        "-c",
+        "--check",
+        help="check named flash region",
+        action="append",
+        type=str,
+        dest="regions_to_check",
+    )
+    flash_image_check_parser.add_argument(
+        "-d",
+        "--dump",
+        help="dump named flash region",
+        action="append",
+        type=str,
+        dest="regions_to_dump",
+    )
 
     args = parser.parse_args()
 
@@ -1479,8 +1519,6 @@ def main():
                 flash_read(rte, args)
             elif args.flash_cmd == "write":
                 flash_write(rte, args)
-            elif args.flash_cmd == "check":
-                flash_image_check(args)
             elif args.flash_cmd == "erase":
                 flash_erase(rte, args)
 

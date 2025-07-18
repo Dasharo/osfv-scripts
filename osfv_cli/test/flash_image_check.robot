@@ -18,30 +18,40 @@ ${EXPECTED_STDOUT_SUCCESS_STRING}=      SUCCESS: region "me" is present and cont
 *** Test Cases ***
 Test Flash Check - No ME in image
     [Documentation]    Check image containing descriptor but no ME region
+    @{regions_to_check}=    Create List    me
     ${cli_check_out}=    Download And Check Flash Image
     ...    ${MECHECK_NO_ME_URL}
+    ...    ${FALSE}
+    ...    @{regions_to_check}
     Should Contain    ${cli_check_out.stderr}    ${EXPECTED_STDERR_FAILURE_STRING}
 
 Test Flash Check - Complete image
     [Documentation]    Check image containing descriptor and ME region
+    @{regions_to_check}=    Create List    me
     ${cli_check_out}=    Download And Check Flash Image
     ...    ${MECHECK_ME_URL}
+    ...    ${FALSE}
+    ...    @{regions_to_check}
     Should Not Contain    ${cli_check_out.stderr}    flash_image_check failed.
     Should Contain    ${cli_check_out.stdout}    ${EXPECTED_STDOUT_SUCCESS_STRING}
 
 Test Flash Check - No ME in image but DRY check
     [Documentation]    Check image containing descriptor but no ME region
     ...    in dry mode.
+    @{regions_to_check}=    Create List    me
     ${cli_check_out}=    Download And Check Flash Image
     ...    ${MECHECK_NO_ME_URL}
     ...    ${TRUE}
+    ...    @{regions_to_check}
     Should Not Contain    ${cli_check_out.stderr}    ${EXPECTED_STDERR_FAILURE_STRING}
 
 Test Flash Check - Complete image but DRY check
     [Documentation]    Check image containing descriptor and ME region in
     ...    dry mode.
+    @{regions_to_check}=    Create List    me
     ${cli_check_out}=    Download And Check Flash Image
     ...    ${MECHECK_ME_URL}
     ...    ${TRUE}
+    ...    @{regions_to_check}
     Should Not Contain    ${cli_check_out.stderr}    ${EXPECTED_STDERR_FAILURE_STRING}
     Should Contain    ${cli_check_out.stdout}    ${EXPECTED_STDOUT_SUCCESS_STRING}

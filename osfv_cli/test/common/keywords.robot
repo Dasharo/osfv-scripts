@@ -85,29 +85,32 @@ Check In
 Download And Check Flash Image
     [Documentation]    This keyword downloads Dasharo flash image and runs osfv_cli
     ...    with flash check command, eventually in dry mode with enforced success
-    ...    command status.
-    [Arguments]    ${image_url}    ${dry_mode}=${FALSE}
+    ...    command status. Expected regions are passed with -c options added to
+    ...    command line.
+    [Arguments]    ${image_url}    ${dry_mode}    @{regions}
     Remove Directory    ${MECHECK_TMP_DIR}    True
     Create Directory    ${MECHECK_TMP_DIR}
+
     ${wget_output}=    Run Process
     ...    wget
     ...    ${image_url}
     ...    -O
     ...    ${MECHECK_TMP_DIR}/coreboot.rom
     File Should Exist    ${MECHECK_TMP_DIR}/coreboot.rom
-    IF    ${dry_mode} == ${TRUE}
-        ${cli_output}=    Run Process
-        ...    osfv_cli
-        ...    flash_image_check
-        ...    --rom
-        ...    ${MECHECK_TMP_DIR}/coreboot.rom
-        ...    -x
-    ELSE
-        ${cli_output}=    Run Process
-        ...    osfv_cli
-        ...    flash_image_check
-        ...    --rom
-        ...    ${MECHECK_TMP_DIR}/coreboot.rom
+
+    ${command}=    Catenate
+    ...    osfv_cli flash_image_check --rom ${MECHECK_TMP_DIR}/coreboot.rom
+
+    FOR    ${region}    IN    @{regions}
+        ${command}=    Catenate    ${command}    -c    ${region}
     END
+
+    IF    ${dry_mode} == ${TRUE}
+        ${command}=    Catenate    ${command}    -x
+    END
+
+    ${cli_output}=    Run Process
+    ...    ${command}
+    ...    shell=True
     Remove Directory    ${MECHECK_TMP_DIR}    True
     RETURN    ${cli_output}

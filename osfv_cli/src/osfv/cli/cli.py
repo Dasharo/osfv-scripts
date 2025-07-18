@@ -676,7 +676,13 @@ def flash_write(rte, args):
         )
         == False
     ):
-        exit("FATAL: ME check failed.")
+        exit(
+            "FATAL: Some image's regions are empty, despite being defined in the flash descriptor. "
+            "Flashing full image in this form will result in a bricked platform. "
+            "If you wish to continue anyway, pass the -x option to skip the check. "
+            "You probably also want to pass the -b option to flash BIOS region only, "
+            "leaving other regions in platform's flash (such as ME) intact."
+        )
     print(f"Writing {args.rom} to flash...")
     rc = rte.flash_write(args.rom, args.bios)
     if rc == 0:
@@ -1020,7 +1026,9 @@ def flash_image_check(args):
         )
         == False
     ):
-        exit("flash_image_check failed.")
+        exit(
+            "Do not flash full image, unless you are skipping empty regions, and know what you are doing!"
+        )
 
 
 # Main function
@@ -1350,7 +1358,7 @@ def main():
     flash_image_check_parser.add_argument(
         "--rom",
         type=str,
-        default="write.rom",
+        required=True,
         help="Path to read firmware file (default: write.rom)",
     )
     flash_image_check_parser.add_argument(

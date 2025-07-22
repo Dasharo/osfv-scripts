@@ -1,6 +1,6 @@
 ---
 flash_chip:
-  model: "MX25L12833F/MX25L12835F/MX25L12845E/MX25L12865E/MX25L12873F"
+  model: "W25Q128.V"
   voltage: "3.3V"
 
 programmer:

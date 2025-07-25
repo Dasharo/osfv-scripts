@@ -60,8 +60,9 @@ class FlashImage:
 
     def load_image_file(self, image_path):
         if not os.path.isfile(image_path):
-            print(f"FATAL: file does not exist: {image_path}")
-            sys.exit(1)
+            print(f"File does not exist: {image_path}")
+            self.EXIT_CODE = False
+            return False
         with open(
             image_path,
             mode="rb",
@@ -76,8 +77,9 @@ class FlashImage:
                     self.imageData[valsig_offset : (valsig_offset + 0x04)],
                 )[0x00]
                 if valsig != self.FLVALSIG:
-                    print("FATAL: Invalid image, no FLVALSIG found!")
-                    sys.exit(1)
+                    print("Invalid image, no FLVALSIG found!")
+                    self.EXIT_CODE = False
+                    return False
             if self.VERBOSITY > 0:
                 print("FLVALSIG: {0:#0{1}x}".format(valsig, 0x0A))
 
@@ -100,6 +102,7 @@ class FlashImage:
                     FRBA : (FRBA + (0x04 * self.NUMBER_OF_REGIONS))
                 ],
             )
+            return True
 
     def get_region_data(self, pIndex, pName):
         if self.REGIONS[pIndex] == 0x00007FFF:
@@ -151,5 +154,5 @@ class FlashImage:
             print('Region "' + pName + '" dumped to: ' + pName + "_dump.bin")
         else:
             if self.VERBOSITY > 0:
-                print("FATAL: region dump failed.")
+                print("Region dump failed.")
             self.EXIT_CODE = 1

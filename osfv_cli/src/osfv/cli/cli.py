@@ -677,10 +677,10 @@ def flash_write(rte, args):
         == False
     ):
         exit(
-            "FATAL: Some image's regions are empty, despite being defined in the flash descriptor. "
-            "Flashing full image in this form will result in a bricked platform. "
-            "If you wish to continue anyway, pass the -x option to skip the check. "
-            "You probably also want to pass the -b option to flash BIOS region only, "
+            "FATAL: Image could not be loaded, or some image's regions are empty, despite being defined in the flash descriptor. "
+            "Flashing full image in this form on Intel platform will result in a bricked platform. "
+            "If you wish to continue anyway (e.g. when using AMD platform), pass the -x option to skip the check. "
+            "When using Intel platform, you probably also want to pass the -b option to flash BIOS region only, "
             "leaving other regions in platform's flash (such as ME) intact."
         )
     print(f"Writing {args.rom} to flash...")

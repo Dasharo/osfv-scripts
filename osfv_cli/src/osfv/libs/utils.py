@@ -67,7 +67,13 @@ def check_flash_image_regions(
         flash_image.set_verbosity(1)
 
     print(f"Verifying flash image completeness of {rom} ...")
-    flash_image.load_image_file(rom)
+    if not flash_image.load_image_file(rom):
+        print(
+            "Failed to load image file. Cannot verify the presence of Intel regions."
+        )
+        if dry_run:
+            return True
+        return False
 
     for check_region_name in regions:
         check_region_index = flash_image.get_region_index(check_region_name)

@@ -16,11 +16,11 @@ authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
 include = ["src/models/*.yml"]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.13"
 paramiko = "^3.2.0"
 pexpect = "^4.8.0"
 PyYAML = "^6.0"
 requests = "^2.31.0"
 unidecode = "^1.3.6"
 importlib-resources = "^6.1.1"
-voluptuous = "^0.14.2"
+voluptuous = "^0.15.2"

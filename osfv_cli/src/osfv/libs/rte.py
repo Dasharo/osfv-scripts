@@ -36,6 +36,7 @@ class RTE(rtectrl):
     PROGRAMMER_CH341A = "ch341a_spi"
     PROGRAMMER_DEDIPROG = "dediprog"
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
+    FLASHROM_LAYOUT_PATH = "/tmp/board_layout.txt"
 
     def __init__(self, rte_ip, dut_model, sonoff):
         self.models = Models()
@@ -319,6 +320,34 @@ class RTE(rtectrl):
             self.spi_disable()
             time.sleep(2)
 
+    def create_layout_file(self):
+        """
+        Creates a layout file based on board configuration and returns the local path.
+        Returns:
+            str: Path to the created layout file.
+        """
+        import tempfile
+
+        # Get layout from model file
+        layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+
+        if not layout_data:
+            raise ValueError("Layout data is missing - this should not happen")
+
+        # Build layout from model file data
+        layout_content = ""
+        for region in layout_data:
+            layout_content += f"{region['range']} {region['name']}\n"
+
+        # Create temporary file
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        )
+        temp_file.write(layout_content)
+        temp_file.close()
+
+        return temp_file.name
+
     def flash_cmd(self, args, read_file=None, write_file=None):
         """
         Send the firmware file to RTE and execute flashrom command over SSH to flash the DUT.
@@ -353,10 +382,21 @@ class RTE(rtectrl):
                 look_for_keys=False,
             )
 
+            scp = ssh.open_sftp()
+
+            # Transfer layout file if needed
+            layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+            if layout_data:
+                local_layout_path = self.create_layout_file()
+                remote_layout_path = self.FLASHROM_LAYOUT_PATH
+                scp.put(local_layout_path, remote_layout_path)
+                print(f"Layout file transferred to {remote_layout_path}")
+
+            # Transfer firmware file if provided
             if write_file:
-                scp = ssh.open_sftp()
                 scp.put(write_file, self.FW_PATH_WRITE)
-                scp.close()
+
+            scp.close()
 
             # Execute the flashrom command
             if self.dut_data["programmer"]["name"] == "ch341a":
@@ -370,7 +410,6 @@ class RTE(rtectrl):
                 programmer=flashrom_programmer, args=args
             )
             print(f"Executing command: {command}")
-
             channel = ssh.get_transport().open_session()
             channel.exec_command(command)
 
@@ -385,6 +424,7 @@ class RTE(rtectrl):
                     stdout = channel.recv(1024).decode()
                     if stdout:
                         print(stdout, end="")
+
                 if channel.recv_stderr_ready():
                     stderr = channel.recv_stderr(1024).decode()
                     if stderr:
@@ -497,14 +537,27 @@ class RTE(rtectrl):
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
-        if bios:
+
+        # Check if this board needs layout file (from model file)
+        use_layout = self.dut_data.get("flash_chip", {}).get(
+            "use_layout", False
+        )
+
+        if use_layout:
+            # New motherboard with layout file support
             args = self.flash_create_args(
-                f"-i bios --ifd -w {self.FW_PATH_WRITE}"
+                f"-i -N bios -w {self.FW_PATH_WRITE} --layout {self.FLASHROM_LAYOUT_PATH}"
+            )
+        elif bios:
+            args = self.flash_create_args(
+                f"-i -N bios --ifd -w {self.FW_PATH_WRITE}"
             )
         else:
             args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
+
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
+
         if "reset_cmos" in self.dut_data:
             if self.dut_data["reset_cmos"] == True:
                 self.reset_cmos()

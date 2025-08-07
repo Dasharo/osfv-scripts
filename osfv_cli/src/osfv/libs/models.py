@@ -69,6 +69,12 @@ class Models:
                 Required("flash_chip"): {
                     Required("voltage"): voltage_validator,
                     Optional("model"): str,
+                    Optional("layout"): [
+                        {
+                            Required("name"): str,
+                            Required("range"): str,
+                        }
+                    ],
                 },
                 Required("pwr_ctrl"): {
                     Required("sonoff"): bool,

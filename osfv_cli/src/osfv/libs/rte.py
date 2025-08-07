@@ -544,7 +544,6 @@ class RTE(rtectrl):
         )
 
         if use_layout:
-            # New motherboard with layout file support
             args = self.flash_create_args(
                 f"-i -N bios -w {self.FW_PATH_WRITE} --layout {self.FLASHROM_LAYOUT_PATH}"
             )

@@ -1,0 +1,16 @@
+---
+flash_chip:
+  voltage: "3.3V"
+  layout:
+    - name: "reserved"
+      range: "00000000:01cbffff"
+    - name: "bios"
+      range: "01cc0000:01ffffff"
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  sonoff: true
+  relay: false
+  flashing_power_state: "G3"

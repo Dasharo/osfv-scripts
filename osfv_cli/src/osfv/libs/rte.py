@@ -384,13 +384,14 @@ class RTE(rtectrl):
 
             scp = ssh.open_sftp()
 
-            # Transfer layout file if needed
+            # Transfer layout file if needed (only for write operations)
             layout_data = self.dut_data.get("flash_chip", {}).get("layout")
-            if layout_data:
+            if layout_data and write_file:
                 local_layout_path = self.create_layout_file()
                 remote_layout_path = self.FLASHROM_LAYOUT_PATH
                 scp.put(local_layout_path, remote_layout_path)
                 print(f"Layout file transferred to {remote_layout_path}")
+                os.remove(local_layout_path)
 
             # Transfer firmware file if provided
             if write_file:
@@ -539,17 +540,15 @@ class RTE(rtectrl):
             self.flash_cmd(args)
 
         # Check if this board needs layout file (from model file)
-        use_layout = self.dut_data.get("flash_chip", {}).get(
-            "use_layout", False
-        )
+        use_layout = self.dut_data.get("flash_chip", {}).get("layout", False)
 
         if use_layout:
             args = self.flash_create_args(
-                f"-i -N bios -w {self.FW_PATH_WRITE} --layout {self.FLASHROM_LAYOUT_PATH}"
+                f"-i bios -N -w {self.FW_PATH_WRITE} --layout {self.FLASHROM_LAYOUT_PATH}"
             )
         elif bios:
             args = self.flash_create_args(
-                f"-i -N bios --ifd -w {self.FW_PATH_WRITE}"
+                f"-i bios -N --ifd -w {self.FW_PATH_WRITE}"
             )
         else:
             args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")

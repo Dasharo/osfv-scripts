@@ -60,6 +60,7 @@ class Models:
             "rte_1_1", "rte_1_0", "ch341a", "dediprog"
         )
         flashing_power_state_validator = Any("G3", "S5")
+        pwr_led_validator = Any("active low", "active high")
 
         schema = Schema(
             {
@@ -82,6 +83,9 @@ class Models:
                     Required(
                         "flashing_power_state"
                     ): flashing_power_state_validator,
+                },
+                Optional("pwr_led"): {
+                    Required("polarity"): pwr_led_validator,
                 },
                 Optional("reset_cmos", default=False): bool,
                 Optional("disable_wp", default=False): bool,

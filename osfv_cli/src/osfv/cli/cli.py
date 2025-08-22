@@ -517,6 +517,13 @@ def gpio_get(rte, args):
 
 def check_pwr_led(rte, args):
     state = rte.gpio_get(RTE.GPIO_PWR_LED)
+    polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
+    if polarity and polarity == "active low":
+        if state == "high":
+            state = "low"
+        else:
+            state = "high"
+
     print(f"Power LED state: {'ON' if state == 'high' else 'OFF'}")
     return state
 

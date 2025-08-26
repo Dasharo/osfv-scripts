@@ -9,6 +9,7 @@ from robot.api.deco import keyword, library
 model_dict = {
     "odroid-h4-plus": "H4-PLUS",
     "odroid-h4-ultra": "H4-ULTRA",
+    "gigabyte-mz33-ar1": "MZ33-AR1 Rev. 3",
     "minnowboard-turbot": "MinnowBoard Turbot B41",
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-wifi-ddr4": "MSI PRO Z690-A DDR4",

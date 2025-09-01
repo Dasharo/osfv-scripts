@@ -1054,6 +1054,12 @@ def main():
         help="Output as JSON (if applicable)",
     )
 
+    parser.add_argument(
+        "--adhoc",
+        action="store_true",
+        help="Enable ad-hoc mode to use any RTE.",
+    )
+
     subparsers = parser.add_subparsers(
         title="commands", dest="command", help="Command to execute"
     )
@@ -1427,7 +1433,13 @@ def main():
                 if asset_id:
                     check_out_asset(snipeit_api, asset_id)
                 else:
-                    print(f"No asset found with RTE IP: {args.rte_ip}")
+                    if args.adhoc:
+                        print(
+                            f"Ad-hoc mode: No asset found with RTE IP: {args.rte_ip}. Proceeding with ad-hoc configuration."
+                        )
+                    else:
+                        print(f"No asset found with RTE IP: {args.rte_ip}")
+                        sys.exit(1)
         elif args.snipeit_cmd == "check_in":
             if args.asset_id:
                 check_in_asset(snipeit_api, args.asset_id)
@@ -1436,7 +1448,13 @@ def main():
                 if asset_id:
                     check_in_asset(snipeit_api, asset_id)
                 else:
-                    print(f"No asset found with RTE IP: {args.rte_ip}")
+                    if args.adhoc:
+                        print(
+                            f"Ad-hoc mode: No asset found with RTE IP: {args.rte_ip}. Proceeding with ad-hoc configuration."
+                        )
+                    else:
+                        print(f"No asset found with RTE IP: {args.rte_ip}")
+                        sys.exit(1)
         elif args.snipeit_cmd == "check_in_my":
             check_in_my(snipeit_api, args)
         elif args.snipeit_cmd == "user_add":
@@ -1452,7 +1470,13 @@ def main():
         if not args.skip_snipeit:
             asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
             if not asset_id:
-                print(f"No asset found with RTE IP: {args.rte_ip}")
+                if args.adhoc:
+                    print(
+                        f"Ad-hoc mode: No asset found with RTE IP: {args.rte_ip}. Skipping Snipe-IT checks."
+                    )
+                else:
+                    print(f"No asset found with RTE IP: {args.rte_ip}")
+                    sys.exit(1)
 
         if args.model:
             print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
@@ -1564,7 +1588,13 @@ def main():
 
         asset_id = snipeit_api.get_asset_id_by_sonoff_ip(sonoff_ip)
         if not asset_id:
-            print(f"No asset found with RTE IP: {args.rte_ip}")
+            if args.adhoc:
+                print(
+                    f"Ad-hoc mode: No asset found with RTE IP: {args.rte_ip}. Skipping Snipe-IT checks."
+                )
+            else:
+                print(f"No asset found with RTE IP: {args.rte_ip}")
+                sys.exit(1)
 
         print(
             f"Using rte command is invasive action, checking first if the "

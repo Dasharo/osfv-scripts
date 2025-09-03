@@ -18,6 +18,7 @@ model_dict = {
     "novacustom-ns50mu": "NS50MU",
     "novacustom-v540tu": "V540TU",
     "novacustom-v540tnd": "V540TND",
+    "novacustom-v560tu": "V560TU",
     "novacustom-v560tnd": "V560TND",
     "novacustom-v560tne": "V560TNE",
     "novacustom-nuc_box-125H": "NUC BOX-125H",

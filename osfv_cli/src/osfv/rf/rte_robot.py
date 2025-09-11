@@ -7,8 +7,6 @@ from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword, library
 
 model_dict = {
-    "odroid-h4-plus": "H4-PLUS",
-    "odroid-h4-ultra": "H4-ULTRA",
     "gigabyte-mz33-ar1": "MZ33-AR1 Rev. 3",
     "minnowboard-turbot": "MinnowBoard Turbot B41",
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
@@ -23,6 +21,8 @@ model_dict = {
     "novacustom-v560tne": "V560TNE",
     "novacustom-nuc_box-125H": "NUC BOX-125H",
     "novacustom-nuc_box-155H": "NUC BOX-155H",
+    "odroid-h4-plus": "H4-PLUS",
+    "odroid-h4-ultra": "H4-ULTRA",
     "pcengines-apu2": "APU2",
     "pcengines-apu3": "APU3",
     "pcengines-apu4": "APU4",

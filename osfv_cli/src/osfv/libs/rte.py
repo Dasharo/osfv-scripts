@@ -65,7 +65,14 @@ class RTE(rtectrl):
             None
         """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
-        time.sleep(sleep)
+        if self.dut_data['pwr_ctrl']['power_led'] is True:
+            for attempt in range(float(sleep) / 0.25):
+                if self.gpio_get(self.GPIO_PWR_LED) == "high":
+                    return True
+                time.sleep(0.25)
+            return False
+        else:
+            time.sleep(sleep)
 
     def power_off(self, sleep=6):
         """
@@ -80,7 +87,15 @@ class RTE(rtectrl):
             None
         """
         self.gpio_set(self.GPIO_POWER, "low", sleep)
-        time.sleep(sleep)
+        if self.dut_data['pwr_ctrl']['power_led'] is True:
+            for attempt in range(float(sleep) / 0.25):
+                if self.gpio_get(self.GPIO_PWR_LED) == "low":
+                    self.gpio_set(self.GPIO_POWER, "high", 0)
+                    return True
+                time.sleep(0.25)
+            return False
+        else:
+            time.sleep(sleep)
 
     def reset(self, sleep=1):
         """

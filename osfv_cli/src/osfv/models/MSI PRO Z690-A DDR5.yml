@@ -8,4 +8,5 @@ programmer:
 pwr_ctrl:
   sonoff: true
   relay: false
+  power_led: false
   flashing_power_state: "G3"

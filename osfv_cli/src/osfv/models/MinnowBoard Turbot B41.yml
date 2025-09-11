@@ -9,6 +9,7 @@ programmer:
 pwr_ctrl:
   sonoff: false
   relay: true
+  power_led: false
   flashing_power_state: "G3"
 
 reset_cmos: false

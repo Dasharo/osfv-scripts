@@ -7,6 +7,7 @@ from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword, library
 
 model_dict = {
+    "asrock-spc741d8": "SPC741D8-2L2T_BCM",
     "gigabyte-mz33-ar1": "MZ33-AR1 Rev. 3",
     "minnowboard-turbot": "MinnowBoard Turbot B41",
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",

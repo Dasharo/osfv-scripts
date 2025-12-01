@@ -10,7 +10,7 @@ robotframework = "^7.2"
 
 [tool.poetry]
 name = "osfv"
-version = "0.8.2"
+version = "0.8.3"
 description = "Open Source Firmware Validation Command Line Interface Tool"
 authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
 include = ["src/models/*.yml"]

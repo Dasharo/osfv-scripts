@@ -1038,6 +1038,19 @@ def flash_image_check(args):
         )
 
 
+def reset_cmos(rte, args):
+    """
+    Resets the CMOS of the Device Under Test (DUT).
+    Args:
+        rte (object): The object representing the relay control and power supply interface.
+        args (object): Arguments that may contain additional parameters (not used in this function).
+    Returns:
+        None
+    """
+    print(f"Clearing CMOS...")
+    rte.reset_cmos()
+
+
 # Main function
 def main():
     parser = argparse.ArgumentParser(
@@ -1263,6 +1276,10 @@ def main():
     )
     check_pwr_led_parser = pwr_subparsers.add_parser(
         "pwr_led", help="Check the state of the DUT power LED"
+    )
+
+    cmos_reset_subparser = pwr_subparsers.add_parser(
+        "reset_cmos", help="Reset the DUT CMOS"
     )
 
     # GPIO subcommands
@@ -1520,6 +1537,8 @@ def main():
                     psu_off(rte, args)
                 elif args.psu_cmd == "get":
                     psu_get(rte, args)
+            elif args.pwr_cmd == "reset_cmos":
+                reset_cmos(rte, args)
         elif args.rte_cmd == "serial":
             open_dut_serial(rte, args)
         elif args.rte_cmd == "spi":

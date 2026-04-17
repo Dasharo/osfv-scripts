@@ -33,6 +33,7 @@ model_dict = {
     "pcengines-apu4-seabios": "APU4",
     "pcengines-apu6-seabios": "APU6",
     "protectli-v1210": "V1210",
+    "protectli-v1211": "V1211",
     "protectli-v1410": "V1410",
     "protectli-v1610": "V1610",
     "protectli-vp2410": "VP2410",

@@ -14,6 +14,7 @@ model_dict = {
     "msi-pro-z690-a-wifi-ddr4": "MSI PRO Z690-A DDR4",
     "msi-pro-z690-a-ddr5": "MSI PRO Z690-A DDR5",
     "msi-pro-z790-p-ddr5": "MSI PRO Z790-P DDR5",
+    "msi-pro-b850-p-wifi": "MSI PRO B850-P WIFI",
     "novacustom-ns50mu": "NS50MU",
     "novacustom-v540tu": "V540TU",
     "novacustom-v540tnd": "V540TND",

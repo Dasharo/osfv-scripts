@@ -1,0 +1,14 @@
+---
+flash_chip:
+  model: "MX25U6435E/F"
+  voltage: "1.8V"
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  sonoff: false
+  relay: true
+  flashing_power_state: "G3"
+
+reset_cmos: true

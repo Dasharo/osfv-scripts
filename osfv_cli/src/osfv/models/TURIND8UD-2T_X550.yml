@@ -1,0 +1,12 @@
+---
+flash_chip:
+  model: "W25Q256JV_Q"
+  voltage: "3.3V"
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  sonoff: true
+  relay: false
+  flashing_power_state: "G3"

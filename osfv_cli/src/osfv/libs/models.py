@@ -83,6 +83,7 @@ class Models:
                     Required(
                         "flashing_power_state"
                     ): flashing_power_state_validator,
+                    Optional("discharge_psu", default=True): bool,
                 },
                 Optional("pwr_led"): {
                     Required("polarity"): pwr_led_validator,

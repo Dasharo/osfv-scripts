@@ -299,7 +299,8 @@ class RTE(rtectrl):
         elif power_state == "G3":
             # Turn off the PSU/AC brick to put device into G3
             self.psu_off()
-            self.discharge_psu()
+            if self.dut_data["pwr_ctrl"]["discharge_psu"]:
+                self.discharge_psu()
         else:
             exit(
                 f"Power state: '{power_state}' is not supported. Please check "

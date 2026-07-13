@@ -67,6 +67,20 @@ def check_flash_image_regions(
         flash_image.set_verbosity(1)
 
     print(f"Verifying flash image completeness of {rom} ...")
+    if not flash_image.read_image_file(rom):
+        print(
+            "Failed to load image file. Cannot verify the presence of Intel regions."
+        )
+        if dry_run:
+            return True
+        return False
+
+    if flash_image.is_amd_image():
+        print(
+            "AMD firmware image detected. Skipping Intel flash region checks."
+        )
+        return True
+
     if not flash_image.load_image_file(rom):
         print(
             "Failed to load image file. Cannot verify the presence of Intel regions."

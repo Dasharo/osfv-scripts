@@ -27,6 +27,20 @@ class FlashImage:
     NUMBER_OF_REGIONS = len(REGION_INDICES)
     FLVALSIG = 0x0FF0A55A
 
+    # Possible locations of the AMD firmware header, and its signature.
+    # Used to recognize AMD flash images, which do not carry an Intel flash
+    # descriptor and therefore must skip the Intel region checks.
+    AMD_FW_HEADER_OFFSETS = [
+        0xFA0000,
+        0xE20000,
+        0xC20000,
+        0x820000,
+        0x020000,
+    ]
+    AMD_FW_HEADER_SIGNATURE = 0x55AA55AA
+    # AMD header offsets are relative to each 16 MiB flash window.
+    FLASH_WINDOW_SIZE = 0x1000000
+
     def set_verbosity(self, verbosity):
         self.VERBOSITY = verbosity
 
@@ -58,7 +72,7 @@ class FlashImage:
         self.set_exit_code(0)
         self.set_verbosity(0)
 
-    def load_image_file(self, image_path):
+    def read_image_file(self, image_path):
         if not os.path.isfile(image_path):
             print(f"File does not exist: {image_path}")
             self.EXIT_CODE = False
@@ -68,6 +82,36 @@ class FlashImage:
             mode="rb",
         ) as imageFile:
             self.imageData = imageFile.read()
+        return True
+
+    def is_amd_image(self):
+        # The header offsets are relative to a 16 MiB flash window. Images
+        # larger than 16 MiB are made of multiple such windows (e.g. a 32 MiB
+        # image has a lower and an upper half), so scan each window in turn.
+        image_size = len(self.imageData)
+        for window_base in range(0, image_size, self.FLASH_WINDOW_SIZE):
+            for offset in self.AMD_FW_HEADER_OFFSETS:
+                header_offset = window_base + offset
+                if (header_offset + 0x04) > image_size:
+                    continue
+                signature = struct.unpack(
+                    "<I",
+                    self.imageData[header_offset : (header_offset + 0x04)],
+                )[0x00]
+                if signature == self.AMD_FW_HEADER_SIGNATURE:
+                    if self.VERBOSITY > 0:
+                        print(
+                            "AMD firmware header found at {0:#0{1}x}".format(
+                                header_offset, 0x0A
+                            )
+                        )
+                    return True
+        return False
+
+    def load_image_file(self, image_path):
+        if not self.read_image_file(image_path):
+            return False
+        else:
             valsig = struct.unpack("<I", self.imageData[0x00:0x04])[0x0]
             valsig_offset = 0x00
             if valsig != self.FLVALSIG:

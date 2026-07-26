@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import json
-import sys
+from collections.abc import Callable
 from copy import copy
-from functools import wraps
+from dataclasses import dataclass, field
+from functools import partial, wraps
 from importlib import metadata
 from pathlib import Path
 from time import sleep
@@ -12,7 +13,7 @@ from typing import Annotated, Literal, cast
 import pexpect
 import requests
 import typer
-from typer import Argument, Option
+from typer import Argument, Context, Option
 
 from osfv.libs import utils
 from osfv.libs.models import Models
@@ -71,29 +72,50 @@ class API:
         return self._snipeit_api
 
 
-def is_help_call() -> bool:
-    return "--help" in sys.argv or "-h" in sys.argv
+@dataclass
+class Hooks:
+    setup: Callable[[], tuple[bool, str]]
+    cleanup: Callable[[bool, str], None]
+    _already_ran: bool = field(default=False, init=False)
 
 
-def skip_on_help(func):
-    """Decorator for skipping heavy functions (callbacks)
+def with_setup(func):
+    """Use this decorator to call setup and cleanup check_out/check_in function
 
-    No need to run all the code in callbacks that e.g. connects to network if
-    we are only printing help.
+    Requires the first argument of the decorated function to be of typer.Context
+    type.
+
+    Calls setup if ctx.obj is instance of Hooks, and setups cleanup to be called
+    during context tear down. Makes sure to only do it once even if mutliple
+    decorated functions are called.
+
+    Use this decorator so you don't have to setup/cleanup stuff manually in
+    each command or run heavy setup function before all arguments are validated.
+
+    ctx.obj can be set in callback subcommand (check rte_options function for
+    examples)
     """
 
     @wraps(func)
-    def wrapper(*args, **kwargs):
-        if is_help_call():
-            return
-        return func(*args, **kwargs)
+    def wrapper(ctx: Context, *args, **kwargs):
+        if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
+            ctx.obj._already_ran = True
+            checked_out, asset_id = ctx.obj.setup()
+            ctx.call_on_close(partial(ctx.obj.cleanup, checked_out, asset_id))
+        return func(ctx, *args, **kwargs)
 
     return wrapper
+
+
+def check_in_cleanup(checked_out: bool, asset_id: str):
+    if checked_out:
+        _check_in_asset(apis.get_or_create_snipeit(), asset_id)
 
 
 apis = API()
 
 ## Intermediate subcommands
+
 
 def add_typer(help: str, name: str, target_typer: typer.Typer):
     new_typer = typer.Typer(help=help)
@@ -136,8 +158,7 @@ def print_version(version: bool):
 
 ## root commands
 @app.callback()
-@skip_on_help
-def root_callback(
+def root_options(
     _: Annotated[
         bool,
         typer.Option(
@@ -594,26 +615,24 @@ def user_del(
 
 
 ## rte commands
-@rte_t.callback()
-@skip_on_help
-def rte_options(
-    rte_ip: Annotated[str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")],
-    model: Annotated[
-        str | None,
-        Option(
-            "--model",
-            help="DUT model. If not given, will attempt to query from Snipe-IT.",
-            metavar="MODEL",
-        ),
-    ] = None,
-    skip_snipeit: Annotated[
-        bool,
-        Option(
-            "--skip-snipeit",
-            help="Skips Snipe-IT related actions like checkout and check-in. Useful for OSFV homelab.",
-        ),
-    ] = False,
-):
+def setup_rte_subcommand(
+    rte_ip: str, model: str | None, skip_snipeit: bool
+) -> tuple[bool, str]:
+    """Validate arguments, setup needed resources
+
+    Sets up snipeit, sonoff, and rte in `apis`, checkes out asset if required
+
+    Args:
+        rte_ip (str): RTE IP Address
+        model (str | None): Model name, used if skipping snipeit
+        skip_snipeit (bool): Whether to skip snipeit requests
+
+    Raises:
+        typer.Exit: When setup/checkout fails
+
+    Returns:
+        tuple[bool, str]: (asset was checked_out?, asset_id)
+    """
     snipeit_api: SnipeIT | None = None
     asset_id: str | None = None
     dut_model_name: str | None = None
@@ -645,15 +664,45 @@ def rte_options(
     apis._rte_api = RTE(rte_ip, dut_model_name, apis._sonoff_api)
 
     if not skip_snipeit:
+        assert isinstance(asset_id, str)
         print(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
-        _check_out_asset(apis.snipeit_api, cast(str, asset_id))
+        already_checked_out = _check_out_asset(apis.snipeit_api, cast(str, asset_id))
+        return not already_checked_out, asset_id
+    return False, ""
+
+
+@rte_t.callback()
+def rte_options(
+    ctx: Context,
+    rte_ip: Annotated[str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")],
+    model: Annotated[
+        str | None,
+        Option(
+            "--model",
+            help="DUT model. If not given, will attempt to query from Snipe-IT.",
+            metavar="MODEL",
+        ),
+    ] = None,
+    skip_snipeit: Annotated[
+        bool,
+        Option(
+            "--skip-snipeit",
+            help="Skips Snipe-IT related actions like checkout and check-in. Useful for OSFV homelab.",
+        ),
+    ] = False,
+):
+    ctx.obj = Hooks(
+        setup=partial(setup_rte_subcommand, rte_ip, model, skip_snipeit),
+        cleanup=check_in_cleanup,
+    )
 
 
 @rte_t.command("serial")
-def open_dut_serial():
+@with_setup
+def open_dut_serial(ctx: Context):
     """Open DUT serial via telnet
 
     Open a Telnet session to interact with the DUT serial interface.
@@ -672,7 +721,8 @@ def open_dut_serial():
 
 ## rte rel commands
 @rte_rel.command("tgl")
-def relay_toggle():
+@with_setup
+def relay_toggle(ctx: Context):
     """Toggle relay state"""
     rte = apis.rte_api
     state_str = rte.relay_get()
@@ -686,14 +736,18 @@ def relay_toggle():
 
 
 @rte_rel.command("get")
-def relay_get():
+@with_setup
+def relay_get(ctx: Context):
     """Get relay state"""
     state = apis.rte_api.relay_get()
     print(f"Relay state: {state}")
 
 
 @rte_rel.command("set")
-def relay_set(state: Annotated[Literal["on", "off"], Argument(help="Relay state")]):
+@with_setup
+def relay_set(
+    ctx: Context, state: Annotated[Literal["on", "off"], Argument(help="Relay state")]
+):
     """Set relay state"""
     rte = apis.rte_api
     rte.relay_set(state)
@@ -703,14 +757,17 @@ def relay_set(state: Annotated[Literal["on", "off"], Argument(help="Relay state"
 
 ## rte gpio commands
 @rte_gpio.command("get")
-def gpio_get(gpio_no: Annotated[int, Argument(help="GPIO number")]):
+@with_setup
+def gpio_get(ctx: Context, gpio_no: Annotated[int, Argument(help="GPIO number")]):
     """Get GPIO state"""
     state = apis.rte_api.gpio_get(gpio_no)
     print(f"GPIO {gpio_no} state: {state}")
 
 
 @rte_gpio.command("set")
+@with_setup
 def gpio_set(
+    ctx: Context,
     gpio_no: Annotated[int, Argument(help="GPIO number")],
     state: Annotated[Literal["high", "low", "high-z"], Argument(help="GPIO state")],
 ):
@@ -722,7 +779,8 @@ def gpio_set(
 
 
 @rte_gpio.command("list")
-def gpio_list():
+@with_setup
+def gpio_list(ctx: Context):
     """List GPIO states"""
     response = json.dumps(apis.rte_api.gpio_list(), indent=4)
     print("GPIO list")
@@ -731,7 +789,9 @@ def gpio_list():
 
 ## rte pwr commands
 @rte_pwr.command("on")
+@with_setup
 def power_on(
+    ctx: Context,
     time: Annotated[
         int,
         Option(
@@ -753,7 +813,9 @@ def power_on(
 
 
 @rte_pwr.command("on_ex")
+@with_setup
 def power_on_ex(
+    ctx: Context,
     time: Annotated[
         int,
         Option(
@@ -762,9 +824,9 @@ def power_on_ex(
     ] = 1,
 ):
     """Short power button press, to power on DUT, and verify if power LED did turn off"""
-    power_on(time)
+    power_on(ctx, time)
     for _ in range(20):
-        if check_pwr_led() == "high":
+        if check_pwr_led(ctx) == "high":
             print("Power on successful.")
             return True
         sleep(0.25)
@@ -773,7 +835,9 @@ def power_on_ex(
 
 
 @rte_pwr.command("off")
+@with_setup
 def power_off(
+    ctx: Context,
     time: Annotated[
         int,
         Option(
@@ -787,7 +851,9 @@ def power_off(
 
 
 @rte_pwr.command("off_ex")
+@with_setup
 def power_off_ex(
+    ctx: Context,
     time: Annotated[
         int,
         Option(
@@ -796,9 +862,9 @@ def power_off_ex(
     ] = 1,
 ):
     """Long power button press, to power off DUT, and verify if power LED did turn off"""
-    power_off(time)
+    power_off(ctx, time)
     for _ in range(20):
-        if check_pwr_led() == "low":
+        if check_pwr_led(ctx) == "low":
             print("Power off successful.")
             raise typer.Exit()
         sleep(0.25)
@@ -807,7 +873,9 @@ def power_off_ex(
 
 
 @rte_pwr.command()
+@with_setup
 def reset(
+    ctx: Context,
     time: Annotated[
         int,
         Option(
@@ -821,7 +889,8 @@ def reset(
 
 
 @rte_pwr.command("pwr_led")
-def check_pwr_led():
+@with_setup
+def check_pwr_led(ctx: Context):
     """Check the state of the DUT power LED"""
     rte = apis.rte_api
     state = rte.gpio_get(RTE.GPIO_PWR_LED)
@@ -837,7 +906,8 @@ def check_pwr_led():
 
 
 @rte_pwr.command()
-def reset_cmos():
+@with_setup
+def reset_cmos(ctx: Context):
     """Reset the DUT CMOS"""
     print("Clearing CMOS...")
     apis.rte_api.reset_cmos()
@@ -845,36 +915,41 @@ def reset_cmos():
 
 ## rte pwr psu commands
 @rte_pwr_psu.command("on")
-def psu_on():
+@with_setup
+def psu_on(ctx: Context):
     """Turn the power supply on"""
     print("Enabling power supply...")
     apis.rte_api.psu_on()
 
 
 @rte_pwr_psu.command("off")
-def psu_off():
+@with_setup
+def psu_off(ctx: Context):
     """Turn the power supply off"""
     print("Disabling power supply...")
     apis.rte_api.psu_off()
 
 
 @rte_pwr_psu.command("get")
-def psu_get():
+@with_setup
+def psu_get(ctx: Context):
     """Display information on DUT's power state"""
     state = apis.rte_api.psu_get()
     print(f"Power supply state: {state}")
 
 
 ## rte spi commands
+@with_setup
 @rte_spi.command("on")
-def spi_on():
+def spi_on(ctx: Context):
     """Enable SPI lines"""
     print("Enabling SPI...")
     apis.rte_api.spi_enable()
 
 
 @rte_spi.command("off")
-def spi_off():
+@with_setup
+def spi_off(ctx: Context):
     """Disable SPI lines"""
     print("Disabling SPI...")
     apis.rte_api.spi_disable()
@@ -882,14 +957,17 @@ def spi_off():
 
 ## rte flash commands
 @rte_flash.command("probe")
-def flash_probe():
+@with_setup
+def flash_probe(ctx: Context):
     """Flash probe with flashrom"""
     print("Probing flash...")
     apis.rte_api.flash_probe()
 
 
 @rte_flash.command("read")
+@with_setup
 def flash_read(
+    ctx: Context,
     rom: Annotated[
         Path,
         Option(
@@ -908,7 +986,9 @@ def flash_read(
 
 
 @rte_flash.command("write")
+@with_setup
 def flash_write(
+    ctx: Context,
     rom: Annotated[
         Path,
         Option(
@@ -956,7 +1036,8 @@ def flash_write(
 
 
 @rte_flash.command("erase")
-def flash_erase():
+@with_setup
+def flash_erase(ctx):
     """Erase DUT flash with flashrom"""
     print("Erasing DUT flash...")
     apis.rte_api.flash_erase()
@@ -964,17 +1045,9 @@ def flash_erase():
 
 
 ## sonoff commands
-@sonoff_t.callback()
-@skip_on_help
-def sonoff_options(
-    sonoff_ip: Annotated[
-        str | None, Option("--rte_ip", help="Sonoff IP address", metavar="SONOFF_IP")
-    ] = None,
-    rte_ip: Annotated[
-        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
-    ] = None,
-):
 
+
+def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, str]:
     if not sonoff_ip:
         if not rte_ip:
             print("Either sonoff_ip or rte_ip is required")
@@ -993,13 +1066,29 @@ def sonoff_options(
         "Using rte command is invasive action, checking first if the "
         "device is not used..."
     )
-    _check_out_asset(apis.snipeit_api, asset_id)
-
+    already_checked_out = _check_out_asset(apis.snipeit_api, asset_id)
     apis._sonoff_api = SonoffDevice(sonoff_ip)
+    return not already_checked_out, asset_id
+
+
+@sonoff_t.callback()
+def sonoff_options(
+    ctx: Context,
+    sonoff_ip: Annotated[
+        str | None, Option("--rte_ip", help="Sonoff IP address", metavar="SONOFF_IP")
+    ] = None,
+    rte_ip: Annotated[
+        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ] = None,
+):
+    ctx.obj = Hooks(
+        setup=partial(sonoff_setup, sonoff_ip, rte_ip), cleanup=check_in_cleanup
+    )
 
 
 @sonoff_t.command("on")
-def sonoff_on():
+@with_setup
+def sonoff_on(ctx: Context):
     """Turn Sonoff ON"""
     print("Turning on Sonoff power switch...")
     try:
@@ -1010,7 +1099,8 @@ def sonoff_on():
 
 
 @sonoff_t.command("off")
-def sonoff_off():
+@with_setup
+def sonoff_off(ctx: Context):
     """Turn Sonoff OFF"""
     print("Turning off Sonoff power switch...")
     try:
@@ -1021,7 +1111,8 @@ def sonoff_off():
 
 
 @sonoff_t.command("tgl")
-def sonoff_tgl():
+@with_setup
+def sonoff_tgl(ctx: Context):
     """Toggle Sonoff state"""
     print("Toggling Sonoff power switch state...")
     try:
@@ -1041,7 +1132,8 @@ def sonoff_tgl():
 
 
 @sonoff_t.command("get")
-def sonoff_get():
+@with_setup
+def sonoff_get(ctx: Context):
     """Get Sonoff state"""
     print("Getting Sonoff power switch state...")
     try:
@@ -1143,7 +1235,7 @@ def _check_in_asset(snipeit_api: SnipeIT, asset_id: str) -> bool:
         return False
 
 
-def get_my_assets(snipeit_api):
+def get_my_assets(snipeit_api: SnipeIT):
     """
     Gets a list of assets assigned to the current user
 

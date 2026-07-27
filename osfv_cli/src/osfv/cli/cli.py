@@ -577,10 +577,10 @@ def check_in_my(
     failed = []
     for asset in my_assets:
         if not _check_in_asset(snipeit_api, asset["id"]):
-            failed = failed.append(asset)
+            failed.append(asset)
 
     if failed:
-        print(f"Failed to check-in {len(failed)} assets:")
+        print(f"Failed to check-in {len(failed)} assets: {failed}")
     else:
         print(f"{len(my_assets)} assets checked in successfully.")
 

@@ -204,7 +204,7 @@ def flash_image_check(
             exists=True,
             dir_okay=False,
         ),
-    ] = Path("write.rom"),
+    ],
     dry_mecheck: Annotated[
         bool,
         Option(
@@ -262,7 +262,7 @@ def flash_image_check(
 ## snipeit commands
 @snipeit_t.command("list_used")
 def list_used_assets(
-    dump_json: Annotated[bool, Option("--json", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
 ):
     """List all already used assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
@@ -281,7 +281,7 @@ def list_used_assets(
 
 @snipeit_t.command("list_my", help="List all my used assets")
 def list_my_assets(
-    dump_json: Annotated[bool, Option("--json", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
 ) -> bool:
     """
     List all my used assets
@@ -305,7 +305,7 @@ def list_my_assets(
 
 @snipeit_t.command("list_unused")
 def list_unused_assets(
-    dump_json: Annotated[bool, Option("--json", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
 ):
     """List all unused assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
@@ -324,7 +324,7 @@ def list_unused_assets(
 
 @snipeit_t.command("list_all")
 def list_all_assets(
-    dump_json: Annotated[bool, Option("--json", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
 ):
     """List all assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
@@ -546,7 +546,7 @@ def check_in_asset(
 
 @snipeit_t.command("check_in_my")
 def check_in_my(
-    dump_json: Annotated[bool, Option("--json", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
     yes: Annotated[bool, Option("--yes", "-y", help="Skips the confirmation")] = False,
 ):
     """
@@ -595,7 +595,7 @@ def user_add(
     ],
     company_name: Annotated[
         str, Option("--company-name", help="Company Name", metavar="COMPANY_NAME")
-    ],
+    ] = "3mdeb",
 ):
     """Add a new user by providing user First Name, Last Name and Company Name"""
     apis.get_or_create_snipeit().user_add(first_name, last_name, company_name)
@@ -823,7 +823,7 @@ def power_on_ex(
         ),
     ] = 1,
 ):
-    """Short power button press, to power on DUT, and verify if power LED did turn off"""
+    """Short power button press, to power on DUT, and verify if power LED did turn on"""
     power_on(ctx, time)
     for _ in range(20):
         if check_pwr_led(ctx) == "high":
@@ -843,7 +843,7 @@ def power_off(
         Option(
             "--time", help="Power button press time in seconds", metavar="TIME", min=1
         ),
-    ] = 1,
+    ] = 6,
 ):
     """Long power button press, to power off DUT"""
     print("Powering off...")
@@ -859,7 +859,7 @@ def power_off_ex(
         Option(
             "--time", help="Power button press time in seconds", metavar="TIME", min=1
         ),
-    ] = 1,
+    ] = 6,
 ):
     """Long power button press, to power off DUT, and verify if power LED did turn off"""
     power_off(ctx, time)
@@ -905,7 +905,7 @@ def check_pwr_led(ctx: Context):
     return state
 
 
-@rte_pwr.command()
+@rte_pwr.command("reset_cmos")
 @with_setup
 def reset_cmos(ctx: Context):
     """Reset the DUT CMOS"""
@@ -939,8 +939,8 @@ def psu_get(ctx: Context):
 
 
 ## rte spi commands
-@with_setup
 @rte_spi.command("on")
+@with_setup
 def spi_on(ctx: Context):
     """Enable SPI lines"""
     print("Enabling SPI...")
@@ -992,7 +992,11 @@ def flash_write(
     rom: Annotated[
         Path,
         Option(
-            "--rom", help="Path to read firmware file", metavar="ROM", dir_okay=False
+            "--rom",
+            help="Path to read firmware file",
+            metavar="ROM",
+            exists=True,
+            dir_okay=False
         ),
     ] = Path("write.rom"),
     bios: Annotated[
@@ -1000,8 +1004,7 @@ def flash_write(
         Option(
             "--bios",
             "-b",
-            help='Adds "-i bios --ifd" to flashrom command',
-            dir_okay=False,
+            help='Adds "-i bios --ifd" to flashrom command'
         ),
     ] = False,
     dry_mecheck: Annotated[
@@ -1075,7 +1078,7 @@ def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, int]:
 def sonoff_options(
     ctx: Context,
     sonoff_ip: Annotated[
-        str | None, Option("--rte_ip", help="Sonoff IP address", metavar="SONOFF_IP")
+        str | None, Option("--sonoff_ip", help="Sonoff IP address", metavar="SONOFF_IP")
     ] = None,
     rte_ip: Annotated[
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
@@ -1318,22 +1321,6 @@ def print_asset_details_for_zabbix(asset):
     assets = get_zabbix_compatible_assets_from_asset(asset)
     for key in assets:
         print(f"{key}: {assets[key]}")
-
-
-def rte_status(rte, args):
-    """
-    Set the state of a GPIO pin and print its new state.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    rte.gpio_set(args.gpio_no, args.state)
-    state = rte.gpio_get(args.gpio_no)
-    print(f"GPIO {args.gpio_no} state set to {state}")
 
 
 def ask_to_proceed(message="Do you want to proceed (y/n): "):

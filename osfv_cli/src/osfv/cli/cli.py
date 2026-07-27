@@ -74,8 +74,8 @@ class API:
 
 @dataclass
 class Hooks:
-    setup: Callable[[], tuple[bool, str]]
-    cleanup: Callable[[bool, str], None]
+    setup: Callable[[], tuple[bool, int | None]]
+    cleanup: Callable[[bool, int | None], None]
     _already_ran: bool = field(default=False, init=False)
 
 
@@ -107,8 +107,8 @@ def with_setup(func):
     return wrapper
 
 
-def check_in_cleanup(checked_out: bool, asset_id: str):
-    if checked_out:
+def check_in_cleanup(checked_out: bool, asset_id: int | None):
+    if checked_out and asset_id is not None:
         _check_in_asset(apis.get_or_create_snipeit(), asset_id)
 
 
@@ -513,7 +513,7 @@ def update_zabbix_assets():
 @snipeit_t.command("check_out")
 def check_out_asset(
     asset_id: Annotated[
-        str | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
+        int | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
     ] = None,
     rte_ip: Annotated[
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
@@ -531,7 +531,7 @@ def check_out_asset(
 @snipeit_t.command("check_in")
 def check_in_asset(
     asset_id: Annotated[
-        str | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
+        int | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
     ] = None,
     rte_ip: Annotated[
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
@@ -617,7 +617,7 @@ def user_del(
 ## rte commands
 def setup_rte_subcommand(
     rte_ip: str, model: str | None, skip_snipeit: bool
-) -> tuple[bool, str]:
+) -> tuple[bool, int | None]:
     """Validate arguments, setup needed resources
 
     Sets up snipeit, sonoff, and rte in `apis`, checkes out asset if required
@@ -634,12 +634,12 @@ def setup_rte_subcommand(
         tuple[bool, str]: (asset was checked_out?, asset_id)
     """
     snipeit_api: SnipeIT | None = None
-    asset_id: str | None = None
+    asset_id: int | None = None
     dut_model_name: str | None = None
     if not skip_snipeit:
         snipeit_api = apis.get_or_create_snipeit()
         asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-        if not asset_id:
+        if asset_id is None:
             print(f"No asset found with RTE IP: {rte_ip}")
             raise typer.Exit(1)
     if model:
@@ -664,14 +664,14 @@ def setup_rte_subcommand(
     apis._rte_api = RTE(rte_ip, dut_model_name, apis._sonoff_api)
 
     if not skip_snipeit:
-        assert isinstance(asset_id, str)
+        assert isinstance(asset_id, int)
         print(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
-        already_checked_out = _check_out_asset(apis.snipeit_api, cast(str, asset_id))
+        already_checked_out = _check_out_asset(apis.snipeit_api, cast(int, asset_id))
         return not already_checked_out, asset_id
-    return False, ""
+    return False, None
 
 
 @rte_t.callback()
@@ -1047,7 +1047,7 @@ def flash_erase(ctx):
 ## sonoff commands
 
 
-def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, str]:
+def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, int]:
     if not sonoff_ip:
         if not rte_ip:
             print("Either sonoff_ip or rte_ip is required")
@@ -1058,7 +1058,7 @@ def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, str]:
             raise typer.Exit(1)
 
     asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(sonoff_ip)
-    if not asset_id:
+    if asset_id is None:
         print(f"No asset found with Sonoff IP: {sonoff_ip}")
         raise typer.Exit(1)
 
@@ -1144,8 +1144,8 @@ def sonoff_get(ctx: Context):
 
 
 def validate_and_return_asset_id(
-    snipeit_api: SnipeIT, asset_id: str | None, rte_ip: str | None
-) -> str:
+    snipeit_api: SnipeIT, asset_id: int | None, rte_ip: str | None
+) -> int:
     """Check which argument is set and return asset_id based on it
 
     If both arguments are the same (None or str) then raise typer.Exit, else
@@ -1160,7 +1160,7 @@ def validate_and_return_asset_id(
     Returns:
         str: Found asset_id or None
     """
-    if isinstance(asset_id, str) and isinstance(rte_ip, str):
+    if isinstance(asset_id, int) and isinstance(rte_ip, str):
         print("Only asset_id or rte_ip is allowed, not both")
         raise typer.Exit(1)
     if asset_id is None and rte_ip is None:
@@ -1169,14 +1169,14 @@ def validate_and_return_asset_id(
 
     if rte_ip is not None:
         asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-        if not asset_id:
+        if asset_id is None:
             print(f"No asset found with RTE IP: {rte_ip}")
             raise typer.Exit(1)
     assert asset_id is not None
     return asset_id
 
 
-def _check_out_asset(snipeit_api: SnipeIT, asset_id: str) -> bool:
+def _check_out_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
     """Check out an asset by providing the Asset ID
 
     It checks if the asset is already checked out by the user.
@@ -1211,7 +1211,7 @@ def _check_out_asset(snipeit_api: SnipeIT, asset_id: str) -> bool:
     return already_checked_out
 
 
-def _check_in_asset(snipeit_api: SnipeIT, asset_id: str) -> bool:
+def _check_in_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
     """Check in an asset by providing the Asset ID
 
     This method attempts to check in the specified asset identified by `asset_id` by making an HTTP POST request.

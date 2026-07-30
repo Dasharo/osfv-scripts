@@ -13,14 +13,13 @@ from typing import Annotated, Literal, cast
 import pexpect
 import requests
 import typer
-from typer import Argument, Context, Option
-
 from osfv.libs import utils
 from osfv.libs.models import Models
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
+from typer import Argument, Context, Option
 
 
 class API:
@@ -86,7 +85,7 @@ def with_setup(func):
     type.
 
     Calls setup if ctx.obj is instance of Hooks, and setups cleanup to be called
-    during context tear down. Makes sure to only do it once even if mutliple
+    during context tear down. Makes sure to only do it once even if mutltiple
     decorated functions are called.
 
     Use this decorator so you don't have to setup/cleanup stuff manually in
@@ -142,7 +141,9 @@ rte_spi = add_typer("Control SPI lines of RTE", "spi", rte_t)
 rte_flash = add_typer("DUT flash operations", "flash", rte_t)
 # rte serial is final subcommand so it is defined with other commands
 ## rte pwr subcommands
-rte_pwr_psu = add_typer("Generic control interface of the power supply", "psu", rte_pwr)
+rte_pwr_psu = add_typer(
+    "Generic control interface of the power supply", "psu", rte_pwr
+)
 
 
 def main():
@@ -215,7 +216,11 @@ def flash_image_check(
     ] = False,
     verbosity: Annotated[
         bool,
-        Option("--verbosity", "-V", help="Increase osfv.libs.flash_image verbosity"),
+        Option(
+            "--verbosity",
+            "-V",
+            help="Increase osfv.libs.flash_image verbosity",
+        ),
     ] = False,
     _: Annotated[
         bool,
@@ -240,7 +245,10 @@ def flash_image_check(
     regions_to_dump: Annotated[
         list[str] | None,
         Option(
-            "--dump", "-d", help="dump named flash region", metavar="REGIONS_TO_DUMP"
+            "--dump",
+            "-d",
+            help="dump named flash region",
+            metavar="REGIONS_TO_DUMP",
         ),
     ] = None,
 ):
@@ -250,7 +258,9 @@ def flash_image_check(
     if regions_to_check is None:
         regions_to_check = ["me"]
     if (
-        utils.check_flash_image_regions(rom, dry_mecheck, verbosity, regions_to_check)
+        utils.check_flash_image_regions(
+            rom, dry_mecheck, verbosity, regions_to_check
+        )
         == False
     ):
         print(
@@ -262,11 +272,15 @@ def flash_image_check(
 ## snipeit commands
 @snipeit_t.command("list_used")
 def list_used_assets(
-    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
 ):
     """List all already used assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
-    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
+    used_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is not None
+    ]
 
     if not used_assets:
         print("No used assets found.")
@@ -281,7 +295,9 @@ def list_used_assets(
 
 @snipeit_t.command("list_my", help="List all my used assets")
 def list_my_assets(
-    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
 ) -> bool:
     """
     List all my used assets
@@ -305,11 +321,15 @@ def list_my_assets(
 
 @snipeit_t.command("list_unused")
 def list_unused_assets(
-    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
 ):
     """List all unused assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
-    unused_assets = [asset for asset in all_assets if asset["assigned_to"] is None]
+    unused_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is None
+    ]
 
     if not unused_assets:
         print("No unused assets found.")
@@ -324,7 +344,9 @@ def list_unused_assets(
 
 @snipeit_t.command("list_all")
 def list_all_assets(
-    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
 ):
     """List all assets"""
     all_assets = apis.get_or_create_snipeit().get_all_assets()
@@ -352,7 +374,9 @@ def list_for_zabbix():
         print("No assets found.")
 
 
-@snipeit_t.command("update_zabbix", help="Syncs Zabbix assets with SnipeIT ones")
+@snipeit_t.command(
+    "update_zabbix", help="Syncs Zabbix assets with SnipeIT ones"
+)
 def update_zabbix_assets():
     """
     Updates Zabbix with the latest asset data from Snipe-IT, ensuring the IP addresses
@@ -369,7 +393,9 @@ def update_zabbix_assets():
 
     if all_assets:
         for asset in all_assets:
-            snipeit_assets.update(get_zabbix_compatible_assets_from_asset(asset))
+            snipeit_assets.update(
+                get_zabbix_compatible_assets_from_asset(asset)
+            )
 
     snipeit_assets_keys = list(snipeit_assets.keys())
 
@@ -424,7 +450,9 @@ def update_zabbix_assets():
                 snipeit_configuration_error = True
 
         # check for forbidden symbols in asset names
-        if any(symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols):
+        if any(
+            symbol in snipeit_assets_keys[i] for symbol in forbidden_symbols
+        ):
             print(
                 f"{snipeit_assets_keys[i]} contains forbidden symbols! They "
                 f"are going to be changed to '_'."
@@ -433,7 +461,9 @@ def update_zabbix_assets():
             for s in forbidden_symbols:
                 new_key = new_key.replace(s, "_")
 
-            snipeit_assets[new_key] = snipeit_assets.pop(snipeit_assets_keys[i])
+            snipeit_assets[new_key] = snipeit_assets.pop(
+                snipeit_assets_keys[i]
+            )
 
     if snipeit_configuration_error:
         print(
@@ -456,14 +486,18 @@ def update_zabbix_assets():
     ):
         update_available = True
 
-    common_keys = set(snipeit_assets.keys()) & set(current_zabbix_assets.keys())
+    common_keys = set(snipeit_assets.keys()) & set(
+        current_zabbix_assets.keys()
+    )
 
     if keys_not_present_in_zabbix.__len__() > 0:
         print("Assets not present in Zabbix (these will be added):")
         print("\n".join(keys_not_present_in_zabbix))
 
     if keys_not_present_in_snipeit.__len__() > 0:
-        print("\nAssets present in Zabbix but not in SnipeIT (these will be removed):")
+        print(
+            "\nAssets present in Zabbix but not in SnipeIT (these will be removed):"
+        )
         print("\n".join(keys_not_present_in_snipeit))
 
     print()
@@ -546,8 +580,12 @@ def check_in_asset(
 
 @snipeit_t.command("check_in_my")
 def check_in_my(
-    dump_json: Annotated[bool, Option("--json", "-j", help="Dump assets as JSON")] = False,
-    yes: Annotated[bool, Option("--yes", "-y", help="Skips the confirmation")] = False,
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+    yes: Annotated[
+        bool, Option("--yes", "-y", help="Skips the confirmation")
+    ] = False,
 ):
     """
     Lists all assets assigned to the current user, checks in all of them
@@ -588,13 +626,15 @@ def check_in_my(
 @snipeit_t.command("user_add")
 def user_add(
     first_name: Annotated[
-        str, Option("--first-name", help="User First Name", metavar="FIRST_NAME")
+        str,
+        Option("--first-name", help="User First Name", metavar="FIRST_NAME"),
     ],
     last_name: Annotated[
         str, Option("--last-name", help="User Last Name", metavar="LAST_NAME")
     ],
     company_name: Annotated[
-        str, Option("--company-name", help="Company Name", metavar="COMPANY_NAME")
+        str,
+        Option("--company-name", help="Company Name", metavar="COMPANY_NAME"),
     ] = "3mdeb",
 ):
     """Add a new user by providing user First Name, Last Name and Company Name"""
@@ -604,7 +644,8 @@ def user_add(
 @snipeit_t.command("user_del")
 def user_del(
     first_name: Annotated[
-        str, Option("--first-name", help="User First Name", metavar="FIRST_NAME")
+        str,
+        Option("--first-name", help="User First Name", metavar="FIRST_NAME"),
     ],
     last_name: Annotated[
         str, Option("--last-name", help="User Last Name", metavar="LAST_NAME")
@@ -620,7 +661,7 @@ def setup_rte_subcommand(
 ) -> tuple[bool, int | None]:
     """Validate arguments, setup needed resources
 
-    Sets up snipeit, sonoff, and rte in `apis`, checkes out asset if required
+    Sets up snipeit, sonoff, and rte in `apis`, checks out asset if required
 
     Args:
         rte_ip (str): RTE IP Address
@@ -647,7 +688,9 @@ def setup_rte_subcommand(
         dut_model_name = model
     else:
         if not skip_snipeit:
-            status, dut_model_name = apis.snipeit_api.get_asset_model_name(asset_id)
+            status, dut_model_name = apis.snipeit_api.get_asset_model_name(
+                asset_id
+            )
             if status:
                 print(f"DUT model retrieved from snipeit: {dut_model_name}")
             else:
@@ -669,7 +712,9 @@ def setup_rte_subcommand(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
-        already_checked_out = _check_out_asset(apis.snipeit_api, cast(int, asset_id))
+        already_checked_out = _check_out_asset(
+            apis.snipeit_api, cast(int, asset_id)
+        )
         return not already_checked_out, asset_id
     return False, None
 
@@ -677,7 +722,9 @@ def setup_rte_subcommand(
 @rte_t.callback()
 def rte_options(
     ctx: Context,
-    rte_ip: Annotated[str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")],
+    rte_ip: Annotated[
+        str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ],
     model: Annotated[
         str | None,
         Option(
@@ -746,7 +793,8 @@ def relay_get(ctx: Context):
 @rte_rel.command("set")
 @with_setup
 def relay_set(
-    ctx: Context, state: Annotated[Literal["on", "off"], Argument(help="Relay state")]
+    ctx: Context,
+    state: Annotated[Literal["on", "off"], Argument(help="Relay state")],
 ):
     """Set relay state"""
     rte = apis.rte_api
@@ -758,7 +806,9 @@ def relay_set(
 ## rte gpio commands
 @rte_gpio.command("get")
 @with_setup
-def gpio_get(ctx: Context, gpio_no: Annotated[int, Argument(help="GPIO number")]):
+def gpio_get(
+    ctx: Context, gpio_no: Annotated[int, Argument(help="GPIO number")]
+):
     """Get GPIO state"""
     state = apis.rte_api.gpio_get(gpio_no)
     print(f"GPIO {gpio_no} state: {state}")
@@ -769,7 +819,9 @@ def gpio_get(ctx: Context, gpio_no: Annotated[int, Argument(help="GPIO number")]
 def gpio_set(
     ctx: Context,
     gpio_no: Annotated[int, Argument(help="GPIO number")],
-    state: Annotated[Literal["high", "low", "high-z"], Argument(help="GPIO state")],
+    state: Annotated[
+        Literal["high", "low", "high-z"], Argument(help="GPIO state")
+    ],
 ):
     """Set GPIO state"""
     rte = apis.rte_api
@@ -795,7 +847,10 @@ def power_on(
     time: Annotated[
         int,
         Option(
-            "--time", help="Power button press time in seconds", metavar="TIME", min=1
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
         ),
     ] = 1,
 ):
@@ -819,7 +874,10 @@ def power_on_ex(
     time: Annotated[
         int,
         Option(
-            "--time", help="Power button press time in seconds", metavar="TIME", min=1
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
         ),
     ] = 1,
 ):
@@ -841,7 +899,10 @@ def power_off(
     time: Annotated[
         int,
         Option(
-            "--time", help="Power button press time in seconds", metavar="TIME", min=1
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
         ),
     ] = 6,
 ):
@@ -857,7 +918,10 @@ def power_off_ex(
     time: Annotated[
         int,
         Option(
-            "--time", help="Power button press time in seconds", metavar="TIME", min=1
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
         ),
     ] = 6,
 ):
@@ -879,7 +943,10 @@ def reset(
     time: Annotated[
         int,
         Option(
-            "--time", help="Power button press time in seconds", metavar="TIME", min=1
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
         ),
     ] = 1,
 ):
@@ -996,15 +1063,13 @@ def flash_write(
             help="Path to read firmware file",
             metavar="ROM",
             exists=True,
-            dir_okay=False
+            dir_okay=False,
         ),
     ] = Path("write.rom"),
     bios: Annotated[
         bool,
         Option(
-            "--bios",
-            "-b",
-            help='Adds "-i bios --ifd" to flashrom command'
+            "--bios", "-b", help='Adds "-i bios --ifd" to flashrom command'
         ),
     ] = False,
     dry_mecheck: Annotated[
@@ -1017,7 +1082,11 @@ def flash_write(
     ] = False,
     verbosity: Annotated[
         bool,
-        Option("--verbosity", "-V", help="Increase osfv.libs.flash_image verbosity"),
+        Option(
+            "--verbosity",
+            "-V",
+            help="Increase osfv.libs.flash_image verbosity",
+        ),
     ] = False,
 ):
     """Write to DUT flash with flashrom"""
@@ -1050,17 +1119,23 @@ def flash_erase(ctx):
 ## sonoff commands
 
 
-def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, int]:
+def sonoff_setup(
+    sonoff_ip: str | None, rte_ip: str | None
+) -> tuple[bool, int]:
     if not sonoff_ip:
         if not rte_ip:
             print("Either sonoff_ip or rte_ip is required")
             raise typer.Exit(1)
-        sonoff_ip = apis.get_or_create_snipeit().get_sonoff_ip_by_rte_ip(rte_ip)
+        sonoff_ip = apis.get_or_create_snipeit().get_sonoff_ip_by_rte_ip(
+            rte_ip
+        )
         if not sonoff_ip:
             print(f"No Sonoff Device found with RTE IP: {rte_ip}")
             raise typer.Exit(1)
 
-    asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(sonoff_ip)
+    asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(
+        sonoff_ip
+    )
     if asset_id is None:
         print(f"No asset found with Sonoff IP: {sonoff_ip}")
         raise typer.Exit(1)
@@ -1078,14 +1153,16 @@ def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, int]:
 def sonoff_options(
     ctx: Context,
     sonoff_ip: Annotated[
-        str | None, Option("--sonoff_ip", help="Sonoff IP address", metavar="SONOFF_IP")
+        str | None,
+        Option("--sonoff_ip", help="Sonoff IP address", metavar="SONOFF_IP"),
     ] = None,
     rte_ip: Annotated[
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
     ] = None,
 ):
     ctx.obj = Hooks(
-        setup=partial(sonoff_setup, sonoff_ip, rte_ip), cleanup=check_in_cleanup
+        setup=partial(sonoff_setup, sonoff_ip, rte_ip),
+        cleanup=check_in_cleanup,
     )
 
 
@@ -1249,7 +1326,9 @@ def get_my_assets(snipeit_api: SnipeIT):
         List of assets assigned to the current user
     """
     all_assets = snipeit_api.get_all_assets()
-    used_assets = [asset for asset in all_assets if asset["assigned_to"] is not None]
+    used_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is not None
+    ]
     return [
         asset
         for asset in used_assets
@@ -1303,7 +1382,9 @@ def get_zabbix_compatible_assets_from_asset(asset):
             if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
                 field_value = field_data.get("value")
                 if field_value:
-                    key = f"{asset['asset_tag']}_{field_name}".replace(" ", "_")
+                    key = f"{asset['asset_tag']}_{field_name}".replace(
+                        " ", "_"
+                    )
                     result[key] = field_value
     return result
 

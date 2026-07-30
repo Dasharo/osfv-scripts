@@ -1,27 +1,33 @@
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.scripts]
-osfv_cli = "osfv.cli.cli:main"
-
-[tool.poetry.group.test.dependencies]
-robotframework = "^7.2"
-
-[tool.poetry]
+[project]
 name = "osfv"
 version = "0.8.6"
 description = "Open Source Firmware Validation Command Line Interface Tool"
-authors = ["Maciej Pijanowski <Maciej.Pijanowski@3mdeb.com>"]
-include = ["src/models/*.yml"]
+authors = [
+    {name = "Maciej Pijanowski", email="Maciej.Pijanowski@3mdeb.com"}
+]
+requires-python = ">=3.13"
+dependencies = [
+    "paramiko (>=3.2.0,<4.0.0)",
+    "pexpect (>=4.8.0,<5.0.0)",
+    "PyYAML (>=6.0,<7.0)",
+    "requests (>=2.31.0,<3.0.0)",
+    "unidecode (>=1.3.6,<2.0.0)",
+    "importlib-resources (>=6.1.1,<7.0.0)",
+    "voluptuous (>=0.15.2,<1.0.0)",
+    "typer (>=0.27.0,<1.0.0)",
+]
 
-[tool.poetry.dependencies]
-python = "^3.13"
-paramiko = "^3.2.0"
-pexpect = "^4.8.0"
-PyYAML = "^6.0"
-requests = "^2.31.0"
-unidecode = "^1.3.6"
-importlib-resources = "^6.1.1"
-voluptuous = "^0.15.2"
-typer = "^0.27.0"
+[dependency-groups]
+test = [
+    "robotframework (>=7.2,<8.0)"
+]
+
+[project.scripts]
+osfv_cli = "osfv.cli.cli:main"
+
+[tool.poetry]
+include = ["src/models/*.yml"]

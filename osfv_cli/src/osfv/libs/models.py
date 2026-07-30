@@ -5,6 +5,7 @@ from pathlib import Path
 
 import yaml
 from importlib_resources import files
+from osfv.libs.errors import OSFVError
 from voluptuous import Any, Optional, Required, Schema
 
 
@@ -88,9 +89,15 @@ class Models:
             Optional("layout"): layout_schema,
         }
 
+        # Pin assignments a bench may override. Which pin a line is wired to is
+        # a property of the bench, so the driver validates the names and ids it
+        # knows; the schema only checks the shape.
+        gpio_schema = {str: int}
+
         schema = Schema(
             {
                 Optional("spi_mux"): bool,
+                Optional("gpio"): gpio_schema,
                 Required("programmer"): {
                     Required("name"): programmer_name_validator,
                 },
@@ -191,13 +198,13 @@ class Models:
 DEFAULT_FLASH_TARGET = "host"
 
 
-class IncompleteModelData(Exception):
+class IncompleteModelData(OSFVError):
     pass
 
 
-class DuplicateFlashTarget(Exception):
+class DuplicateFlashTarget(OSFVError):
     pass
 
 
-class UnsupportedDUTModel(Exception):
+class UnsupportedDUTModel(OSFVError):
     pass

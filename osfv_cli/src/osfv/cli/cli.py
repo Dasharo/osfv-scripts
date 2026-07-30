@@ -14,8 +14,9 @@ import pexpect
 import requests
 import typer
 from osfv.libs import utils
+from osfv.libs.errors import OSFVError
 from osfv.libs.models import Models
-from osfv.libs.rte import RTE, UnsupportedFlashTarget
+from osfv.libs.rte import RTE
 from osfv.libs.rte_factory import new_rte
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
@@ -98,11 +99,20 @@ def with_setup(func):
 
     @wraps(func)
     def wrapper(ctx: Context, *args, **kwargs):
-        if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
-            ctx.obj._already_ran = True
-            checked_out, asset_id = ctx.obj.setup()
-            ctx.call_on_close(partial(ctx.obj.cleanup, checked_out, asset_id))
-        return func(ctx, *args, **kwargs)
+        try:
+            if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
+                ctx.obj._already_ran = True
+                checked_out, asset_id = ctx.obj.setup()
+                ctx.call_on_close(
+                    partial(ctx.obj.cleanup, checked_out, asset_id)
+                )
+            return func(ctx, *args, **kwargs)
+        except OSFVError as e:
+            # Report the problem rather than letting a traceback reach the
+            # user. The cleanup registered above still runs on tear down, so
+            # the asset is checked in either way.
+            print(f"{e}")
+            raise typer.Exit(1)
 
     return wrapper
 
@@ -1008,25 +1018,9 @@ def psu_get(ctx: Context):
 
 
 ## rte spi commands
-@rte_spi.command("on")
-@with_setup
-def spi_on(ctx: Context):
-    """Enable SPI lines"""
-    print("Enabling SPI...")
-    apis.rte_api.spi_enable()
-
-
-@rte_spi.command("off")
-@with_setup
-def spi_off(ctx: Context):
-    """Disable SPI lines"""
-    print("Disabling SPI...")
-    apis.rte_api.spi_disable()
-
-
-## rte flash commands
 # Which flash the operation addresses. Only an RTE wired to more than one
 # flash, through the SPI mux extension, accepts anything but the default.
+# `spi off` needs no target: it isolates every flash.
 FlashTarget = Annotated[
     str | None,
     Option(
@@ -1045,17 +1039,35 @@ def select_flash_target(target: str | None):
         target (str | None): Flash chip to address, or None to keep the default
 
     Raises:
-        typer.Exit: When the bench has no such flash
+        UnsupportedFlashTarget: When the RTE has no such flash
     """
     if not target:
         return
-    try:
-        apis.rte_api.select_flash_target(target)
-    except UnsupportedFlashTarget as e:
-        print(f"{e}")
-        raise typer.Exit(1)
+    apis.rte_api.select_flash_target(target)
 
 
+@rte_spi.command("on")
+@with_setup
+def spi_on(ctx: Context, target: FlashTarget = None):
+    """Enable SPI lines
+
+    On an RTE with the SPI mux extension this also routes the bus to the
+    flash `--target` selected.
+    """
+    select_flash_target(target)
+    print(f"Enabling SPI for the {apis.rte_api.flash_target} flash...")
+    apis.rte_api.spi_enable()
+
+
+@rte_spi.command("off")
+@with_setup
+def spi_off(ctx: Context):
+    """Disable SPI lines"""
+    print("Disabling SPI...")
+    apis.rte_api.spi_disable()
+
+
+## rte flash commands
 @rte_flash.command("probe")
 @with_setup
 def flash_probe(ctx: Context, target: FlashTarget = None):

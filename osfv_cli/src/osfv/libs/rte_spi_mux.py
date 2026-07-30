@@ -5,7 +5,6 @@ from osfv.libs.rte import (
     PowerStateTimeout,
     SPIWrongVoltage,
     UnknownMuxBranch,
-    UnsupportedOperation,
 )
 
 
@@ -18,8 +17,10 @@ class SPIMuxRTE(RTE):
 
     It differs from a plain RTE in three ways:
 
-    - The extension drives the mux from the J10 expander pins (GPIO 13-16), so
-      the power LED readback moves to GPIO 17 and there is no CMOS-clear line.
+    - It drives four more lines: the mux enable and select, and a load switch per
+      SPI header. The defaults below are the pins a BenchRack uses, and since the
+      extension goes on a free GPIO header, a bench that wires it elsewhere says
+      so in the model config's `gpio` block.
     - A flash operation must route the bus to the addressed flash and close its
       load switch before energizing it, and isolate both flashes afterward.
     - DUT power state is read back from the power LED, so powering the DUT off
@@ -35,18 +36,31 @@ class SPIMuxRTE(RTE):
     keep the two in step.
     """
 
-    # GPIO 1-3 and 8-9 are open-collector ("low"/"high-z"), 13-19 push-pull
-    # ("high"/"low"). 13-16 are the J10 expander pins the RTE reports as
-    # ext0-ext3, 17 is the native J1 pin it reports as led1.
+    # Default pins, as a BenchRack wires the extension: the J10 expander pins
+    # the RTE reports as ext0-ext3, and led1 on J1 for the LED readback, which
+    # moves off 13 because the mux enable takes it. All five are reassignable
+    # through the model config's `gpio` block. The driver drives each of them
+    # high and low, so all of them need push-pull pins (0, 13-19).
     GPIO_MUX_ENABLE = 13  # GPIO400, 2:1 mux enable
-    GPIO_EN_SPI_1 = 14  # E_GPA1, SPI_1 flash load-switch enable
-    GPIO_EN_SPI_2 = 15  # E_GPA2, SPI_2 flash load-switch enable
+    GPIO_SPI_1_POWER = 14  # E_GPA1, SPI_1 flash load-switch enable
+    GPIO_SPI_2_POWER = 15  # E_GPA2, SPI_2 flash load-switch enable
     GPIO_MUX_SELECT = 16  # 2:1 mux select
     GPIO_PWR_LED = 17  # DUT power LED readback
 
-    # The extension takes the pin a plain RTE clears the CMOS with, so there is
-    # no CMOS-clear line to drive.
-    GPIO_CMOS = None
+    GPIO_CONFIG_PINS = {
+        **RTE.GPIO_CONFIG_PINS,
+        "mux_enable": "GPIO_MUX_ENABLE",
+        "mux_select": "GPIO_MUX_SELECT",
+        "spi_1_power": "GPIO_SPI_1_POWER",
+        "spi_2_power": "GPIO_SPI_2_POWER",
+    }
+
+    PUSH_PULL_PINS = RTE.PUSH_PULL_PINS + (
+        "mux_enable",
+        "mux_select",
+        "spi_1_power",
+        "spi_2_power",
+    )
 
     SUPPORTS_SPI_MUX = True
 
@@ -55,13 +69,11 @@ class SPIMuxRTE(RTE):
     MUX_ENABLE_ON = "low"
     MUX_ENABLE_OFF = "high"
 
-    # The two mux branches, keyed by the `mux` id a model config gives a flash,
-    # which is the SPI header it is wired to. Each branch has a mux-select level
-    # and the load switch supplying that header.
-    MUX_BRANCHES = {
-        1: {"select": "low", "enable": GPIO_EN_SPI_1},
-        2: {"select": "high", "enable": GPIO_EN_SPI_2},
-    }
+    # Mux branch, the `mux` id a model config gives a flash, to the select level
+    # routing to it and the attribute holding its load-switch pin. The levels
+    # come from the mux part, so unlike the pins they are not configurable.
+    MUX_BRANCH_SELECT = {1: "low", 2: "high"}
+    MUX_BRANCH_POWER_PIN = {1: "GPIO_SPI_1_POWER", 2: "GPIO_SPI_2_POWER"}
 
     # Branch the mux select rests on while idle. Resting it on SPI_2 holds that
     # flash's owner off even with the mux disabled, which on a BenchRack freezes
@@ -85,6 +97,15 @@ class SPIMuxRTE(RTE):
     def __init__(self, rte_ip, dut_model, sonoff):
         super().__init__(rte_ip, dut_model, sonoff)
         self.parked = False
+        # Resolved after the base class has applied any `gpio` overrides, so a
+        # branch's load switch is whichever pin the config ended up with.
+        self.mux_branches = {
+            branch: {
+                "select": self.MUX_BRANCH_SELECT[branch],
+                "enable": getattr(self, attribute),
+            }
+            for branch, attribute in self.MUX_BRANCH_POWER_PIN.items()
+        }
 
     def park(self):
         """
@@ -114,7 +135,7 @@ class SPIMuxRTE(RTE):
         Returns:
             None.
         """
-        for branch in self.MUX_BRANCHES.values():
+        for branch in self.mux_branches.values():
             self.gpio_set(branch["enable"], "low")
 
     def idle_select(self):
@@ -127,7 +148,7 @@ class SPIMuxRTE(RTE):
         Returns:
             str: The select level of IDLE_MUX_BRANCH.
         """
-        return self.MUX_BRANCHES[self.IDLE_MUX_BRANCH]["select"]
+        return self.mux_branches[self.IDLE_MUX_BRANCH]["select"]
 
     def mux_branch(self, target=None):
         """
@@ -147,13 +168,13 @@ class SPIMuxRTE(RTE):
         """
         flash = self.flash_target_data(target)
         branch = flash.get("mux")
-        if branch not in self.MUX_BRANCHES:
+        if branch not in self.mux_branches:
             raise UnknownMuxBranch(
                 f"The '{target or self.flash_target}' flash is on mux branch "
                 f"{branch!r}, but the SPI mux extension has branches "
-                f"{', '.join(str(id) for id in sorted(self.MUX_BRANCHES))}"
+                f"{', '.join(str(id) for id in sorted(self.mux_branches))}"
             )
-        return self.MUX_BRANCHES[branch]
+        return self.mux_branches[branch]
 
     def ensure_idle(self):
         """
@@ -234,12 +255,6 @@ class SPIMuxRTE(RTE):
     def psu_on(self):
         self.ensure_idle()
         super().psu_on()
-
-    def reset_cmos(self):
-        raise UnsupportedOperation(
-            "The SPI mux extension takes the CMOS-clear pin, so the CMOS "
-            "has to be cleared manually"
-        )
 
     def spi_enable(self):
         """

@@ -213,9 +213,10 @@ just some examples.
   osfv_cli rte --rte_ip <rte_ip_address> flash write --target bmc --rom <path_to_fw_file>
   ```
 
-  > `--target` is accepted by all `flash` subcommands and defaults to the first
-  > flash the model config lists. An RTE with a single flash chip only accepts
-  > `host`.
+  > `--target` is accepted by every `flash` subcommand and by `spi on`, which
+  > routes the bus to that flash. It defaults to the first flash the model
+  > config lists, and an RTE with a single flash chip only accepts `host`.
+  > `spi off` takes no target: it isolates every flash.
 
 ### list_models command
 
@@ -240,6 +241,30 @@ follows:
   flash then names the mux branch it sits on, and the RTE closes that branch's
   load switch for the flash it addresses. See
   [SPI mux extension](#spi-mux-extension).
+
+- `gpio`: - optional; pin assignments that differ from the defaults, as
+  `<line>: <gpio number>`. What is wired where is a property of the bench, so
+  any line can move to another pin on a
+  [GPIO header](https://docs.dasharo.com/transparent-validation/rte/v1.1.0/specification/#gpio-header-3).
+  Known lines are `relay`, `reset`, `power`, `cmos`, `pwr_led`, `spi_lines`,
+  `spi_voltage`, `spi_vcc`, plus `mux_enable`, `mux_select`, `spi_1_power` and
+  `spi_2_power` with `spi_mux`. Lines the driver has to drive both high and low
+  (`relay`, `pwr_led` and all four mux lines) need a push-pull pin, id 0 or
+  13-19; ids 1-12 are open-collector. Assigning two lines to one pin, or a name
+  the RTE has no such line for, is refused.
+
+  ```yaml
+  gpio:
+    mux_enable: 13
+    spi_1_power: 14
+    spi_2_power: 15
+    mux_select: 16
+    pwr_led: 17
+  ```
+
+  > The block above spells out the defaults the `spi_mux` driver already uses,
+  > which are how a BenchRack is wired; a bench matching it needs no `gpio`
+  > block at all.
 
 - `flash_chip`: - the flashes the RTE can reach. List them explicitly, one entry
   per flash:
@@ -314,9 +339,11 @@ and names the header each flash is wired to.
 
 Such an RTE differs from a plain one in that:
 
-- The extension drives the mux from the J10 expander pins: enable on GPIO 13
-  (active low), the SPI_1 and SPI_2 load switches on 14 and 15, select on 16.
-  The power LED readback therefore moves to GPIO 17.
+- Four more lines are driven: the mux enable (active low) and select, and a load
+  switch per SPI header. They default to the pins a BenchRack uses — 13, 16, and
+  14/15 on the J10 expander header — which is why the power LED readback
+  defaults to 17 there rather than 13. The extension goes on a free GPIO header,
+  so a bench that wires it elsewhere says so in the model config's `gpio` block.
 - A flash operation routes the bus to the flash it addresses (`--target`),
   brings up the SPI Vcc rail, closes that flash's load switch, and isolates both
   flashes again afterward — opening the switch before dropping the rail, so a
@@ -328,9 +355,9 @@ Such an RTE differs from a plain one in that:
   BMC.
 - Powering the DUT off for a flash polls the power LED until it is actually off,
   rather than assuming the button press worked.
-- The extension takes the pin a plain RTE clears the CMOS with, so
-  `pwr reset_cmos` reports that there is no path for it rather than doing
-  nothing.
+
+Everything else is unchanged, including CMOS clear: the extension does not need
+the pin a plain RTE clears the CMOS with.
 
 Mains control is unchanged, however it is switched: the smart plug in front of a
 BenchRack PSU is a Tasmota device, which is what `pwr_ctrl.sonoff` already

@@ -6,6 +6,7 @@ import paramiko
 import requests
 import yaml
 from importlib_resources import files
+from osfv.libs.errors import OSFVError
 from osfv.libs.models import Models
 from osfv.libs.rtectrl_api import rtectrl
 from voluptuous import Any, Optional, Required, Schema
@@ -43,6 +44,76 @@ class RTE(rtectrl):
     # rather than something to ignore.
     SUPPORTS_SPI_MUX = False
 
+    # Pins a model config may reassign through its `gpio` block, mapped to the
+    # attribute holding the default. What is wired where is a property of the
+    # bench, not of the RTE, so anything on a header can be moved.
+    GPIO_CONFIG_PINS = {
+        "relay": "GPIO_RELAY",
+        "reset": "GPIO_RESET",
+        "power": "GPIO_POWER",
+        "cmos": "GPIO_CMOS",
+        "pwr_led": "GPIO_PWR_LED",
+        "spi_lines": "GPIO_SPI_ON",
+        "spi_voltage": "GPIO_SPI_VOLTAGE",
+        "spi_vcc": "GPIO_SPI_VCC",
+    }
+
+    # Pins that must be push-pull, because the driver writes "high"/"low" to
+    # them rather than pulling them low and releasing them. Ids 0 and 13-19 are
+    # push-pull, 1-12 are open-collector.
+    PUSH_PULL_PINS = ("relay", "pwr_led")
+
+    def apply_gpio_config(self):
+        """
+        Applies the model config's `gpio` block over the default pin assignment,
+        so a bench that wires something to a different header pin says so in
+        config instead of needing a driver change.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+
+        Raises:
+            InvalidGPIOAssignment: If a pin name is unknown to this driver, the
+            id is out of range, or a pin the driver drives push-pull is given an
+            open-collector id.
+        """
+        for name, gpio_no in self.dut_data.get("gpio", {}).items():
+            attribute = self.GPIO_CONFIG_PINS.get(name)
+            if not attribute:
+                raise InvalidGPIOAssignment(
+                    f"Model {self.dut_model} assigns a GPIO to '{name}', which "
+                    f"this RTE has no such pin for (known: "
+                    f"{', '.join(sorted(self.GPIO_CONFIG_PINS))})"
+                )
+            if not self.GPIO_MIN <= gpio_no <= self.GPIO_MAX:
+                raise InvalidGPIOAssignment(
+                    f"GPIO {gpio_no} assigned to '{name}' is outside the "
+                    f"RTE's range {self.GPIO_MIN}-{self.GPIO_MAX}"
+                )
+            if name in self.PUSH_PULL_PINS and 1 <= gpio_no <= 12:
+                raise InvalidGPIOAssignment(
+                    f"GPIO {gpio_no} assigned to '{name}' is open-collector, "
+                    f"but that line has to be driven high and low, so it needs "
+                    f"a push-pull pin (0, 13-19)"
+                )
+            setattr(self, attribute, gpio_no)
+
+        assigned = {}
+        for name, attribute in self.GPIO_CONFIG_PINS.items():
+            gpio_no = getattr(self, attribute)
+            if gpio_no is None:
+                continue
+            if gpio_no in assigned:
+                raise InvalidGPIOAssignment(
+                    f"GPIO {gpio_no} is wired to both '{assigned[gpio_no]}' "
+                    f"and '{name}' on model {self.dut_model}; one of them has "
+                    f"to move to another pin"
+                )
+            assigned[gpio_no] = name
+
     def __init__(self, rte_ip, dut_model, sonoff):
         self.models = Models()
         self.rte_ip = rte_ip
@@ -53,6 +124,7 @@ class RTE(rtectrl):
         # the model config lists is the default.
         self.flash_targets = self.models.flash_targets(self.dut_data)
         self.flash_target = next(iter(self.flash_targets))
+        self.apply_gpio_config()
         muxed = self.dut_data.get("spi_mux") or any(
             "mux" in flash for flash in self.flash_targets.values()
         )
@@ -654,35 +726,33 @@ class RTE(rtectrl):
         return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
 
 
-class SPIWrongVoltage(Exception):
+class SPIWrongVoltage(OSFVError):
     pass
 
 
-class SonoffNotFound(Exception):
+class SonoffNotFound(OSFVError):
     pass
 
 
-class UnsupportedFlashTarget(Exception):
+class UnsupportedFlashTarget(OSFVError):
     pass
 
 
-class UnsupportedSPIMux(Exception):
+class UnsupportedSPIMux(OSFVError):
     pass
 
 
-class UnknownMuxBranch(Exception):
+class UnknownMuxBranch(OSFVError):
     pass
 
 
-class UnsupportedOperation(Exception):
-    """Raised for an operation the RTE has no hardware path for."""
-
+class PowerStateTimeout(OSFVError):
     pass
 
 
-class PowerStateTimeout(Exception):
+class FlashImageSizeMismatch(OSFVError):
     pass
 
 
-class FlashImageSizeMismatch(Exception):
+class InvalidGPIOAssignment(OSFVError):
     pass

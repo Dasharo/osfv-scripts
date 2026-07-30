@@ -1,12 +1,12 @@
 import os
 import struct
-import sys
+from collections.abc import Sequence
 from itertools import repeat
 
 
 class FlashImage:
     # based on flashrom/utils/ich_descriptor_tool.c
-    REGION_INDICES = [
+    REGION_INDICES: Sequence[str] = (
         "fd",
         "bios",
         "me",
@@ -23,7 +23,7 @@ class FlashImage:
         "reg13",
         "reg14",
         "reg15",
-    ]
+    )
     NUMBER_OF_REGIONS = len(REGION_INDICES)
     FLVALSIG = 0x0FF0A55A
 
@@ -40,7 +40,7 @@ class FlashImage:
         return self.EXIT_CODE
 
     def get_image_data(self):
-        return imageData
+        return self.imageData
 
     def get_region_index(self, region_name):
         try:
@@ -85,9 +85,7 @@ class FlashImage:
 
             FLMAP0 = struct.unpack(
                 "<I",
-                self.imageData[
-                    (valsig_offset + 0x04) : (valsig_offset + 0x08)
-                ],
+                self.imageData[(valsig_offset + 0x04) : (valsig_offset + 0x08)],
             )[0x00]
             FRBA = (FLMAP0 >> 0x0C) & 0x00000FF0
 
@@ -98,9 +96,7 @@ class FlashImage:
             region_format = f"<{self.NUMBER_OF_REGIONS}I"
             self.REGIONS = struct.unpack(
                 region_format,
-                self.imageData[
-                    FRBA : (FRBA + (0x04 * self.NUMBER_OF_REGIONS))
-                ],
+                self.imageData[FRBA : (FRBA + (0x04 * self.NUMBER_OF_REGIONS))],
             )
             return True
 

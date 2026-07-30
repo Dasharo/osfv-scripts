@@ -1,10 +1,10 @@
-import osfv.libs.utils as utils
 import robot.api.logger
+from robot.api.deco import keyword, library
+
+from osfv.libs import utils
 from osfv.libs.models import UnsupportedDUTModel
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
-from osfv.libs.sonoff_api import SonoffDevice
-from robot.api.deco import keyword, library
 
 model_dict = {
     "asrock-spc741d8": "SPC741D8-2L2T_BCM",
@@ -76,8 +76,8 @@ class RobotRTE:
                 )
             else:
                 raise AssertionError(
-                    f"Failed to retrieve model name from Snipe-IT. Check again "
-                    f"arguments, or try providing model manually."
+                    "Failed to retrieve model name from Snipe-IT. Check again "
+                    "arguments, or try providing model manually."
                 )
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip, self.snipeit_api
@@ -114,7 +114,7 @@ class RobotRTE:
             UnsupportedDUTModel: If the provided osfv_model has no counterpart in osfv_cli.
         """
         if not osfv_model:
-            raise TypeError(f"Expected a value for 'config', but got None")
+            raise TypeError("Expected a value for 'config', but got None")
         cli_model = model_dict.get(osfv_model)
         if not cli_model:
             raise UnsupportedDUTModel(
@@ -133,7 +133,7 @@ class RobotRTE:
         Returns:
             int: The result code from the flash_read method of the rte object.
         """
-        robot.api.logger.info(f"Reading from flash...")
+        robot.api.logger.info("Reading from flash...")
         rc = self.rte.flash_read(fw_file)
         robot.api.logger.info(f"Read flash content saved to {fw_file}")
         return rc
@@ -153,7 +153,7 @@ class RobotRTE:
         robot.api.logger.info(f"Writing {fw_file} to flash...")
         rc = self.rte.flash_write(fw_file, bios)
         if rc == 0:
-            robot.api.logger.info(f"Flash written successfully")
+            robot.api.logger.info("Flash written successfully")
         else:
             robot.api.logger.info(f"Flash write failed with code {rc}")
         return rc
@@ -169,7 +169,7 @@ class RobotRTE:
         Returns:
             int: The result code from the flash_probe method of the rte object.
         """
-        robot.api.logger.info(f"Probing flash...")
+        robot.api.logger.info("Probing flash...")
         rc = self.rte.flash_probe()
         return rc
 
@@ -184,9 +184,9 @@ class RobotRTE:
         Returns:
             int: The result code from the flash_erase method of the rte object.
         """
-        robot.api.logger.info(f"Erasing DUT flash...")
+        robot.api.logger.info("Erasing DUT flash...")
         rc = self.rte.flash_erase()
-        robot.api.logger.info(f"Flash erased")
+        robot.api.logger.info("Flash erased")
         return rc
 
     @keyword(types=None)
@@ -249,7 +249,7 @@ class RobotRTE:
         Returns:
             None
         """
-        robot.api.logger.info(f"Powering on...")
+        robot.api.logger.info("Powering on...")
         self.rte.power_on(time)
 
     @keyword(types=None)
@@ -265,7 +265,7 @@ class RobotRTE:
         Returns:
             None
         """
-        robot.api.logger.info(f"Powering off...")
+        robot.api.logger.info("Powering off...")
         self.rte.power_off(time)
 
     @keyword(types=None)
@@ -279,7 +279,7 @@ class RobotRTE:
         Returns:
             None
         """
-        robot.api.logger.info(f"Pressing reset button...")
+        robot.api.logger.info("Pressing reset button...")
         self.rte.reset(time)
 
     @keyword(types=None)
@@ -293,7 +293,7 @@ class RobotRTE:
         Returns:
             None
         """
-        robot.api.logger.info(f"Enabling power supply...")
+        robot.api.logger.info("Enabling power supply...")
         self.rte.psu_on()
 
     @keyword(types=None)
@@ -307,7 +307,7 @@ class RobotRTE:
         Returns:
             None
         """
-        robot.api.logger.info(f"Disabling power supply...")
+        robot.api.logger.info("Disabling power supply...")
         self.rte.psu_off()
 
     @keyword(types=None)
@@ -325,7 +325,7 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_clear_cmos(self):
-        robot.api.logger.info(f"Clearing CMOS...")
+        robot.api.logger.info("Clearing CMOS...")
         self.rte.reset_cmos()
 
     @keyword(types=None)

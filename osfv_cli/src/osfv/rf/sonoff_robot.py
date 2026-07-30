@@ -1,7 +1,8 @@
 import requests
 import robot.api.logger
-from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword
+
+from osfv.libs.sonoff_api import SonoffDevice
 
 
 class Sonoff:

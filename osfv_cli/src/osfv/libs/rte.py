@@ -4,11 +4,10 @@ import time
 
 import paramiko
 import requests
-import yaml
-from importlib_resources import files
+
 from osfv.libs.models import Models
 from osfv.libs.rtectrl_api import rtectrl
-from voluptuous import Any, Optional, Required, Schema
+from osfv.libs.utils import OSFVException
 
 
 class RTE(rtectrl):
@@ -46,9 +45,8 @@ class RTE(rtectrl):
         self.sonoff = sonoff
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
-                exit(
-                    f"Missing value for 'sonoff_ip' or Sonoff not found "
-                    f"in SnipeIT"
+                sys.exit(
+                    "Missing value for 'sonoff_ip' or Sonoff not found in SnipeIT"
                 )
             )
 
@@ -202,12 +200,12 @@ class RTE(rtectrl):
             self.sonoff.turn_on()
             state = self.sonoff.get_state()
             if state != self.PSU_STATE_ON:
-                raise Exception("Failed to power control ON")
+                raise OSFVException("Failed to power control ON")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
             self.relay_set(self.PSU_STATE_ON)
             state = self.relay_get()
             if state != self.PSU_STATE_ON:
-                raise Exception("Failed to power control ON")
+                raise OSFVException("Failed to power control ON")
         time.sleep(5)
 
     def psu_off(self):
@@ -226,12 +224,12 @@ class RTE(rtectrl):
             self.sonoff.turn_off()
             state = self.sonoff.get_state()
             if state != self.PSU_STATE_OFF:
-                raise Exception("Failed to power control OFF")
+                raise OSFVException("Failed to power control OFF")
         elif self.dut_data["pwr_ctrl"]["relay"] is True:
             self.relay_set(self.PSU_STATE_OFF)
             state = self.relay_get()
             if state != self.PSU_STATE_OFF:
-                raise Exception("Failed to power control OFF")
+                raise OSFVException("Failed to power control OFF")
         time.sleep(2)
 
     def psu_get(self):
@@ -302,7 +300,7 @@ class RTE(rtectrl):
             if self.dut_data["pwr_ctrl"].get("discharge_psu", True):
                 self.discharge_psu()
         else:
-            exit(
+            sys.exit(
                 f"Power state: '{power_state}' is not supported. Please check "
                 f"model config."
             )
@@ -341,11 +339,11 @@ class RTE(rtectrl):
             layout_content += f"{region['range']} {region['name']}\n"
 
         # Create temporary file
-        temp_file = tempfile.NamedTemporaryFile(
+        with tempfile.NamedTemporaryFile(
             mode="w", suffix=".txt", delete=False
-        )
-        temp_file.write(layout_content)
-        temp_file.close()
+        ) as temp_file:
+            temp_file.write(layout_content)
+            temp_file.close()
 
         return temp_file.name
 
@@ -476,12 +474,14 @@ class RTE(rtectrl):
         args = ""
 
         # Set chip explicitly, if defined in model configuration
-        if "flash_chip" in self.dut_data:
-            if "model" in self.dut_data["flash_chip"]:
-                args = " ".join(["-c", self.dut_data["flash_chip"]["model"]])
+        if (
+            "flash_chip" in self.dut_data
+            and "model" in self.dut_data["flash_chip"]
+        ):
+            args = " ".join(["-c", self.dut_data["flash_chip"]["model"]])
 
         if extra_args:
-            args = " ".join([args, extra_args])
+            args = f"{args} {extra_args}"
 
         return args
 
@@ -522,7 +522,7 @@ class RTE(rtectrl):
         Returns:
             int: The return code from the flashrom command execution.
         """
-        args = self.flash_create_args(f"-E")
+        args = self.flash_create_args("-E")
         return self.flash_cmd(args)
 
     def flash_write(self, write_file, bios=False):
@@ -557,9 +557,11 @@ class RTE(rtectrl):
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
 
-        if "reset_cmos" in self.dut_data:
-            if self.dut_data["reset_cmos"] == True:
-                self.reset_cmos()
+        if (
+            "reset_cmos" in self.dut_data
+            and self.dut_data["reset_cmos"] == True
+        ):
+            self.reset_cmos()
         return rc
 
     def sonoff_sanity_check(self):

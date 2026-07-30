@@ -49,17 +49,11 @@ repos:
       - id: shellcheck
         args: ["--severity=warning"]
 
-  - repo: https://github.com/pycqa/isort
-    rev: 9.0.0b1
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.0
     hooks:
-      - id: isort
-        name: isort (python)
-
-  - repo: https://github.com/psf/black
-    rev: 26.5.1
-    hooks:
-      - id: black
-        args: ["--line-length", "79"]
+      - id: ruff-check
+      - id: ruff-format
 
   - repo: https://github.com/MarketSquare/robotframework-robocop
     rev: v8.4.1
@@ -70,3 +64,9 @@ repos:
       - id: robocop-format
         additional_dependencies:
           - typing_extensions
+
+  - repo: https://github.com/astral-sh/ty-pre-commit
+    rev: v0.0.65
+    hooks:
+      - id: ty
+        args: [--isolated, --group, test, --project, osfv_cli]

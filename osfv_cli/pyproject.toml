@@ -31,3 +31,6 @@ osfv_cli = "osfv.cli.cli:main"
 
 [tool.poetry]
 include = ["src/models/*.yml"]
+
+[tool.ruff]
+line-length = 80

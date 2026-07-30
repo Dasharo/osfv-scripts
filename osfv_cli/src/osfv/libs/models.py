@@ -1,8 +1,8 @@
 import os
 import sys
-import time
 from pathlib import Path
 
+import voluptuous
 import yaml
 from importlib_resources import files
 from voluptuous import Any, Optional, Required, Schema
@@ -13,7 +13,7 @@ class Models:
         pass
 
     def list_models(self):
-        print(f"Supported DUT models:")
+        print("Supported DUT models:")
         file_path = os.path.join(files("osfv"), "models")
 
         for roots, dirs, filenames in os.walk(file_path):
@@ -44,9 +44,7 @@ class Models:
         if not os.path.isfile(file_path):
             if exit_on_failure:
                 raise UnsupportedDUTModel(
-                    "The {file_path} model is not yet supported".format(
-                        file_path=dut_model
-                    )
+                    f"The {dut_model} model is not yet supported"
                 )
             else:
                 model_YML_status = False
@@ -95,9 +93,9 @@ class Models:
 
         try:
             schema(data)
-        except Exception as e:
+        except voluptuous.Error as e:
             if exit_on_failure:
-                exit(f"Model file is invalid: {e}")
+                sys.exit(f"Model file is invalid: {e}")
             else:
                 model_YML_status = False
 
@@ -119,9 +117,8 @@ class Models:
                     current_field = current_field[key]
                 else:
                     if exit_on_failure:
-                        exit(
-                            f"Required field '{field}' is missing in model "
-                            f"config."
+                        sys.exit(
+                            f"Required field '{field}' is missing in model config."
                         )
                     else:
                         model_YML_status = False

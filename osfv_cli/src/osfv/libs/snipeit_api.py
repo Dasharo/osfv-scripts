@@ -3,6 +3,7 @@ import secrets
 import string
 import sys
 import time
+from typing import cast
 
 import requests
 import unidecode
@@ -143,12 +144,12 @@ class SnipeIT:
             with open(self.SNIPEIT_CONFIG_FILE_PATH, "r") as file:
                 config = yaml.safe_load(file)
         except FileNotFoundError:
-            raise FileNotFoundError(f"Configuration file not found")
+            raise FileNotFoundError("Configuration file not found")
         except yaml.YAMLError as e:
             raise ValueError(f"Error parsing YAML: {e}")
 
         if config is None:
-            raise ValueError(f"Empty configuration file")
+            raise ValueError("Empty configuration file")
 
         cfg = {}
         cfg["url"] = config.get("api_url")
@@ -158,9 +159,9 @@ class SnipeIT:
         if not cfg["url"] or not ["cfg_token"]:
             raise ValueError("Incomplete API configuration in the YAML file")
         if not isinstance(cfg["user_id"], int):
-            raise ValueError(
+            raise TypeError(
                 f"User ID configuration in the YAML file should be int: "
-                f'{cfg["user_id"]}'
+                f"{cfg['user_id']}"
             )
 
         return cfg
@@ -190,7 +191,10 @@ class SnipeIT:
             )
             if success:
                 all_assets.extend(data["rows"])
-                if "total_pages" not in data or data["total_pages"] <= page:
+                if (
+                    "total_pages" not in data
+                    or cast(int, data["total_pages"]) <= page
+                ):
                     break
                 page += 1
             else:
@@ -220,14 +224,12 @@ class SnipeIT:
     ):
         my_field = self.__retieve_custom_field_value(custom_fields, field_name)
 
-        if my_field:
-            if my_field == expected_ip:
-                counts[field_name] += 1
-                if counts[field_name] > 1:
-                    raise self.DuplicatedIpException(
-                        counts, field_name, expected_ip
-                    )
-        return None
+        if my_field and my_field == expected_ip:
+            counts[field_name] += 1
+            if counts[field_name] > 1:
+                raise self.DuplicatedIpException(
+                    counts, field_name, expected_ip
+                )
 
     # check by selected IP-fields (continue until second occurrence of any)
     def check_asset_for_ip_exclusivity(
@@ -259,13 +261,12 @@ class SnipeIT:
                     self.__count_customField(
                         custom_fields, occurence_counts, "PiKVM IP", pikvm_ip
                     )
-        return None
 
     # check by asset ID, on any non-empty IP field
     def check_asset_for_ip_exclusivity_by_id(self, asset_id):
         status, asset_data = self.get_asset(asset_id)
         if not status:
-            return None
+            return
 
         custom_fields = asset_data.get("custom_fields", {})
         if custom_fields:
@@ -281,7 +282,7 @@ class SnipeIT:
             self.check_asset_for_ip_exclusivity(
                 self.get_all_assets(), ip, rte_ip, sonoff_ip, pikvm_ip
             )
-        return None
+        return
 
     def get_asset_id_by_rte_ip(self, rte_ip):
         """
@@ -390,9 +391,8 @@ class SnipeIT:
                     ),
                     None,
                 )
-                if rte_ip_field == rte_ip:
-                    if custom_fields["Sonoff IP"]:
-                        return custom_fields["Sonoff IP"]["value"]
+                if rte_ip_field == rte_ip and custom_fields["Sonoff IP"]:
+                    return custom_fields["Sonoff IP"]["value"]
 
         # No asset found with matching RTE IP
         return None
@@ -416,9 +416,8 @@ class SnipeIT:
                     ),
                     None,
                 )
-                if rte_ip_field == rte_ip:
-                    if custom_fields["PiKVM IP"]:
-                        return custom_fields["PiKVM IP"]["value"]
+                if rte_ip_field == rte_ip and custom_fields["PiKVM IP"]:
+                    return custom_fields["PiKVM IP"]["value"]
 
         # No asset found with matching PiKVM IP
         return None
@@ -678,7 +677,7 @@ class SnipeIT:
         if success:
             user_info = response["payload"]
             user_id = user_info["id"]
-            print(f"User created successfully!")
+            print("User created successfully!")
             print(f"Username: {username}")
             print(f"Password: {password}")
             print(f"User ID: {user_id}")
@@ -696,10 +695,6 @@ class SnipeIT:
         Returns:
             None.
         """
-        email = (
-            f"{unidecode.unidecode(first_name.lower())}."
-            f"{unidecode.unidecode(last_name.lower())}@3mdeb.com"
-        )
         username = (
             f"{first_name[0].lower()}{unidecode.unidecode(last_name.lower())}"
         )

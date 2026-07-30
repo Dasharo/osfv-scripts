@@ -26,7 +26,6 @@ class rtectrl:
         Args:
             rte_ip (str): IP address of the RTE device.
         """
-        self.rte_ip
         self.rte_ip = rte_ip
 
     def gpio_list(self):
@@ -36,7 +35,7 @@ class rtectrl:
         Returns:
             A JSON response containing details of all GPIO configurations.
         """
-        response = self._get_request(f"/gpio").json()
+        response = self._get_request("/gpio").json()
         return response
 
     def gpio_get(self, gpio_no):
@@ -66,11 +65,14 @@ class rtectrl:
                 state_str = "low"
             else:
                 state_str = "high-z"
-        if 13 <= gpio_no <= 19 or gpio_no == 0:
+        elif 13 <= gpio_no <= 19 or gpio_no == 0:
             if state == 1:
                 state_str = "high"
             else:
                 state_str = "low"
+        else:
+            # just in case we get out of sync with first bounds check
+            raise GPIOWrongNumberError("Wrong GPIO number")
 
         return state_str
 
@@ -107,7 +109,7 @@ class rtectrl:
                 raise GPIOWrongStateError(
                     f"Wrong GPIO {gpio_no} state: {state_str}"
                 )
-        if 13 <= gpio_no <= 19 or gpio_no == 0:
+        elif 13 <= gpio_no <= 19 or gpio_no == 0:
             if state_str == "high":
                 state = 1
             elif state_str == "low":
@@ -116,6 +118,9 @@ class rtectrl:
                 raise GPIOWrongStateError(
                     f"Wrong GPIO {gpio_no} state: {state_str}"
                 )
+        else:
+            # just in case we get out of sync with first bounds check
+            raise GPIOWrongNumberError("Wrong GPIO number")
 
         try:
             message = {"state": state, "direction": "out", "time": sleep}
@@ -172,10 +177,6 @@ class rtectrl:
 class GPIOWrongNumberError(Exception):
     """Raised when an invalid GPIO number is provided."""
 
-    pass
-
 
 class GPIOWrongStateError(Exception):
     """Raised when an invalid GPIO state is provided."""
-
-    pass

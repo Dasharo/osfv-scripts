@@ -1028,24 +1028,27 @@ def spi_off(ctx: Context):
 # Which flash the operation addresses. Only benches wired to more than one
 # flash, such as BenchRack, accept anything but the default.
 FlashTarget = Annotated[
-    str,
+    str | None,
     Option(
         "--target",
-        help="Flash chip to address: host or bmc (default: host)",
+        help="Flash chip to address, as named in the model config "
+        "(default: the first one it lists)",
         metavar="TARGET",
     ),
 ]
 
 
-def select_flash_target(target: str):
+def select_flash_target(target: str | None):
     """Point the following flash operations at the requested flash
 
     Args:
-        target (str): Flash chip to address
+        target (str | None): Flash chip to address, or None to keep the default
 
     Raises:
         typer.Exit: When the bench has no such flash
     """
+    if not target:
+        return
     try:
         apis.rte_api.select_flash_target(target)
     except UnsupportedFlashTarget as e:
@@ -1055,7 +1058,7 @@ def select_flash_target(target: str):
 
 @rte_flash.command("probe")
 @with_setup
-def flash_probe(ctx: Context, target: FlashTarget = "host"):
+def flash_probe(ctx: Context, target: FlashTarget = None):
     """Flash probe with flashrom"""
     select_flash_target(target)
     print("Probing flash...")
@@ -1076,7 +1079,7 @@ def flash_read(
             writable=True,
         ),
     ] = Path("read.rom"),
-    target: FlashTarget = "host",
+    target: FlashTarget = None,
 ):
     """Read from DUT flash with flashrom"""
     select_flash_target(target)
@@ -1121,7 +1124,7 @@ def flash_write(
             help="Increase osfv.libs.flash_image verbosity",
         ),
     ] = False,
-    target: FlashTarget = "host",
+    target: FlashTarget = None,
 ):
     """Write to DUT flash with flashrom"""
     select_flash_target(target)
@@ -1144,7 +1147,7 @@ def flash_write(
 
 @rte_flash.command("erase")
 @with_setup
-def flash_erase(ctx, target: FlashTarget = "host"):
+def flash_erase(ctx, target: FlashTarget = None):
     """Erase DUT flash with flashrom"""
     select_flash_target(target)
     print("Erasing DUT flash...")

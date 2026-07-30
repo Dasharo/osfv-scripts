@@ -1,21 +1,21 @@
 ---
-# The board sits on a BenchRack: the host and BMC flashes share one SPI bus
-# behind a 2:1 mux driven by the RTE. Drop this line if the board is rewired to
-# a plain RTE with the host flash connected directly.
+# The board sits on a BenchRack: both flashes share one SPI bus behind a 2:1 mux
+# driven by the RTE, one flash per SPI header.
 bench: benchrack
+spi_mux: true
 
 flash_chip:
-  model: "W25Q256JV_Q"
-  voltage: "3.3V"
-  # Each flash sits behind its own load switch, closed only for the flash being
-  # addressed.
-  power_switches: true
-  targets:
-    host:
-      size: 33554432
-    bmc:
-      # flashrom detects the BMC flash unambiguously, so no model is needed.
-      size: 67108864
+  - target: host
+    model: "W25Q256JV_Q"
+    voltage: "3.3V"
+    size: 33554432
+    mux: 1    # connected to the SPI_1 header
+
+  - target: bmc
+    # flashrom detects the BMC flash unambiguously, so no model is needed.
+    voltage: "3.3V"
+    size: 67108864
+    mux: 2    # connected to the SPI_2 header
 
 programmer:
   name: rte_1_1

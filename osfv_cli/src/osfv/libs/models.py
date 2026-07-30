@@ -62,36 +62,43 @@ class Models:
         flashing_power_state_validator = Any("G3", "S5")
         pwr_led_validator = Any("active low", "active high")
         bench_validator = Any("rte", "benchrack")
-        # Per-flash overrides on a bench that has more than one flash chip.
-        # Anything not overridden falls back to the flash_chip defaults.
-        flash_target_schema = {
+        layout_schema = [
+            {
+                Required("name"): str,
+                Required("range"): str,
+            }
+        ]
+        # A bench wired to several flashes lists them explicitly, one entry per
+        # flash. A bench with a single flash may keep the older mapping form,
+        # which describes that one flash.
+        flash_list_schema = [
+            {
+                Required("target"): str,
+                Required("voltage"): voltage_validator,
+                Optional("model"): str,
+                Optional("size"): int,
+                Optional("mux"): int,
+                Optional("power"): bool,
+                Optional("layout"): layout_schema,
+            }
+        ]
+        flash_mapping_schema = {
+            Required("voltage"): voltage_validator,
             Optional("model"): str,
-            Optional("voltage"): voltage_validator,
             Optional("size"): int,
+            Optional("layout"): layout_schema,
         }
 
         schema = Schema(
             {
                 Optional("bench"): bench_validator,
+                Optional("spi_mux"): bool,
                 Required("programmer"): {
                     Required("name"): programmer_name_validator,
                 },
-                Required("flash_chip"): {
-                    Required("voltage"): voltage_validator,
-                    Optional("model"): str,
-                    Optional("size"): int,
-                    Optional("power_switches"): bool,
-                    Optional("targets"): {
-                        Optional("host"): flash_target_schema,
-                        Optional("bmc"): flash_target_schema,
-                    },
-                    Optional("layout"): [
-                        {
-                            Required("name"): str,
-                            Required("range"): str,
-                        }
-                    ],
-                },
+                Required("flash_chip"): Any(
+                    flash_list_schema, flash_mapping_schema
+                ),
                 Required("pwr_ctrl"): {
                     Required("sonoff"): bool,
                     Required("relay"): bool,
@@ -122,10 +129,13 @@ class Models:
             "pwr_ctrl.sonoff",
             "pwr_ctrl.relay",
             "flash_chip",
-            "flash_chip.voltage",
             "programmer",
             "programmer.name",
         ]
+        # The mapping form keeps voltage directly under flash_chip; the list
+        # form carries one per flash, checked by the schema above.
+        if isinstance(data.get("flash_chip"), dict):
+            required_fields.append("flash_chip.voltage")
         for field in required_fields:
             current_field = data
             keys = field.split(".")
@@ -144,8 +154,50 @@ class Models:
         # Return the loaded data
         return model_YML_status, data
 
+    def flash_targets(self, dut_data):
+        """
+        Returns the flashes a bench can address, keyed by target name in the
+        order the model config lists them, so the first one is the default.
+
+        Both `flash_chip` forms normalize to the same shape: a list of explicit
+        flashes keeps its `target` names, and the single-flash mapping form
+        becomes one target named `host`.
+
+        Args:
+            dut_data (dict): The loaded model config.
+
+        Returns:
+            dict: Target name to its flash configuration.
+
+        Raises:
+            DuplicateFlashTarget: If two entries name the same target.
+        """
+        flash_chip = dut_data.get("flash_chip", {})
+        if isinstance(flash_chip, dict):
+            return {DEFAULT_FLASH_TARGET: dict(flash_chip)}
+
+        targets = {}
+        for flash in flash_chip:
+            flash = dict(flash)
+            name = flash.pop("target")
+            if name in targets:
+                raise DuplicateFlashTarget(
+                    f"Model config lists the '{name}' flash more than once"
+                )
+            targets[name] = flash
+        return targets
+
+
+# Name given to the flash of a model config written in the single-flash mapping
+# form, which does not name its flash.
+DEFAULT_FLASH_TARGET = "host"
+
 
 class IncompleteModelData(Exception):
+    pass
+
+
+class DuplicateFlashTarget(Exception):
     pass
 
 

@@ -1,27 +1,26 @@
-import os
 import time
 
 from osfv.libs.rte import (
     RTE,
-    FlashImageSizeMismatch,
     PowerStateTimeout,
     SPIWrongVoltage,
+    UnknownMuxBranch,
     UnsupportedOperation,
 )
 
 
 class BenchRack(RTE):
     """
-    A bench where two flashes, the host boot flash and the BMC flash, sit
-    behind a 2:1 SPI mux driven by the RTE. Selected by `bench: benchrack` in
-    the DUT model config.
+    A bench whose flashes sit behind a 2:1 SPI mux driven by the RTE, one per
+    SPI header. Selected by `bench: benchrack` in the DUT model config, which
+    lists each flash and the header it is wired to.
 
     It differs from a plain RTE in three ways:
 
     - The mux occupies GPIO 13-16, so the power LED readback moves to GPIO 17
       and there is no CMOS-clear line.
-    - A flash operation must route the bus to the addressed flash before
-      energizing it, and leave both flashes isolated afterward.
+    - A flash operation must route the bus to the addressed flash and close its
+      load switch before energizing it, and isolate both flashes afterward.
     - Host power state is read back from the power LED, so powering the host
       off for a flash polls until it is actually off instead of assuming a
       button press worked.
@@ -37,24 +36,33 @@ class BenchRack(RTE):
     # ("high"/"low"). 13-16 are the J10 expander pins the RTE reports as
     # ext0-ext3, 17 is the native J1 pin it reports as led1.
     GPIO_MUX_ENABLE = 13  # GPIO400, 2:1 mux enable
-    GPIO_EN_HOST = 14  # E_GPA1, host flash load-switch enable
-    GPIO_EN_BMC = 15  # E_GPA2, BMC flash load-switch enable
+    GPIO_EN_SPI_1 = 14  # E_GPA1, SPI_1 flash load-switch enable
+    GPIO_EN_SPI_2 = 15  # E_GPA2, SPI_2 flash load-switch enable
     GPIO_MUX_SELECT = 16  # 2:1 mux select
     GPIO_PWR_LED = 17  # DUT power LED readback
 
     # No CMOS-clear line is wired on this bench.
     GPIO_CMOS = None
 
-    FLASH_TARGETS = ("host", "bmc")
+    SUPPORTS_SPI_MUX = True
 
     # The mux enable is active low: low routes the selected branch onto the bus,
-    # high isolates both flashes. Select low routes to the host flash.
+    # high isolates both flashes.
     MUX_ENABLE_ON = "low"
     MUX_ENABLE_OFF = "high"
-    MUX_SELECT = {"host": "low", "bmc": "high"}
 
-    # Load switch supplying each flash, on a board that has per-flash switches.
-    ENABLE_GPIO = {"host": GPIO_EN_HOST, "bmc": GPIO_EN_BMC}
+    # The two mux branches, keyed by the `mux` id a model config gives a flash,
+    # which is the SPI header it is wired to. Each branch has a mux-select level
+    # and the load switch supplying that header.
+    MUX_BRANCHES = {
+        1: {"select": "low", "enable": GPIO_EN_SPI_1},
+        2: {"select": "high", "enable": GPIO_EN_SPI_2},
+    }
+
+    # Branch the mux select rests on while idle. On the Turin bench SPI_2 is the
+    # BMC flash, and resting the select there freezes the BMC even with the mux
+    # disabled, so the select must never sit on it.
+    IDLE_MUX_BRANCH = 1
 
     # Stage a read on /data (persistent storage) rather than /tmp (tmpfs): the
     # RTE has little free RAM, and flashrom already holds roughly the flash size
@@ -85,15 +93,63 @@ class BenchRack(RTE):
         Returns:
             None.
         """
-        self.gpio_set(self.GPIO_EN_BMC, "low")
-        self.gpio_set(self.GPIO_EN_HOST, "low")
+        self.open_load_switches()
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_SPI_ON, "high-z")
-        # Selecting the BMC branch freezes the BMC even with the mux disabled,
-        # so the select never rests there.
-        self.gpio_set(self.GPIO_MUX_SELECT, self.MUX_SELECT["host"])
+        self.gpio_set(self.GPIO_MUX_SELECT, self.idle_select())
         self.gpio_set(self.GPIO_MUX_ENABLE, self.MUX_ENABLE_OFF)
         self.parked = True
+
+    def open_load_switches(self):
+        """
+        Opens the load switch on every mux branch, so no flash is supplied.
+
+        Args:
+            None.
+
+        Returns:
+            None.
+        """
+        for branch in self.MUX_BRANCHES.values():
+            self.gpio_set(branch["enable"], "low")
+
+    def idle_select(self):
+        """
+        Returns the mux-select level the bus rests on while idle.
+
+        Args:
+            None.
+
+        Returns:
+            str: The select level of IDLE_MUX_BRANCH.
+        """
+        return self.MUX_BRANCHES[self.IDLE_MUX_BRANCH]["select"]
+
+    def mux_branch(self, target=None):
+        """
+        Returns the mux branch configuration for a flash, from the `mux` id its
+        model config entry carries.
+
+        Args:
+            target (str, optional): The flash to route to. Defaults to the
+            currently selected target.
+
+        Returns:
+            dict: The branch's "select" level and "enable" pin.
+
+        Raises:
+            UnknownMuxBranch: If the flash names no branch, or one that does not
+            exist on this bench.
+        """
+        flash = self.flash_target_data(target)
+        branch = flash.get("mux")
+        if branch not in self.MUX_BRANCHES:
+            raise UnknownMuxBranch(
+                f"The '{target or self.flash_target}' flash is on mux branch "
+                f"{branch!r}, but this bench has branches "
+                f"{', '.join(str(id) for id in sorted(self.MUX_BRANCHES))}"
+            )
+        return self.MUX_BRANCHES[branch]
 
     def ensure_idle(self):
         """
@@ -111,35 +167,6 @@ class BenchRack(RTE):
         if self.parked:
             return
         self.park()
-
-    def flash_target_data(self, target=None):
-        """
-        Returns the flash chip configuration for a target.
-
-        `flash_chip` describes the host flash, the default target. Any other
-        flash is described by its own `flash_chip.targets` entry alone, so it
-        does not inherit the host's chip model or size; only the bus voltage
-        carries over, and the entry can override that too.
-
-        Args:
-            target (str, optional): The flash to describe. Defaults to the
-            currently selected target.
-
-        Returns:
-            dict: The chip configuration ("model", "voltage", "size").
-        """
-        target = target or self.flash_target
-        flash_chip = self.dut_data.get("flash_chip", {})
-        if target == self.FLASH_TARGETS[0]:
-            data = {
-                key: flash_chip[key]
-                for key in ("model", "voltage", "size")
-                if key in flash_chip
-            }
-        else:
-            data = {"voltage": flash_chip.get("voltage")}
-        data.update(flash_chip.get("targets", {}).get(target, {}))
-        return data
 
     def power_state(self):
         """
@@ -212,8 +239,11 @@ class BenchRack(RTE):
     def spi_enable(self):
         """
         Routes the bus to the selected flash and energizes it: park, set the
-        voltage, select and enable the mux branch, then bring up Vcc and the
-        lines with a settle delay after each.
+        voltage, select and enable its mux branch, then bring up Vcc, close the
+        branch load switch, and enable the lines, settling after each.
+
+        A flash whose model config sets `power: false` is supplied by its board
+        rather than the RTE, so neither the rail nor its load switch is touched.
 
         Args:
             None.
@@ -222,35 +252,40 @@ class BenchRack(RTE):
             None.
 
         Raises:
-            SPIWrongVoltage: If the target declares an unsupported voltage.
+            SPIWrongVoltage: If the flash declares an unsupported voltage.
+            UnknownMuxBranch: If it names no usable mux branch.
         """
         target = self.flash_target
-        voltage = self.flash_target_data()["voltage"]
+        flash = self.flash_target_data()
+        voltage = flash["voltage"]
         if voltage == "1.8V":
             voltage_state = "high-z"
         elif voltage == "3.3V":
             voltage_state = "low"
         else:
             raise SPIWrongVoltage
+        branch = self.mux_branch()
+        supply = flash.get("power", True)
 
         # Never trust the state an earlier run left behind.
         self.park()
 
         print(
-            f"Routing the SPI bus to the {target} flash "
-            f"(mux select {self.MUX_SELECT[target]}, {voltage})..."
+            f"Routing the SPI bus to the {target} flash on SPI_{flash['mux']} "
+            f"(mux select {branch['select']}, {voltage}, "
+            f"{'RTE-supplied' if supply else 'board-supplied'})..."
         )
         self.gpio_set(self.GPIO_SPI_VOLTAGE, voltage_state)
-        self.gpio_set(self.GPIO_MUX_SELECT, self.MUX_SELECT[target])
+        self.gpio_set(self.GPIO_MUX_SELECT, branch["select"])
         # Enable the mux only once the branch is selected.
         self.gpio_set(self.GPIO_MUX_ENABLE, self.MUX_ENABLE_ON)
         self.parked = False
-        # Bring up the SPI Vcc rail before closing the branch load switch, so
-        # the switch never ties a de-energized rail to a flash that another
-        # supply may still hold at voltage and back-drive the rail.
-        self.gpio_set(self.GPIO_SPI_VCC, "low")
-        if self.dut_data.get("flash_chip", {}).get("power_switches"):
-            self.gpio_set(self.ENABLE_GPIO[target], "high")
+        if supply:
+            # Bring up the SPI Vcc rail before closing the branch load switch,
+            # so the switch never ties a de-energized rail to a flash that
+            # another supply may still hold at voltage and back-drive the rail.
+            self.gpio_set(self.GPIO_SPI_VCC, "low")
+            self.gpio_set(branch["enable"], "high")
         time.sleep(self.SETTLE_SECS)
         self.gpio_set(self.GPIO_SPI_ON, "low")
         time.sleep(self.SETTLE_SECS)
@@ -269,11 +304,10 @@ class BenchRack(RTE):
         # Open the load switches before dropping the SPI Vcc rail, isolating the
         # flash from the rail before it de-energizes so no external supply can
         # drive current back into it.
-        self.gpio_set(self.GPIO_EN_BMC, "low")
-        self.gpio_set(self.GPIO_EN_HOST, "low")
+        self.open_load_switches()
         self.gpio_set(self.GPIO_SPI_VCC, "high-z")
         self.gpio_set(self.GPIO_MUX_ENABLE, self.MUX_ENABLE_OFF)
-        self.gpio_set(self.GPIO_MUX_SELECT, self.MUX_SELECT["host"])
+        self.gpio_set(self.GPIO_MUX_SELECT, self.idle_select())
         self.gpio_set(self.GPIO_SPI_VOLTAGE, "high-z")
         self.parked = True
 
@@ -322,48 +356,3 @@ class BenchRack(RTE):
         """
         self.spi_disable()
         time.sleep(2)
-
-    def flash_create_args(self, extra_args=""):
-        """
-        Creates flashrom arguments for the selected flash, setting its chip
-        model explicitly when the model config names one.
-
-        Args:
-            extra_args (str, optional): Additional flashrom arguments.
-
-        Returns:
-            str: The generated flashrom arguments.
-        """
-        args = ""
-        model = self.flash_target_data().get("model")
-        if model:
-            args = " ".join(["-c", model])
-        if extra_args:
-            args = " ".join([args, extra_args])
-        return args
-
-    def flash_write(self, write_file, bios=False):
-        """
-        Writes firmware to the selected flash, refusing an image whose size
-        does not match that flash. The two flashes differ in size, so this
-        catches a host image aimed at the BMC and the other way round.
-
-        Args:
-            write_file (str): The path to the firmware file to write.
-            bios (bool, optional): Whether to write the BIOS region only.
-
-        Returns:
-            The return code from the flashrom command execution.
-
-        Raises:
-            FlashImageSizeMismatch: If the image size does not match the flash.
-        """
-        expected = self.flash_target_data().get("size")
-        if expected:
-            size = os.path.getsize(write_file)
-            if size != expected:
-                raise FlashImageSizeMismatch(
-                    f"{write_file} is {size} bytes, but the "
-                    f"{self.flash_target} flash is {expected} bytes"
-                )
-        return super().flash_write(write_file, bios)

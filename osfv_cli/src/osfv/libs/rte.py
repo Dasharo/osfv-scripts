@@ -38,10 +38,10 @@ class RTE(rtectrl):
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
     FLASHROM_LAYOUT_PATH = "/tmp/board_layout.txt"
 
-    # Flashes reachable on this bench. A plain RTE is wired to one flash, so
-    # every flash operation addresses it. Benches with more than one flash
-    # (behind a mux) list them here and switch with select_flash_target.
-    FLASH_TARGETS = ("host",)
+    # Whether this bench can route its SPI bus to more than one flash. A plain
+    # RTE cannot, so a model config that asks for a mux is a configuration
+    # error rather than something to ignore.
+    SUPPORTS_SPI_MUX = False
 
     def __init__(self, rte_ip, dut_model, sonoff):
         self.models = Models()
@@ -49,7 +49,16 @@ class RTE(rtectrl):
         self.dut_model = dut_model
         self.dut_data = self.models.load_model_data(self.dut_model)[1]
         self.sonoff = sonoff
-        self.flash_target = self.FLASH_TARGETS[0]
+        # Flashes this bench can address, keyed by target name. The first one
+        # the model config lists is the default.
+        self.flash_targets = self.models.flash_targets(self.dut_data)
+        self.flash_target = next(iter(self.flash_targets))
+        if self.dut_data.get("spi_mux") and not self.SUPPORTS_SPI_MUX:
+            raise UnsupportedSPIMux(
+                f"Model {self.dut_model} declares an SPI mux, which the "
+                f"'{self.dut_data.get('bench', 'rte')}' bench has no mux "
+                f"control for"
+            )
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
                 exit(
@@ -63,7 +72,7 @@ class RTE(rtectrl):
         Selects which flash chip the following flash operations address.
 
         Args:
-            target (str): The flash to address, one of FLASH_TARGETS.
+            target (str): The flash to address, as named by the model config.
 
         Returns:
             None.
@@ -71,12 +80,51 @@ class RTE(rtectrl):
         Raises:
             UnsupportedFlashTarget: If the bench has no such flash.
         """
-        if target not in self.FLASH_TARGETS:
+        if target not in self.flash_targets:
             raise UnsupportedFlashTarget(
                 f"The {self.dut_model} bench has no '{target}' flash "
-                f"(supported: {', '.join(self.FLASH_TARGETS)})"
+                f"(configured: {', '.join(self.flash_targets)})"
             )
         self.flash_target = target
+
+    def flash_target_data(self, target=None):
+        """
+        Returns the flash chip configuration for a target.
+
+        Args:
+            target (str, optional): The flash to describe. Defaults to the
+            currently selected target.
+
+        Returns:
+            dict: The flash configuration ("model", "voltage", "size", and on a
+            mux bench "mux" and "power").
+        """
+        return self.flash_targets[target or self.flash_target]
+
+    def check_image_size(self, fw_file):
+        """
+        Refuses a firmware image whose size does not match the selected flash,
+        which on a bench with several flashes catches an image aimed at the
+        wrong one. Model configs that declare no size are not checked.
+
+        Args:
+            fw_file (str): The path to the firmware file.
+
+        Returns:
+            None.
+
+        Raises:
+            FlashImageSizeMismatch: If the image size does not match the flash.
+        """
+        expected = self.flash_target_data().get("size")
+        if not expected:
+            return
+        size = os.path.getsize(fw_file)
+        if size != expected:
+            raise FlashImageSizeMismatch(
+                f"{fw_file} is {size} bytes, but the {self.flash_target} "
+                f"flash is {expected} bytes"
+            )
 
     def power_on(self, sleep=1):
         """
@@ -184,7 +232,7 @@ class RTE(rtectrl):
         Returns:
             None.
         """
-        voltage = self.dut_data["flash_chip"]["voltage"]
+        voltage = self.flash_target_data()["voltage"]
 
         if voltage == "1.8V":
             state = "high-z"
@@ -356,7 +404,7 @@ class RTE(rtectrl):
         import tempfile
 
         # Get layout from model file
-        layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+        layout_data = self.flash_target_data().get("layout")
 
         if not layout_data:
             raise ValueError("Layout data is missing - this should not happen")
@@ -412,7 +460,7 @@ class RTE(rtectrl):
             scp = ssh.open_sftp()
 
             # Transfer layout file if needed (only for write operations)
-            layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+            layout_data = self.flash_target_data().get("layout")
             if layout_data and write_file:
                 local_layout_path = self.create_layout_file()
                 remote_layout_path = self.FLASHROM_LAYOUT_PATH
@@ -502,9 +550,9 @@ class RTE(rtectrl):
         args = ""
 
         # Set chip explicitly, if defined in model configuration
-        if "flash_chip" in self.dut_data:
-            if "model" in self.dut_data["flash_chip"]:
-                args = " ".join(["-c", self.dut_data["flash_chip"]["model"]])
+        model = self.flash_target_data().get("model")
+        if model:
+            args = " ".join(["-c", model])
 
         if extra_args:
             args = " ".join([args, extra_args])
@@ -562,12 +610,14 @@ class RTE(rtectrl):
         Returns:
             The return code from the flashrom command execution.
         """
+        self.check_image_size(write_file)
+
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
 
         # Check if this board needs layout file (from model file)
-        use_layout = self.dut_data.get("flash_chip", {}).get("layout", False)
+        use_layout = self.flash_target_data().get("layout", False)
 
         if use_layout:
             args = self.flash_create_args(
@@ -610,6 +660,14 @@ class SonoffNotFound(Exception):
 
 
 class UnsupportedFlashTarget(Exception):
+    pass
+
+
+class UnsupportedSPIMux(Exception):
+    pass
+
+
+class UnknownMuxBranch(Exception):
     pass
 
 

@@ -1,15 +1,18 @@
 ---
 bench: benchrack
+spi_mux: true
 
 flash_chip:
-  model: "W25Q256JV_Q"
-  voltage: "3.3V"
-  power_switches: false
-  targets:
-    host:
-      size: 33554432
-    bmc:
-      size: 67108864
+  - target: host
+    model: "W25Q256JV_Q"
+    voltage: "3.3V"
+    size: 33554432
+    mux: 1
+
+  - target: bmc
+    voltage: "3.3V"
+    size: 67108864
+    mux: 2
 
 programmer:
   name: rte_1_1

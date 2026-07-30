@@ -238,9 +238,18 @@ follows:
   power and flashing are driven; supported values: `rte` (default), `benchrack`.
   See [Benches](#benches).
 
-- `flash_chip`: - describes the flash chip the bench flashes, which on a bench
-  with several of them is the `host` one:
+- `spi_mux`: - optional; true or false (false by default), whether the bench
+  routes its SPI bus to one flash at a time through a mux. Every flash then
+  names the mux branch it sits on, and the bench closes that branch's load
+  switch for the flash it addresses. Only a bench whose driver has mux control
+  accepts this; a plain `rte` config that sets it is rejected rather than
+  silently flashing the wrong chip.
 
+- `flash_chip`: - the flashes the bench can reach. List them explicitly, one
+  entry per flash:
+
+    + `target` - required; the name flash commands address this flash by
+    (`--target`), e.g. `host` or `bmc`. The first entry is the default.
     + `model` - optional, needs to be set if flashrom detects more than one
     possible flash chip model - in other words, the `-c` parameter you use in
     flashrom.
@@ -248,13 +257,36 @@ follows:
     should be discovered in appropriate datasheet.
     + `size` - optional; chip size in bytes. When set, a firmware image of a
     different size is refused instead of flashed.
-    + `power_switches` - optional; true or false (false by default), whether the
-    bench closes a per-flash load switch to supply the chip it flashes. False
-    when the flashes share one supply rail.
-    + `targets` - optional; only for a bench wired to more than one flash chip.
-    A `host` and/or `bmc` entry, each taking `model`, `voltage` and `size`.
-    `flash_chip` itself describes the `host` flash, so a `bmc` entry has to
-    carry its own `model` and `size`; only `voltage` carries over.
+    + `mux` - required on a bench with `spi_mux`; which SPI header the flash is
+    wired to, `1` or `2`.
+    + `power` - optional; true or false (true by default), whether the RTE
+    supplies this flash while flashing it. Set it false for a flash its own
+    board powers, and neither the SPI Vcc rail nor the flash's load switch is
+    touched.
+
+  ```yaml
+  spi_mux: true
+  flash_chip:
+    - target: host
+      model: "W25Q256JV_Q"
+      voltage: "3.3V"
+      size: 33554432
+      mux: 1    # connected to the SPI_1 header
+
+    - target: bmc
+      voltage: "3.3V"
+      size: 67108864
+      mux: 2    # connected to the SPI_2 header
+  ```
+
+  A bench with a single flash may instead keep the older mapping form, which
+  describes that one flash and needs no `target`; it is addressed as `host`:
+
+  ```yaml
+  flash_chip:
+    model: "W25Q64JV-.Q"
+    voltage: "3.3V"
+  ```
 
 - `programmer`:
 
@@ -291,14 +323,20 @@ switched by a Sonoff or the onboard relay, and the power LED read back on GPIO
 
 ### `benchrack`
 
-A BenchRack, where the host boot flash and the BMC flash share one SPI bus
-behind a 2:1 mux driven by the RTE. It differs from a plain RTE in that:
+A BenchRack, where the flashes share one SPI bus behind a 2:1 mux driven by the
+RTE, one flash per SPI header. It differs from a plain RTE in that:
 
-- The mux occupies GPIO 13-16, so the power LED readback moves to GPIO 17.
-- A flash operation routes the bus to the flash it addresses (`--target host` or
-  `--target bmc`), energizes only that branch, and isolates both again
-  afterward. Every operation parks the bus first, so a run killed part-way
-  through a flash cannot leave the RTE driving a flash while the host boots.
+- The mux occupies GPIO 13-16: enable on 13 (active low), the SPI_1 and SPI_2
+  load switches on 14 and 15, select on 16. The power LED readback therefore
+  moves to GPIO 17.
+- A flash operation routes the bus to the flash it addresses (`--target`),
+  brings up the SPI Vcc rail, closes that flash's load switch, and isolates both
+  flashes again afterward — opening the switch before dropping the rail, so a
+  flash is never tied to a de-energized rail another supply may back-drive.
+  Every operation parks the bus first, so a run killed part-way through a flash
+  cannot leave the RTE driving a flash while the host boots.
+- The mux select rests on SPI_1 while idle: resting it on SPI_2 freezes the BMC
+  flash's host even with the mux disabled.
 - Powering the host off for a flash polls the power LED until it is actually
   off, rather than assuming the button press worked.
 - There is no CMOS-clear line, so `pwr reset_cmos` reports that the bench has

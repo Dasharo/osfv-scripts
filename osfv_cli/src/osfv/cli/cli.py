@@ -14,9 +14,9 @@ import pexpect
 import requests
 import typer
 from osfv.libs import utils
-from osfv.libs.bench import new_bench
 from osfv.libs.models import Models
 from osfv.libs.rte import RTE, UnsupportedFlashTarget
+from osfv.libs.rte_factory import new_rte
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
@@ -705,7 +705,7 @@ def setup_rte_subcommand(
             raise typer.Exit(1)
     # TODO: Add sonoff ip argument
     apis._sonoff_api, _ = utils.init_sonoff(None, rte_ip, snipeit_api)
-    apis._rte_api = new_bench(rte_ip, dut_model_name, apis._sonoff_api)
+    apis._rte_api = new_rte(rte_ip, dut_model_name, apis._sonoff_api)
 
     if not skip_snipeit:
         assert isinstance(asset_id, int)
@@ -1025,8 +1025,8 @@ def spi_off(ctx: Context):
 
 
 ## rte flash commands
-# Which flash the operation addresses. Only benches wired to more than one
-# flash, such as BenchRack, accept anything but the default.
+# Which flash the operation addresses. Only an RTE wired to more than one
+# flash, through the SPI mux extension, accepts anything but the default.
 FlashTarget = Annotated[
     str | None,
     Option(

@@ -207,14 +207,15 @@ just some examples.
   > Replace `<rte_ip_address>` with the actual RTE IP address connected with
   > the DUT.
 
-- Flash the BMC flash on a bench wired to more than one flash chip:
+- Flash the BMC flash on an RTE wired to more than one flash chip:
 
   ```bash
   osfv_cli rte --rte_ip <rte_ip_address> flash write --target bmc --rom <path_to_fw_file>
   ```
 
-  > `--target` is accepted by all `flash` subcommands and defaults to `host`.
-  > Benches with a single flash chip only accept `host`.
+  > `--target` is accepted by all `flash` subcommands and defaults to the first
+  > flash the model config lists. An RTE with a single flash chip only accepts
+  > `host`.
 
 ### list_models command
 
@@ -234,19 +235,14 @@ the list, you can place your `MODEL.yml` with corresponding settings in the
 directory, following other configs' syntax. Available parameters are as
 follows:
 
-- `bench`: - optional; the bench the platform is wired to, which decides how
-  power and flashing are driven; supported values: `rte` (default), `benchrack`.
-  See [Benches](#benches).
+- `spi_mux`: - optional; true or false (false by default), whether the RTE has
+  the SPI mux extension, which routes its SPI bus to one flash at a time. Every
+  flash then names the mux branch it sits on, and the RTE closes that branch's
+  load switch for the flash it addresses. See
+  [SPI mux extension](#spi-mux-extension).
 
-- `spi_mux`: - optional; true or false (false by default), whether the bench
-  routes its SPI bus to one flash at a time through a mux. Every flash then
-  names the mux branch it sits on, and the bench closes that branch's load
-  switch for the flash it addresses. Only a bench whose driver has mux control
-  accepts this; a plain `rte` config that sets it is rejected rather than
-  silently flashing the wrong chip.
-
-- `flash_chip`: - the flashes the bench can reach. List them explicitly, one
-  entry per flash:
+- `flash_chip`: - the flashes the RTE can reach. List them explicitly, one entry
+  per flash:
 
     + `target` - required; the name flash commands address this flash by
     (`--target`), e.g. `host` or `bmc`. The first entry is the default.
@@ -257,8 +253,9 @@ follows:
     should be discovered in appropriate datasheet.
     + `size` - optional; chip size in bytes. When set, a firmware image of a
     different size is refused instead of flashed.
-    + `mux` - required on a bench with `spi_mux`; which SPI header the flash is
-    wired to, `1` or `2`.
+    + `mux` - required with `spi_mux`; which SPI header the flash is wired to,
+    `1` or `2`. A flash that names a branch without `spi_mux` set is refused,
+    rather than flashed through whichever branch the mux happens to be on.
     + `power` - optional; true or false (true by default), whether the RTE
     supplies this flash while flashing it. Set it false for a flash its own
     board powers, and neither the SPI Vcc rail nor the flash's load switch is
@@ -279,7 +276,7 @@ follows:
       mux: 2    # connected to the SPI_2 header
   ```
 
-  A bench with a single flash may instead keep the older mapping form, which
+  An RTE with a single flash may instead keep the older mapping form, which
   describes that one flash and needs no `target`; it is addressed as `host`:
 
   ```yaml
@@ -307,47 +304,41 @@ follows:
 - `disable_wp`: - optional; true or false (false by default), whether flash WP
    is required before flashing.
 
-## Benches
+## SPI mux extension
 
-A bench is the hardware around the DUT that switches its power and reaches its
-flash. Most benches in the lab are a plain RTE wired to one flash chip, which is
-what a model config gets when it names no `bench`. A bench with its own control
-hardware names a driver instead, and every command and Robot keyword works the
-same way against it.
+Most RTEs in the lab are wired to a single DUT flash on their SPI header. An RTE
+fitted with the SPI mux extension reaches two, one per SPI header, through a 2:1
+SPI mux it drives itself — the arrangement a BenchRack uses to reach both a
+host boot flash and a BMC flash. A model config turns it on with `spi_mux: true`
+and names the header each flash is wired to.
 
-### `rte`
+Such an RTE differs from a plain one in that:
 
-The default: an RTE v1.0/v1.1 with the DUT flash on its SPI header, mains
-switched by a Sonoff or the onboard relay, and the power LED read back on GPIO
-13.
-
-### `benchrack`
-
-A BenchRack, where the flashes share one SPI bus behind a 2:1 mux driven by the
-RTE, one flash per SPI header. It differs from a plain RTE in that:
-
-- The mux occupies GPIO 13-16: enable on 13 (active low), the SPI_1 and SPI_2
-  load switches on 14 and 15, select on 16. The power LED readback therefore
-  moves to GPIO 17.
+- The extension drives the mux from the J10 expander pins: enable on GPIO 13
+  (active low), the SPI_1 and SPI_2 load switches on 14 and 15, select on 16.
+  The power LED readback therefore moves to GPIO 17.
 - A flash operation routes the bus to the flash it addresses (`--target`),
   brings up the SPI Vcc rail, closes that flash's load switch, and isolates both
   flashes again afterward — opening the switch before dropping the rail, so a
   flash is never tied to a de-energized rail another supply may back-drive.
   Every operation parks the bus first, so a run killed part-way through a flash
-  cannot leave the RTE driving a flash while the host boots.
-- The mux select rests on SPI_1 while idle: resting it on SPI_2 freezes the BMC
-  flash's host even with the mux disabled.
-- Powering the host off for a flash polls the power LED until it is actually
-  off, rather than assuming the button press worked.
-- There is no CMOS-clear line, so `pwr reset_cmos` reports that the bench has
-  no path for it rather than doing nothing.
+  cannot leave the RTE driving a flash while the DUT boots.
+- The mux select rests on SPI_1 while idle: resting it on SPI_2 holds that
+  flash's owner off even with the mux disabled, which on a BenchRack freezes the
+  BMC.
+- Powering the DUT off for a flash polls the power LED until it is actually off,
+  rather than assuming the button press worked.
+- The extension takes the pin a plain RTE clears the CMOS with, so
+  `pwr reset_cmos` reports that there is no path for it rather than doing
+  nothing.
 
-Mains control is unchanged: the smart plug in front of the PSU is a Tasmota
-device, which is what `pwr_ctrl.sonoff` already drives.
+Mains control is unchanged, however it is switched: the smart plug in front of a
+BenchRack PSU is a Tasmota device, which is what `pwr_ctrl.sonoff` already
+drives.
 
 The GPIO assignment and the flash sequence mirror the `benchrack` driver in
-[benchctl](https://git.3mdeb.com/zarhus/benchctl) (`platform/benchrack.go`);
-keep the two in step when either changes.
+[benchctl](https://git.3mdeb.com/zarhus/benchctl) (`platform/benchrack.go`),
+which drives the same extension; keep the two in step when either changes.
 
 ## Known issues
 

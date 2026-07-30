@@ -21,21 +21,21 @@ Correct model .yml
     Should Not Be Empty    ${regex_result}
     OperatingSystem.Remove File    ./src/osfv/models/FakeDevice.yml
 
-BenchRack model .yml
-    [Documentation]    A model on a bench with more than one flash chip, which
-    ...    declares the bench driver and per-flash overrides.
-    OperatingSystem.Copy File    ./test/data/FakeBenchRack.yml    ./src/osfv/models/
+SPI mux model .yml
+    [Documentation]    A model on an RTE with the SPI mux extension, which lists
+    ...    each flash and the SPI header it is wired to.
+    OperatingSystem.Copy File    ./test/data/FakeSPIMux.yml    ./src/osfv/models/
 
     Run Process    make    install
 
     ${result}=    Run Process    osfv_cli    list_models    stdout=True
     Log    ${result.stdout}
 
-    ${regex_result}=    Get Lines Matching Pattern    ${result.stdout}    FakeBenchRack*VERIFIED
+    ${regex_result}=    Get Lines Matching Pattern    ${result.stdout}    FakeSPIMux*VERIFIED
     Log    ${regex_result}
 
     Should Not Be Empty    ${regex_result}
-    OperatingSystem.Remove File    ./src/osfv/models/FakeBenchRack.yml
+    OperatingSystem.Remove File    ./src/osfv/models/FakeSPIMux.yml
 
 Broken model .yml
     OperatingSystem.Copy File    ./test/data/FakeDeviceBroken.yml    ./src/osfv/models/

@@ -1,5 +1,4 @@
 ---
-bench: benchrack
 spi_mux: true
 
 flash_chip:

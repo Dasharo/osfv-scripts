@@ -9,27 +9,30 @@ from osfv.libs.rte import (
 )
 
 
-class BenchRack(RTE):
+class SPIMuxRTE(RTE):
     """
-    A bench whose flashes sit behind a 2:1 SPI mux driven by the RTE, one per
-    SPI header. Selected by `bench: benchrack` in the DUT model config, which
-    lists each flash and the header it is wired to.
+    An RTE fitted with the SPI mux extension, which puts two flashes behind a
+    2:1 SPI mux, one per SPI header, so the RTE reaches one of them at a time.
+    Selected by `spi_mux: true` in the DUT model config, which lists each flash
+    and the header it is wired to.
 
     It differs from a plain RTE in three ways:
 
-    - The mux occupies GPIO 13-16, so the power LED readback moves to GPIO 17
-      and there is no CMOS-clear line.
+    - The extension drives the mux from the J10 expander pins (GPIO 13-16), so
+      the power LED readback moves to GPIO 17 and there is no CMOS-clear line.
     - A flash operation must route the bus to the addressed flash and close its
       load switch before energizing it, and isolate both flashes afterward.
-    - Host power state is read back from the power LED, so powering the host
-      off for a flash polls until it is actually off instead of assuming a
-      button press worked.
+    - DUT power state is read back from the power LED, so powering the DUT off
+      for a flash polls until it is actually off instead of assuming a button
+      press worked.
 
-    Mains/AC control is unchanged: the smart plug in front of the PSU is a
-    Tasmota device, which is what `pwr_ctrl.sonoff` already drives.
+    Mains control is unchanged, whichever way the bench switches it: the smart
+    plug in front of a BenchRack PSU is a Tasmota device, which is what
+    `pwr_ctrl.sonoff` already drives.
 
     The GPIO assignment and the flash sequence mirror the `benchrack` driver in
-    zarhus/benchctl (platform/benchrack.go); keep the two in step.
+    zarhus/benchctl (platform/benchrack.go), which drives the same extension;
+    keep the two in step.
     """
 
     # GPIO 1-3 and 8-9 are open-collector ("low"/"high-z"), 13-19 push-pull
@@ -41,7 +44,8 @@ class BenchRack(RTE):
     GPIO_MUX_SELECT = 16  # 2:1 mux select
     GPIO_PWR_LED = 17  # DUT power LED readback
 
-    # No CMOS-clear line is wired on this bench.
+    # The extension takes the pin a plain RTE clears the CMOS with, so there is
+    # no CMOS-clear line to drive.
     GPIO_CMOS = None
 
     SUPPORTS_SPI_MUX = True
@@ -59,9 +63,9 @@ class BenchRack(RTE):
         2: {"select": "high", "enable": GPIO_EN_SPI_2},
     }
 
-    # Branch the mux select rests on while idle. On the Turin bench SPI_2 is the
-    # BMC flash, and resting the select there freezes the BMC even with the mux
-    # disabled, so the select must never sit on it.
+    # Branch the mux select rests on while idle. Resting it on SPI_2 holds that
+    # flash's owner off even with the mux disabled, which on a BenchRack freezes
+    # the BMC, so the select must never sit there.
     IDLE_MUX_BRANCH = 1
 
     # Stage a read on /data (persistent storage) rather than /tmp (tmpfs): the
@@ -139,14 +143,14 @@ class BenchRack(RTE):
 
         Raises:
             UnknownMuxBranch: If the flash names no branch, or one that does not
-            exist on this bench.
+            exist on this RTE.
         """
         flash = self.flash_target_data(target)
         branch = flash.get("mux")
         if branch not in self.MUX_BRANCHES:
             raise UnknownMuxBranch(
                 f"The '{target or self.flash_target}' flash is on mux branch "
-                f"{branch!r}, but this bench has branches "
+                f"{branch!r}, but the SPI mux extension has branches "
                 f"{', '.join(str(id) for id in sorted(self.MUX_BRANCHES))}"
             )
         return self.MUX_BRANCHES[branch]
@@ -154,7 +158,7 @@ class BenchRack(RTE):
     def ensure_idle(self):
         """
         Parks the flash bus once per instance. A run killed part-way through a
-        flash leaves the rail up and the mux routed, and powering the host on
+        flash leaves the rail up and the mux routed, and powering the DUT on
         after that boots it while the RTE still drives its flash. Every
         operation parks first, so no run trusts the state another one left.
 
@@ -170,7 +174,7 @@ class BenchRack(RTE):
 
     def power_state(self):
         """
-        Reads the host power state back from the power LED.
+        Reads the DUT power state back from the power LED.
 
         Args:
             None.
@@ -187,7 +191,7 @@ class BenchRack(RTE):
 
     def set_power(self, state):
         """
-        Presses the power button and polls the power LED until the host reaches
+        Presses the power button and polls the power LED until the DUT reaches
         the requested state. Does nothing if it is already there.
 
         Args:
@@ -197,7 +201,7 @@ class BenchRack(RTE):
             None.
 
         Raises:
-            PowerStateTimeout: If the host does not reach the state in time.
+            PowerStateTimeout: If the DUT does not reach the state in time.
         """
         if self.power_state() == state:
             return
@@ -211,7 +215,7 @@ class BenchRack(RTE):
             if time.monotonic() >= deadline:
                 raise PowerStateTimeout(
                     f"Timed out after {self.POWER_POLL_TIMEOUT_SECS}s waiting "
-                    f"for the host to be {state}"
+                    f"for the DUT to be {state}"
                 )
             time.sleep(self.POWER_POLL_INTERVAL_SECS)
 
@@ -233,7 +237,8 @@ class BenchRack(RTE):
 
     def reset_cmos(self):
         raise UnsupportedOperation(
-            "BenchRack has no CMOS clear line, clear the CMOS manually"
+            "The SPI mux extension takes the CMOS-clear pin, so the CMOS "
+            "has to be cleared manually"
         )
 
     def spi_enable(self):
@@ -314,7 +319,7 @@ class BenchRack(RTE):
     def pwr_ctrl_before_flash(self, programmer, power_state):
         """
         Moves the DUT into the power state external flashing needs, then
-        energizes the selected flash. The RTE supplies the flash, so the host
+        energizes the selected flash. The RTE supplies the flash, so the DUT
         must be off first, confirmed through the power LED rather than assumed.
 
         Args:
@@ -328,11 +333,11 @@ class BenchRack(RTE):
         # Always start from the same state (mains applied), so the power button
         # has an effect and the LED readback is meaningful.
         self.psu_on()
-        print("Powering the host off...")
+        print("Powering the DUT off...")
         self.set_power(self.PSU_STATE_OFF)
 
         if power_state == "G3":
-            print("Removing mains to put the host into G3...")
+            print("Removing mains to put the DUT into G3...")
             self.psu_off()
             self.discharge_psu()
         elif power_state != "S5":

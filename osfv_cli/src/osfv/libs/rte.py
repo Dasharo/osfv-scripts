@@ -38,9 +38,9 @@ class RTE(rtectrl):
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
     FLASHROM_LAYOUT_PATH = "/tmp/board_layout.txt"
 
-    # Whether this bench can route its SPI bus to more than one flash. A plain
-    # RTE cannot, so a model config that asks for a mux is a configuration
-    # error rather than something to ignore.
+    # Whether this driver can route the SPI bus to more than one flash. A plain
+    # RTE cannot, so a model config that asks for a mux is a configuration error
+    # rather than something to ignore.
     SUPPORTS_SPI_MUX = False
 
     def __init__(self, rte_ip, dut_model, sonoff):
@@ -49,15 +49,18 @@ class RTE(rtectrl):
         self.dut_model = dut_model
         self.dut_data = self.models.load_model_data(self.dut_model)[1]
         self.sonoff = sonoff
-        # Flashes this bench can address, keyed by target name. The first one
+        # Flashes this RTE can address, keyed by target name. The first one
         # the model config lists is the default.
         self.flash_targets = self.models.flash_targets(self.dut_data)
         self.flash_target = next(iter(self.flash_targets))
-        if self.dut_data.get("spi_mux") and not self.SUPPORTS_SPI_MUX:
+        muxed = self.dut_data.get("spi_mux") or any(
+            "mux" in flash for flash in self.flash_targets.values()
+        )
+        if muxed and not self.SUPPORTS_SPI_MUX:
             raise UnsupportedSPIMux(
-                f"Model {self.dut_model} declares an SPI mux, which the "
-                f"'{self.dut_data.get('bench', 'rte')}' bench has no mux "
-                f"control for"
+                f"Model {self.dut_model} puts its flashes behind an SPI mux, "
+                f"which this driver has no mux control for. An RTE with the "
+                f"SPI mux extension needs 'spi_mux: true' in its config"
             )
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
@@ -78,11 +81,11 @@ class RTE(rtectrl):
             None.
 
         Raises:
-            UnsupportedFlashTarget: If the bench has no such flash.
+            UnsupportedFlashTarget: If the RTE has no such flash.
         """
         if target not in self.flash_targets:
             raise UnsupportedFlashTarget(
-                f"The {self.dut_model} bench has no '{target}' flash "
+                f"The {self.dut_model} model has no '{target}' flash "
                 f"(configured: {', '.join(self.flash_targets)})"
             )
         self.flash_target = target
@@ -97,14 +100,14 @@ class RTE(rtectrl):
 
         Returns:
             dict: The flash configuration ("model", "voltage", "size", and on a
-            mux bench "mux" and "power").
+            mux RTE "mux" and "power").
         """
         return self.flash_targets[target or self.flash_target]
 
     def check_image_size(self, fw_file):
         """
         Refuses a firmware image whose size does not match the selected flash,
-        which on a bench with several flashes catches an image aimed at the
+        which on an RTE with several flashes catches an image aimed at the
         wrong one. Model configs that declare no size are not checked.
 
         Args:
@@ -672,7 +675,7 @@ class UnknownMuxBranch(Exception):
 
 
 class UnsupportedOperation(Exception):
-    """Raised for an operation the bench has no hardware path for."""
+    """Raised for an operation the RTE has no hardware path for."""
 
     pass
 

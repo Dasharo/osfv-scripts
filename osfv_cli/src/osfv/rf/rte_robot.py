@@ -1,7 +1,7 @@
 import osfv.libs.utils as utils
 import robot.api.logger
-from osfv.libs.bench import new_bench
 from osfv.libs.models import UnsupportedDUTModel
+from osfv.libs.rte_factory import new_rte
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword, library
@@ -89,14 +89,14 @@ class RobotRTE:
             # instantiate sonoff and/or snipeit.
             # Ideally these would go to a separate class.
             if self.rte_ip != "0.0.0.0":
-                self.rte = new_bench(rte_ip, dut_model_name, self.sonoff)
+                self.rte = new_rte(rte_ip, dut_model_name, self.sonoff)
         else:
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip
             )
             # bug: as above
             if self.rte_ip != "0.0.0.0":
-                self.rte = new_bench(
+                self.rte = new_rte(
                     rte_ip, self.cli_model_from_osfv(config), self.sonoff
                 )
 
@@ -127,9 +127,10 @@ class RobotRTE:
     @keyword(types=None)
     def rte_select_flash_target(self, target):
         """
-        Selects which flash chip the following flash keywords address, on a
-        bench wired to more than one (``host`` or ``bmc`` on BenchRack). Benches
-        with a single flash only accept ``host``.
+        Selects which flash chip the following flash keywords address, on an
+        RTE wired to more than one through the SPI mux extension. The name is
+        whatever the DUT model config calls that flash, e.g. ``host`` or
+        ``bmc``. An RTE with a single flash only accepts ``host``.
 
         Args:
             target (str): The flash to address.

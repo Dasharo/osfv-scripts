@@ -1,7 +1,6 @@
 ---
-# The board sits on a BenchRack: both flashes share one SPI bus behind a 2:1 mux
-# driven by the RTE, one flash per SPI header.
-bench: benchrack
+# The board is on an RTE with the SPI mux extension (a BenchRack): both flashes
+# share one SPI bus behind a 2:1 mux, one flash per SPI header.
 spi_mux: true
 
 flash_chip:

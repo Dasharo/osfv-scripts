@@ -61,15 +61,14 @@ class Models:
         )
         flashing_power_state_validator = Any("G3", "S5")
         pwr_led_validator = Any("active low", "active high")
-        bench_validator = Any("rte", "benchrack")
         layout_schema = [
             {
                 Required("name"): str,
                 Required("range"): str,
             }
         ]
-        # A bench wired to several flashes lists them explicitly, one entry per
-        # flash. A bench with a single flash may keep the older mapping form,
+        # An RTE wired to several flashes lists them explicitly, one entry per
+        # flash. An RTE with a single flash may keep the older mapping form,
         # which describes that one flash.
         flash_list_schema = [
             {
@@ -91,7 +90,6 @@ class Models:
 
         schema = Schema(
             {
-                Optional("bench"): bench_validator,
                 Optional("spi_mux"): bool,
                 Required("programmer"): {
                     Required("name"): programmer_name_validator,
@@ -156,7 +154,7 @@ class Models:
 
     def flash_targets(self, dut_data):
         """
-        Returns the flashes a bench can address, keyed by target name in the
+        Returns the flashes an RTE can address, keyed by target name in the
         order the model config lists them, so the first one is the default.
 
         Both `flash_chip` forms normalize to the same shape: a list of explicit

@@ -1,7 +1,7 @@
 import osfv.libs.utils as utils
 import robot.api.logger
+from osfv.libs.bench import new_bench
 from osfv.libs.models import UnsupportedDUTModel
-from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from robot.api.deco import keyword, library
@@ -9,6 +9,8 @@ from robot.api.deco import keyword, library
 model_dict = {
     "asrock-spc741d8": "SPC741D8-2L2T_BCM",
     "asrock-turind8ud": "TURIND8UD-2T_X550",
+    "asrock-turind8ud-linuxboot": "TURIND8UD-2T_X550",
+    "asrock-turind8ud-uefi": "TURIND8UD-2T_X550",
     "gigabyte-mz33-ar1": "MZ33-AR1 Rev. 3",
     "minnowboard-turbot": "MinnowBoard Turbot B41",
     "msi-pro-z690-a-ddr4": "MSI PRO Z690-A DDR4",
@@ -87,14 +89,14 @@ class RobotRTE:
             # instantiate sonoff and/or snipeit.
             # Ideally these would go to a separate class.
             if self.rte_ip != "0.0.0.0":
-                self.rte = RTE(rte_ip, dut_model_name, self.sonoff)
+                self.rte = new_bench(rte_ip, dut_model_name, self.sonoff)
         else:
             self.sonoff, self.sonoff_ip = utils.init_sonoff(
                 sonoff_ip, self.rte_ip
             )
             # bug: as above
             if self.rte_ip != "0.0.0.0":
-                self.rte = RTE(
+                self.rte = new_bench(
                     rte_ip, self.cli_model_from_osfv(config), self.sonoff
                 )
 
@@ -121,6 +123,22 @@ class RobotRTE:
                 f"The {osfv_model} model has no counterpart in osfv_cli"
             )
         return cli_model
+
+    @keyword(types=None)
+    def rte_select_flash_target(self, target):
+        """
+        Selects which flash chip the following flash keywords address, on a
+        bench wired to more than one (``host`` or ``bmc`` on BenchRack). Benches
+        with a single flash only accept ``host``.
+
+        Args:
+            target (str): The flash to address.
+
+        Returns:
+            None.
+        """
+        self.rte.select_flash_target(target)
+        robot.api.logger.info(f"Flash target set to {target}")
 
     @keyword(types=None)
     def rte_flash_read(self, fw_file):
@@ -361,7 +379,8 @@ class RobotRTE:
 
     @keyword(types=None)
     def rte_check_power_led(self):
-        state = self.rte.gpio_get(RTE.GPIO_PWR_LED)
+        # The pin is per-bench, so read it off the instance, not the class.
+        state = self.rte.gpio_get(self.rte.GPIO_PWR_LED)
         polarity = self.rte.dut_data.get("pwr_led", {}).get("polarity")
         if polarity and polarity == "active low":
             if state == "high":

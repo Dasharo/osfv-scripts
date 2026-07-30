@@ -61,15 +61,30 @@ class Models:
         )
         flashing_power_state_validator = Any("G3", "S5")
         pwr_led_validator = Any("active low", "active high")
+        bench_validator = Any("rte", "benchrack")
+        # Per-flash overrides on a bench that has more than one flash chip.
+        # Anything not overridden falls back to the flash_chip defaults.
+        flash_target_schema = {
+            Optional("model"): str,
+            Optional("voltage"): voltage_validator,
+            Optional("size"): int,
+        }
 
         schema = Schema(
             {
+                Optional("bench"): bench_validator,
                 Required("programmer"): {
                     Required("name"): programmer_name_validator,
                 },
                 Required("flash_chip"): {
                     Required("voltage"): voltage_validator,
                     Optional("model"): str,
+                    Optional("size"): int,
+                    Optional("power_switches"): bool,
+                    Optional("targets"): {
+                        Optional("host"): flash_target_schema,
+                        Optional("bmc"): flash_target_schema,
+                    },
                     Optional("layout"): [
                         {
                             Required("name"): str,

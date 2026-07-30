@@ -38,12 +38,18 @@ class RTE(rtectrl):
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
     FLASHROM_LAYOUT_PATH = "/tmp/board_layout.txt"
 
+    # Flashes reachable on this bench. A plain RTE is wired to one flash, so
+    # every flash operation addresses it. Benches with more than one flash
+    # (behind a mux) list them here and switch with select_flash_target.
+    FLASH_TARGETS = ("host",)
+
     def __init__(self, rte_ip, dut_model, sonoff):
         self.models = Models()
         self.rte_ip = rte_ip
         self.dut_model = dut_model
         self.dut_data = self.models.load_model_data(self.dut_model)[1]
         self.sonoff = sonoff
+        self.flash_target = self.FLASH_TARGETS[0]
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
                 exit(
@@ -51,6 +57,26 @@ class RTE(rtectrl):
                     f"in SnipeIT"
                 )
             )
+
+    def select_flash_target(self, target):
+        """
+        Selects which flash chip the following flash operations address.
+
+        Args:
+            target (str): The flash to address, one of FLASH_TARGETS.
+
+        Returns:
+            None.
+
+        Raises:
+            UnsupportedFlashTarget: If the bench has no such flash.
+        """
+        if target not in self.FLASH_TARGETS:
+            raise UnsupportedFlashTarget(
+                f"The {self.dut_model} bench has no '{target}' flash "
+                f"(supported: {', '.join(self.FLASH_TARGETS)})"
+            )
+        self.flash_target = target
 
     def power_on(self, sleep=1):
         """
@@ -580,4 +606,22 @@ class SPIWrongVoltage(Exception):
 
 
 class SonoffNotFound(Exception):
+    pass
+
+
+class UnsupportedFlashTarget(Exception):
+    pass
+
+
+class UnsupportedOperation(Exception):
+    """Raised for an operation the bench has no hardware path for."""
+
+    pass
+
+
+class PowerStateTimeout(Exception):
+    pass
+
+
+class FlashImageSizeMismatch(Exception):
     pass

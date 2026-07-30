@@ -207,6 +207,15 @@ just some examples.
   > Replace `<rte_ip_address>` with the actual RTE IP address connected with
   > the DUT.
 
+- Flash the BMC flash on a bench wired to more than one flash chip:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> flash write --target bmc --rom <path_to_fw_file>
+  ```
+
+  > `--target` is accepted by all `flash` subcommands and defaults to `host`.
+  > Benches with a single flash chip only accept `host`.
+
 ### list_models command
 
 List supported DUT models, available models/*.yml files are verified for existence
@@ -225,13 +234,27 @@ the list, you can place your `MODEL.yml` with corresponding settings in the
 directory, following other configs' syntax. Available parameters are as
 follows:
 
-- `flash_chip`:
+- `bench`: - optional; the bench the platform is wired to, which decides how
+  power and flashing are driven; supported values: `rte` (default), `benchrack`.
+  See [Benches](#benches).
+
+- `flash_chip`: - describes the flash chip the bench flashes, which on a bench
+  with several of them is the `host` one:
 
     + `model` - optional, needs to be set if flashrom detects more than one
     possible flash chip model - in other words, the `-c` parameter you use in
     flashrom.
     + `voltage` - required; chip supply voltage - most often "3.3V" or "1.8V";
     should be discovered in appropriate datasheet.
+    + `size` - optional; chip size in bytes. When set, a firmware image of a
+    different size is refused instead of flashed.
+    + `power_switches` - optional; true or false (false by default), whether the
+    bench closes a per-flash load switch to supply the chip it flashes. False
+    when the flashes share one supply rail.
+    + `targets` - optional; only for a bench wired to more than one flash chip.
+    A `host` and/or `bmc` entry, each taking `model`, `voltage` and `size`.
+    `flash_chip` itself describes the `host` flash, so a `bmc` entry has to
+    carry its own `model` and `size`; only `voltage` carries over.
 
 - `programmer`:
 
@@ -251,6 +274,42 @@ follows:
 
 - `disable_wp`: - optional; true or false (false by default), whether flash WP
    is required before flashing.
+
+## Benches
+
+A bench is the hardware around the DUT that switches its power and reaches its
+flash. Most benches in the lab are a plain RTE wired to one flash chip, which is
+what a model config gets when it names no `bench`. A bench with its own control
+hardware names a driver instead, and every command and Robot keyword works the
+same way against it.
+
+### `rte`
+
+The default: an RTE v1.0/v1.1 with the DUT flash on its SPI header, mains
+switched by a Sonoff or the onboard relay, and the power LED read back on GPIO
+13.
+
+### `benchrack`
+
+A BenchRack, where the host boot flash and the BMC flash share one SPI bus
+behind a 2:1 mux driven by the RTE. It differs from a plain RTE in that:
+
+- The mux occupies GPIO 13-16, so the power LED readback moves to GPIO 17.
+- A flash operation routes the bus to the flash it addresses (`--target host` or
+  `--target bmc`), energizes only that branch, and isolates both again
+  afterward. Every operation parks the bus first, so a run killed part-way
+  through a flash cannot leave the RTE driving a flash while the host boots.
+- Powering the host off for a flash polls the power LED until it is actually
+  off, rather than assuming the button press worked.
+- There is no CMOS-clear line, so `pwr reset_cmos` reports that the bench has
+  no path for it rather than doing nothing.
+
+Mains control is unchanged: the smart plug in front of the PSU is a Tasmota
+device, which is what `pwr_ctrl.sonoff` already drives.
+
+The GPIO assignment and the flash sequence mirror the `benchrack` driver in
+[benchctl](https://git.3mdeb.com/zarhus/benchctl) (`platform/benchrack.go`);
+keep the two in step when either changes.
 
 ## Known issues
 

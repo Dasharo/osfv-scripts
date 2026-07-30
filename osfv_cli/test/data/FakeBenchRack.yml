@@ -1,0 +1,20 @@
+---
+bench: benchrack
+
+flash_chip:
+  model: "W25Q256JV_Q"
+  voltage: "3.3V"
+  power_switches: false
+  targets:
+    host:
+      size: 33554432
+    bmc:
+      size: 67108864
+
+programmer:
+  name: rte_1_1
+
+pwr_ctrl:
+  sonoff: true
+  relay: false
+  flashing_power_state: "G3"

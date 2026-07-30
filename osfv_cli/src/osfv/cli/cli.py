@@ -14,8 +14,9 @@ import pexpect
 import requests
 import typer
 from osfv.libs import utils
+from osfv.libs.bench import new_bench
 from osfv.libs.models import Models
-from osfv.libs.rte import RTE
+from osfv.libs.rte import RTE, UnsupportedFlashTarget
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
@@ -704,7 +705,7 @@ def setup_rte_subcommand(
             raise typer.Exit(1)
     # TODO: Add sonoff ip argument
     apis._sonoff_api, _ = utils.init_sonoff(None, rte_ip, snipeit_api)
-    apis._rte_api = RTE(rte_ip, dut_model_name, apis._sonoff_api)
+    apis._rte_api = new_bench(rte_ip, dut_model_name, apis._sonoff_api)
 
     if not skip_snipeit:
         assert isinstance(asset_id, int)
@@ -960,7 +961,8 @@ def reset(
 def check_pwr_led(ctx: Context):
     """Check the state of the DUT power LED"""
     rte = apis.rte_api
-    state = rte.gpio_get(RTE.GPIO_PWR_LED)
+    # The pin is per-bench, so read it off the instance, not the class.
+    state = rte.gpio_get(rte.GPIO_PWR_LED)
     polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
     if polarity and polarity == "active low":
         if state == "high":
@@ -1023,10 +1025,39 @@ def spi_off(ctx: Context):
 
 
 ## rte flash commands
+# Which flash the operation addresses. Only benches wired to more than one
+# flash, such as BenchRack, accept anything but the default.
+FlashTarget = Annotated[
+    str,
+    Option(
+        "--target",
+        help="Flash chip to address: host or bmc (default: host)",
+        metavar="TARGET",
+    ),
+]
+
+
+def select_flash_target(target: str):
+    """Point the following flash operations at the requested flash
+
+    Args:
+        target (str): Flash chip to address
+
+    Raises:
+        typer.Exit: When the bench has no such flash
+    """
+    try:
+        apis.rte_api.select_flash_target(target)
+    except UnsupportedFlashTarget as e:
+        print(f"{e}")
+        raise typer.Exit(1)
+
+
 @rte_flash.command("probe")
 @with_setup
-def flash_probe(ctx: Context):
+def flash_probe(ctx: Context, target: FlashTarget = "host"):
     """Flash probe with flashrom"""
+    select_flash_target(target)
     print("Probing flash...")
     apis.rte_api.flash_probe()
 
@@ -1045,8 +1076,10 @@ def flash_read(
             writable=True,
         ),
     ] = Path("read.rom"),
+    target: FlashTarget = "host",
 ):
     """Read from DUT flash with flashrom"""
+    select_flash_target(target)
     print("Reading from flash...")
     apis.rte_api.flash_read(rom)
     print(f"Read flash content saved to {rom}")
@@ -1088,8 +1121,10 @@ def flash_write(
             help="Increase osfv.libs.flash_image verbosity",
         ),
     ] = False,
+    target: FlashTarget = "host",
 ):
     """Write to DUT flash with flashrom"""
+    select_flash_target(target)
     if utils.check_flash_image_regions(rom, dry_mecheck, verbosity) == False:
         print(
             "FATAL: Image could not be loaded, or some image's regions are empty, despite being defined in the flash descriptor. "
@@ -1109,8 +1144,9 @@ def flash_write(
 
 @rte_flash.command("erase")
 @with_setup
-def flash_erase(ctx):
+def flash_erase(ctx, target: FlashTarget = "host"):
     """Erase DUT flash with flashrom"""
+    select_flash_target(target)
     print("Erasing DUT flash...")
     apis.rte_api.flash_erase()
     print("Flash erased")

@@ -8,7 +8,7 @@ from functools import partial, wraps
 from importlib import metadata
 from pathlib import Path
 from time import sleep
-from typing import Annotated, Literal, cast
+from typing import Annotated, Literal
 
 import pexpect
 import requests
@@ -709,9 +709,7 @@ def setup_rte_subcommand(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
-        already_checked_out = _check_out_asset(
-            apis.snipeit_api, cast(int, asset_id)
-        )
+        already_checked_out = _check_out_asset(apis.snipeit_api, asset_id)
         return not already_checked_out, asset_id
     return False, None
 

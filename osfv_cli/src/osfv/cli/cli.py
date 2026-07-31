@@ -1,91 +1,283 @@
 #!/usr/bin/env python3
 
-import argparse
 import json
+from collections.abc import Callable
 from copy import copy
+from dataclasses import dataclass, field
+from functools import partial, wraps
 from importlib import metadata
+from pathlib import Path
 from time import sleep
+from typing import Annotated, Literal, cast
 
-import osfv.libs.utils as utils
 import pexpect
 import requests
+import typer
+from osfv.libs import utils
 from osfv.libs.models import Models
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
+from typer import Argument, Context, Option
 
 
-def check_out_asset(snipeit_api, asset_id):
+class API:
+    """store API instances created e.g. in callbacks"""
+
+    def __init__(self) -> None:
+        self._sonoff_api: SonoffDevice | None = None
+        self._snipeit_api: SnipeIT | None = None
+        self._rte_api: RTE | None = None
+
+    @property
+    def sonoff_api(self) -> SonoffDevice:
+        """Return SonoffDevice instance or raise error if None is set.
+
+        Returns:
+            SonoffDevice: SonoffDevice instance
+        """
+        assert self._sonoff_api is not None
+        return self._sonoff_api
+
+    @property
+    def snipeit_api(self) -> SnipeIT:
+        """Return SnipeIT instance or raise error if None is set.
+
+        Returns:
+            SnipeIT: SnipeIT instance
+        """
+        assert self._snipeit_api is not None
+        return self._snipeit_api
+
+    @property
+    def rte_api(self) -> RTE:
+        """Return RTE instance or raise error if None is set.
+
+        Returns:
+            RTE: RTE instance
+        """
+        assert self._rte_api is not None
+        return self._rte_api
+
+    def get_or_create_snipeit(self) -> SnipeIT:
+        """returns snipeit_api instance, creates it if necessary
+
+        Returns:
+            SnipeIT: SnipeIT API instance
+        """
+        if self._snipeit_api is None:
+            self._snipeit_api = SnipeIT()
+        return self._snipeit_api
+
+
+@dataclass
+class Hooks:
+    setup: Callable[[], tuple[bool, int | None]]
+    cleanup: Callable[[bool, int | None], None]
+    _already_ran: bool = field(default=False, init=False)
+
+
+def with_setup(func):
+    """Use this decorator to call setup and cleanup check_out/check_in function
+
+    Requires the first argument of the decorated function to be of typer.Context
+    type.
+
+    Calls setup if ctx.obj is instance of Hooks, and setups cleanup to be called
+    during context tear down. Makes sure to only do it once even if mutltiple
+    decorated functions are called.
+
+    Use this decorator so you don't have to setup/cleanup stuff manually in
+    each command or run heavy setup function before all arguments are validated.
+
+    ctx.obj can be set in callback subcommand (check rte_options function for
+    examples)
     """
-    Attempts to check out an asset..
-    It checks if the asset is already checked out by the user.
+
+    @wraps(func)
+    def wrapper(ctx: Context, *args, **kwargs):
+        if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
+            ctx.obj._already_ran = True
+            checked_out, asset_id = ctx.obj.setup()
+            ctx.call_on_close(partial(ctx.obj.cleanup, checked_out, asset_id))
+        return func(ctx, *args, **kwargs)
+
+    return wrapper
+
+
+def check_in_cleanup(checked_out: bool, asset_id: int | None):
+    if checked_out and asset_id is not None:
+        _check_in_asset(apis.get_or_create_snipeit(), asset_id)
+
+
+apis = API()
+
+## Intermediate subcommands
+
+
+def add_typer(help: str, name: str, target_typer: typer.Typer):
+    new_typer = typer.Typer(help=help)
+    target_typer.add_typer(new_typer, name=name)
+    return new_typer
+
+
+app = typer.Typer(
+    no_args_is_help=True,
+    help="Open Source Firmware Validation CLI",
+    context_settings={"help_option_names": ["-h", "--help"]},
+)
+
+## root subcommands
+snipeit_t = add_typer("Snipe-IT commands", "snipeit", app)
+rte_t = add_typer("RTE commands", "rte", app)
+sonoff_t = add_typer("Sonoff commands", "sonoff", app)
+# list_models and flash_image_check are final subcommands
+## rte subcommands
+rte_rel = add_typer("Control RTE relay", "rel", rte_t)
+rte_gpio = add_typer("Control RTE GPIO", "gpio", rte_t)
+rte_pwr = add_typer("Control DUT power via RTE", "pwr", rte_t)
+rte_spi = add_typer("Control SPI lines of RTE", "spi", rte_t)
+rte_flash = add_typer("DUT flash operations", "flash", rte_t)
+# rte serial is final subcommand so it is defined with other commands
+## rte pwr subcommands
+rte_pwr_psu = add_typer(
+    "Generic control interface of the power supply", "psu", rte_pwr
+)
+
+
+def main():
+    app()
+
+
+def print_version(version: bool):
+    """Print version and exit"""
+    if version:
+        print(metadata.version("osfv"))
+        raise typer.Exit()
+
+
+## root commands
+@app.callback()
+def root_options(
+    _: Annotated[
+        bool,
+        typer.Option(
+            "--version",
+            "-v",
+            help="show program's version number and exit",
+            is_eager=True,
+            callback=print_version,
+        ),
+    ] = False,
+):
+    pass
+
+
+@app.command("list_models")
+def list_models():
+    """List of supported models"""
+    models = Models()
+    models.list_models()
+
+
+def list_known_regions(list_regions: bool):
+    """List known region names and exit
 
     Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        asset_id (str): The unique identifier of the asset to be checked out.
-
-    Returns:
-        None
+        list_regions (bool): Whether to list regions
     """
-    success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
+    if list_regions:
+        print("Known flash regions:")
+        for reg_name in utils.get_list_of_known_image_regions():
+            print(reg_name)
+        raise typer.Exit()
 
-    if already_checked_out:
-        print(f"Asset {asset_id} is already checked out by you")
-        return already_checked_out
 
-    if success:
-        print(f"Asset {asset_id} successfully checked out.")
-    else:
-        print(f"Error checking out asset {asset_id}")
-        print(f"Response data: {data}")
-        exit(
-            f"Exiting to avoid conflict. Check who is working on this device"
-            f" and contact them first."
+@app.command("flash_image_check")
+def flash_image_check(
+    rom: Annotated[
+        Path,
+        Option(
+            "--rom",
+            help="Path to read firmware file",
+            metavar="ROM",
+            exists=True,
+            dir_okay=False,
+        ),
+    ],
+    dry_mecheck: Annotated[
+        bool,
+        Option(
+            "--dry-mecheck",
+            "-x",
+            help="Failed flash region checks won't change exit status",
+        ),
+    ] = False,
+    verbosity: Annotated[
+        bool,
+        Option(
+            "--verbosity",
+            "-V",
+            help="Increase osfv.libs.flash_image verbosity",
+        ),
+    ] = False,
+    _: Annotated[
+        bool,
+        Option(
+            "--list",
+            "-l",
+            help="list known region names and exit",
+            is_eager=True,
+            callback=list_known_regions,
+        ),
+    ] = False,
+    regions_to_check: Annotated[
+        list[str] | None,
+        Option(
+            "--check",
+            "-c",
+            help="check named flash region",
+            metavar="REGIONS_TO_CHECK",
+            show_default="me",
+        ),
+    ] = None,
+    regions_to_dump: Annotated[
+        list[str] | None,
+        Option(
+            "--dump",
+            "-d",
+            help="dump named flash region",
+            metavar="REGIONS_TO_DUMP",
+        ),
+    ] = None,
+):
+    """Checks for existence & sane content of ME region in flash image"""
+    if regions_to_dump:
+        utils.dump_flash_image_regions(rom, verbosity, regions_to_dump)
+    if regions_to_check is None:
+        regions_to_check = ["me"]
+    if (
+        utils.check_flash_image_regions(
+            rom, dry_mecheck, verbosity, regions_to_check
         )
-
-    return already_checked_out
-
-
-def check_in_asset(snipeit_api, asset_id):
-    """
-    Checks in an asset to the system by its asset ID.
-
-    This method attempts to check in the specified asset identified by `asset_id` by making an HTTP POST request.
-    If the check-in is successful, it returns a success flag and the JSON response from the API.
-    If the check-in fails, it returns a failure flag and the error message from the API.
-
-    Parameters:
-    asset_id (str): The unique identifier of the asset to be checked in.
-
-    Returns:
-    tuple:
-        bool: Indicates if the check-in operation was successful (True) or not (False).
-        dict: The JSON response from the API, either containing success information or error details.
-    """
-    success, data = snipeit_api.check_in_asset(asset_id)
-
-    if success:
-        print(f"Asset {asset_id} successfully checked in.")
-        return True
-    else:
-        print(f"Error checking in asset {asset_id}")
-        print(f"Response data: {data}")
-        return False
+        == False
+    ):
+        print(
+            "Do not flash full image, unless you are skipping empty regions, and know what you are doing!"
+        )
+        raise typer.Exit(1)
 
 
-def list_used_assets(snipeit_api, args):
-    """
-    Retrieves and displays all used assets.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    all_assets = snipeit_api.get_all_assets()
+## snipeit commands
+@snipeit_t.command("list_used")
+def list_used_assets(
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+):
+    """List all already used assets"""
+    all_assets = apis.get_or_create_snipeit().get_all_assets()
     used_assets = [
         asset for asset in all_assets if asset["assigned_to"] is not None
     ]
@@ -94,52 +286,32 @@ def list_used_assets(snipeit_api, args):
         print("No used assets found.")
         return
 
-    if args.json:
+    if dump_json:
         print(json.dumps(used_assets))
     else:
         for asset in used_assets:
             print_asset_details(asset)
 
 
-def get_my_assets(snipeit_api):
+@snipeit_t.command("list_my", help="List all my used assets")
+def list_my_assets(
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+) -> bool:
     """
-    Gets a list of assets assigned to the current user
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-
-    Returns:
-        List of assets assigned to the current user
-    """
-    all_assets = snipeit_api.get_all_assets()
-    used_assets = [
-        asset for asset in all_assets if asset["assigned_to"] is not None
-    ]
-    return [
-        asset
-        for asset in used_assets
-        if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
-    ]
-
-
-def list_my_assets(snipeit_api, args):
-    """
-    Lists all assets assigned to the current user.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters (not used in this function).
+    List all my used assets
 
     Returns:
         Boolean: False if no assets were assigned to the user, True otherwise
     """
-    my_assets = get_my_assets(snipeit_api)
+    my_assets = get_my_assets(apis.get_or_create_snipeit())
 
     if not my_assets:
         print("No used assets found.")
         return False
 
-    if args.json:
+    if dump_json:
         print(json.dumps(my_assets))
     else:
         for asset in my_assets:
@@ -147,61 +319,14 @@ def list_my_assets(snipeit_api, args):
     return True
 
 
-def check_in_my(snipeit_api, args):
-    """
-    Lists all assets assigned to the current user, checks in all of them
-    except those which are in a category listed in `categories_to_ignore`.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters
-        (not used in this function).
-
-    Returns:
-        None
-    """
-    categories_to_ignore = ["Employee Laptop"]
-    my_assets = get_my_assets(snipeit_api)
-
-    my_assets = [
-        asset
-        for asset in my_assets
-        if not set(asset["category"].values()) & set(categories_to_ignore)
-    ]
-    if not list_my_assets(snipeit_api, args):
-        return
-
-    if not args.yes:
-        print(
-            f"Are you sure you want to check in {len(my_assets)} assets? [y/N]"
-        )
-        if input() != "y":
-            print(f"Checking in {len(my_assets)} assets aborted.")
-            return
-
-    failed = []
-    for asset in my_assets:
-        if not check_in_asset(snipeit_api, asset["id"]):
-            failed = failed.append(asset)
-
-    if failed:
-        print(f"Failed to check-in {len(failed)} assets:")
-    else:
-        print(f"{len(my_assets)} assets checked in successfully.")
-
-
-def list_unused_assets(snipeit_api, args):
-    """
-    Retrieves all assets.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    all_assets = snipeit_api.get_all_assets()
+@snipeit_t.command("list_unused")
+def list_unused_assets(
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+):
+    """List all unused assets"""
+    all_assets = apis.get_or_create_snipeit().get_all_assets()
     unused_assets = [
         asset for asset in all_assets if asset["assigned_to"] is None
     ]
@@ -210,49 +335,37 @@ def list_unused_assets(snipeit_api, args):
         print("No unused assets found.")
         return
 
-    if args.json:
+    if dump_json:
         print(json.dumps(unused_assets))
     else:
         for asset in unused_assets:
             print_asset_details(asset)
 
 
-def list_all_assets(snipeit_api, args):
-    """
-    Retrieves all assets using.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    all_assets = snipeit_api.get_all_assets()
+@snipeit_t.command("list_all")
+def list_all_assets(
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+):
+    """List all assets"""
+    all_assets = apis.get_or_create_snipeit().get_all_assets()
 
     if not all_assets:
         print("No assets found.")
         return
 
-    if args.json:
+    if dump_json:
         print(json.dumps(all_assets))
     else:
         for asset in all_assets:
             print_asset_details(asset)
 
 
-def list_for_zabbix(snipeit_api, args):
-    """
-    Print asset details as JSON with specific custom fields.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    all_assets = snipeit_api.get_all_assets()
+@snipeit_t.command("list_for_zabbix")
+def list_for_zabbix():
+    """List assets in a format suitable for Zabbix integration"""
+    all_assets = apis.get_or_create_snipeit().get_all_assets()
 
     if all_assets:
         for asset in all_assets:
@@ -261,575 +374,16 @@ def list_for_zabbix(snipeit_api, args):
         print("No assets found.")
 
 
-def print_asset_details(asset):
-    """
-    Prints details of a given asset, including its basic information, assigned user (if any),
-    and custom fields.
-
-    Args:
-        asset (dict): Dictionary containing asset details.
-
-    Returns:
-        None
-    """
-
-    print(
-        f'Asset Tag: {asset["asset_tag"]}, Asset ID: {asset["id"]},'
-        f'Name: {asset["name"]}, Serial: {asset["serial"]}'
-    )
-
-    if asset["assigned_to"]:
-        print(f'Assigned to: {asset["assigned_to"]["name"]}')
-
-    custom_fields = asset.get("custom_fields", {})
-    if custom_fields:
-        for field_name, field_data in custom_fields.items():
-            field_value = field_data.get("value")
-            print(f"{field_name}: {field_value}")
-
-    print()
-
-
-def get_zabbix_compatible_assets_from_asset(asset):
-    """
-    Extracts an asset to zabbix assets.
-
-    Args:
-        asset (dict): Dictionary containing asset details.
-
-    Returns:
-        The dictionary with asset tags as keys and asset data as value.
-    """
-    result = {}
-    custom_fields = asset.get("custom_fields", {})
-    if custom_fields:
-        for field_name, field_data in custom_fields.items():
-            if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
-                field_value = field_data.get("value")
-                if field_value:
-                    key = f'{asset["asset_tag"]}_{field_name}'.replace(
-                        " ", "_"
-                    )
-                    result[key] = field_value
-    return result
-
-
-def print_asset_details_for_zabbix(asset):
-    """
-    Print asset details formatted as an input for Zabbix import script.
-
-    Args:
-        asset (dict): Dictionary containing asset details.
-
-    Returns:
-        None.
-    """
-    assets = get_zabbix_compatible_assets_from_asset(asset)
-    for key in assets.keys():
-        print(f"{key}: {assets[key]}")
-
-
-def relay_toggle(rte, args):
-    """
-    Toggle the state of a relay controlled by the rte object.
-
-    Args:
-        rte: An object responsible for controlling the relay.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    state_str = rte.relay_get()
-    if state_str == RTE.PSU_STATE_OFF:
-        new_state_str = RTE.PSU_STATE_ON
-    else:
-        new_state_str = RTE.PSU_STATE_OFF
-    rte.relay_set(new_state_str)
-    state = rte.relay_get()
-    print(f"Relay state toggled. New state: {state}")
-
-
-def relay_set(rte, args):
-    """
-    Sets the relay state based on the provided args.state value.
-
-    Args:
-        rte: An object responsible for controlling the relay.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    rte.relay_set(args.state)
-    state = rte.relay_get()
-    print(f"Relay state set to {state}")
-
-
-def relay_get(rte, args):
-    """
-    Get the state of the relay and print it.
-
-    Args:
-        rte (object): The object representing the relay control interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    state = rte.relay_get()
-    print(f"Relay state: {state}")
-
-
-def power_on(rte, args):
-    """
-    Power on the DUT if the power supply is enabled.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    state = rte.psu_get()
-    if state != rte.PSU_STATE_ON:
-        print(f"Power supply state: {state} !")
-        print(
-            "If you wanted to power on the DUT, you need to enable power suppl"
-            'y first ("pwr psu on"), pushing the power button is not enough!'
-        )
-    print(f"Powering on...")
-    rte.power_on(args.time)
-
-
-def power_off(rte, args):
-    """
-    Power off the DUT.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Powering off...")
-    rte.power_off(args.time)
-
-
-def power_on_ex(rte, args):
-    power_on(rte, args)
-    for attempt in range(20):
-        if check_pwr_led(rte, args) == "high":
-            print("Power on successful.")
-            return True
-        sleep(0.25)
-    print("Power on failed.")
-    return False
-
-
-def power_off_ex(rte, args):
-    power_off(rte, args)
-    for attempt in range(20):
-        if check_pwr_led(rte, args) == "low":
-            print("Power off successful.")
-            return True
-        sleep(0.25)
-    print("Power off failed.")
-    return False
-
-
-def reset(rte, args):
-    """
-    Reset the DUT by pressing the reset button.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Pressing reset button...")
-    rte.reset(args.time)
-
-
-def psu_on(rte, args):
-    """
-    Enable the power supply to the DUT.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Enabling power supply...")
-    rte.psu_on()
-
-
-def psu_off(rte, args):
-    """
-    Disable the power supply to the DUT.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Disabling power supply...")
-    rte.psu_off()
-
-
-def psu_get(rte, args):
-    """
-    Retrieve and print the current power supply state.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    state = rte.psu_get()
-    print(f"Power supply state: {state}")
-
-
-def gpio_get(rte, args):
-    """
-    Retrieve and print the state of a specified GPIO pin.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    state = rte.gpio_get(args.gpio_no)
-    print(f"GPIO {args.gpio_no} state: {state}")
-
-
-def check_pwr_led(rte, args):
-    state = rte.gpio_get(RTE.GPIO_PWR_LED)
-    polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
-    if polarity and polarity == "active low":
-        if state == "high":
-            state = "low"
-        else:
-            state = "high"
-
-    print(f"Power LED state: {'ON' if state == 'high' else 'OFF'}")
-    return state
-
-
-def gpio_set(rte, args):
-    """
-    Set the state of a specified GPIO pin and print the new state.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    rte.gpio_set(args.gpio_no, args.state)
-    state = rte.gpio_get(args.gpio_no)
-    print(f"GPIO {args.gpio_no} state set to {state}")
-
-
-def gpio_list(rte, args):
-    """
-    Retrieve and print the list of available GPIO pins.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    response = json.dumps(rte.gpio_list(), indent=4)
-    print(f"GPIO list")
-    print(response)
-
-
-def rte_status(rte, args):
-    """
-    Set the state of a GPIO pin and print its new state.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    rte.gpio_set(args.gpio_no, args.state)
-    state = rte.gpio_get(args.gpio_no)
-    print(f"GPIO {args.gpio_no} state set to {state}")
-
-
-def open_dut_serial(rte, args):
-    """
-    Open a Telnet session to interact with the DUT serial interface.
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    host = args.rte_ip
-    port = 13541
-
-    print(f"Opening telnet session with: {host}:{port}")
-    print(f"Press Ctrl+] to exit")
-    # Connect to the Telnet server
-    tn = pexpect.spawn(f"telnet {host} {port}")
-
-    # Enter the interactive shell
-    tn.interact()
-
-
-def spi_on(rte, args):
-    """
-    Enable SPI on the Device Under Test (DUT).
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Enabling SPI...")
-    rte.spi_enable()
-
-
-def spi_off(rte, args):
-    """
-    Disable SPI on the Device Under Test (DUT).
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Disabling SPI...")
-    rte.spi_disable()
-
-
-def flash_probe(rte, args):
-    """
-    Probe the flash memory on the Device Under Test (DUT).
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Probing flash...")
-    rte.flash_probe()
-
-
-def flash_read(rte, args):
-    """
-    Read the flash content from the Device Under Test (DUT).
-
-    Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None
-    """
-    print(f"Reading from flash...")
-    rte.flash_read(args.rom)
-    print(f"Read flash content saved to {args.rom}")
-
-
-def flash_write(rte, args):
-    """
-    Write a specified ROM file to the flash memory using the rte object.
-
-    Args:
-        rte: An object responsible for handling the flash memory operations.
-        args (object): Arguments that may contain additional parameters:
-        args.rom (str): Flash image file path & name
-        args.dry_mecheck (bool): runs ME check in dry run mode;
-                                 check status is always positive and does not
-                                 affect flash write process
-        args.verbosity (bool): increases osfv.libs.flash_image verbosity
-
-
-    Returns:
-        None.
-    """
-    if (
-        utils.check_flash_image_regions(
-            args.rom, args.dry_mecheck, args.verbosity
-        )
-        == False
-    ):
-        exit(
-            "FATAL: Image could not be loaded, or some image's regions are empty, despite being defined in the flash descriptor. "
-            "Flashing full image in this form on Intel platform will result in a bricked platform. "
-            "If you wish to continue anyway (e.g. when using AMD platform), pass the -x option to skip the check. "
-            "When using Intel platform, you probably also want to pass the -b option to flash BIOS region only, "
-            "leaving other regions in platform's flash (such as ME) intact."
-        )
-    print(f"Writing {args.rom} to flash...")
-    rc = rte.flash_write(args.rom, args.bios)
-    if rc == 0:
-        print(f"Flash written successfully")
-    else:
-        print(f"Flash write failed with code {rc}")
-
-
-def flash_erase(rte, args):
-    """
-    Erases the flash memory of the device under test (DUT) using the rte object.
-
-    Args:
-        rte: The object used to interact with the device, which includes methods for flash operations.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    print(f"Erasing DUT flash...")
-    rte.flash_erase()
-    print(f"Flash erased")
-
-
-def sonoff_on(sonoff, args):
-    """
-    Attempts to turn on the Sonoff power switch and prints the response.
-
-    Args:
-        sonoff: An object responsible for controlling the Sonoff power switch.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    print("Turning on Sonoff power switch...")
-    try:
-        response = sonoff.turn_on()
-        print(response)
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to turn on Sonoff power switch. Error: {e}")
-
-
-def sonoff_off(sonoff, args):
-    """
-    Attempts to turn off the Sonoff power switch and prints the response.
-
-    Args:
-        sonoff: An object responsible for controlling the Sonoff power switch.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    print("Turning off Sonoff power switch...")
-    try:
-        response = sonoff.turn_off()
-        print(response)
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to turn off Sonoff power switch. Error: {e}")
-
-
-def sonoff_get(sonoff, args):
-    """
-    Retrieves the current state of the Sonoff power switch and prints it.
-
-    Args:
-        sonoff: An object responsible for controlling the Sonoff power switch.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    print("Getting Sonoff power switch state...")
-    try:
-        state = sonoff.get_state()
-        print(f"Sonoff power switch state: {state}")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to get Sonoff power switch state. Error: {e}")
-
-
-def sonoff_tgl(sonoff, args):
-    """
-    Toggles the current state of the Sonoff power switch.
-
-    Args:
-        sonoff: An object responsible for controlling the Sonoff power switch.
-        args (object): Arguments that may contain additional parameters (not used in this function).
-
-    Returns:
-        None.
-    """
-    print("Toggling Sonoff power switch state...")
-    try:
-        current_state = sonoff.get_state()
-
-        if current_state == "ON":
-            response = sonoff.turn_off()
-            print("Sonoff power switch state toggled off.")
-        elif current_state == "OFF":
-            response = sonoff.turn_on()
-            print("Sonoff power switch state toggled on.")
-        else:
-            print(f"Unexpected Sonoff power switch state: {current_state}")
-    except requests.exceptions.RequestException as e:
-        print(f"Failed to toggle Sonoff power switch state. Error: {e}")
-
-
-def ask_to_proceed(message="Do you want to proceed (y/n): "):
-    """
-    Prompts the user with a yes/no question and returns the user's choice.
-
-    Args:
-        message (str, optional): The prompt message to display. Defaults to "Do you want to proceed (y/n): ".
-
-    Returns:
-        bool: True if the user enters 'y', False if the user enters 'n'.
-    """
-    print("")
-    while True:
-        choice = input(message).lower()
-        if choice in ["y", "n"]:
-            return choice == "y"
-        else:
-            print("Invalid input. Please enter 'y' or 'n'.")
-
-
-def update_zabbix_assets(snipeit_api):
+@snipeit_t.command(
+    "update_zabbix", help="Syncs Zabbix assets with SnipeIT ones"
+)
+def update_zabbix_assets():
     """
     Updates Zabbix with the latest asset data from Snipe-IT, ensuring the IP addresses
     are synchronized between Snipe-IT and Zabbix.
-
-    Args:
-        snipeit_api: The API client used to interact with the Snipe-IT API.
-
-    Returns:
-        None.
     """
     zabbix = Zabbix()
-    all_assets = snipeit_api.get_all_assets()
+    all_assets = apis.get_or_create_snipeit().get_all_assets()
 
     current_zabbix_assets = zabbix.get_all_hosts()
     # snipeit assets but converted to zabbix-form assets
@@ -942,12 +496,11 @@ def update_zabbix_assets(snipeit_api):
 
     if keys_not_present_in_snipeit.__len__() > 0:
         print(
-            "\nAssets present in Zabbix but not in SnipeIT "
-            "(these will be removed):"
+            "\nAssets present in Zabbix but not in SnipeIT (these will be removed):"
         )
         print("\n".join(keys_not_present_in_snipeit))
 
-    print("")
+    print()
     keys_for_ip_change = []
     for key in common_keys:
         if snipeit_assets[key] != current_zabbix_assets[key]:
@@ -991,636 +544,883 @@ def update_zabbix_assets(snipeit_api):
             print("Failed to add the host!")
 
 
-def list_models(args):
-    models = Models()
-    models.list_models()
+@snipeit_t.command("check_out")
+def check_out_asset(
+    asset_id: Annotated[
+        int | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
+    ] = None,
+    rte_ip: Annotated[
+        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ] = None,
+):
+    """Check out an asset by providing the Asset ID or RTE IP
 
-
-def flash_image_check(args):
+    It checks if the asset is already checked out by the user.
     """
-    Checks for existence & sane content of ME region in flash image.
+    snipeit_api = apis.get_or_create_snipeit()
+    asset_id = validate_and_return_asset_id(snipeit_api, asset_id, rte_ip)
+    _check_out_asset(snipeit_api, asset_id)
+
+
+@snipeit_t.command("check_in")
+def check_in_asset(
+    asset_id: Annotated[
+        int | None, Option("--asset_id", help="Asset ID", metavar="ASSET_ID")
+    ] = None,
+    rte_ip: Annotated[
+        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ] = None,
+):
+    """Check in an asset by providing the Asset ID or RTE IP"""
+    snipeit_api = apis.get_or_create_snipeit()
+    asset_id = validate_and_return_asset_id(snipeit_api, asset_id, rte_ip)
+    if not _check_in_asset(snipeit_api, asset_id):
+        raise typer.Exit(1)
+
+
+@snipeit_t.command("check_in_my")
+def check_in_my(
+    dump_json: Annotated[
+        bool, Option("--json", "-j", help="Dump assets as JSON")
+    ] = False,
+    yes: Annotated[
+        bool, Option("--yes", "-y", help="Skips the confirmation")
+    ] = False,
+):
+    """
+    Lists all assets assigned to the current user, checks in all of them
+    except those which are in a category listed in `categories_to_ignore`.
+    """
+    categories_to_ignore = ["Employee Laptop"]
+    snipeit_api = apis.get_or_create_snipeit()
+    my_assets = get_my_assets(snipeit_api)
+
+    my_assets = [
+        asset
+        for asset in my_assets
+        if not set(asset["category"].values()) & set(categories_to_ignore)
+    ]
+    if not list_my_assets(dump_json):
+        raise typer.Exit()
+
+    if not yes:
+        choice = typer.confirm(
+            f"Are you sure you want to check in {len(my_assets)} assets? [y/N]"
+        )
+
+        if not choice:
+            print(f"Checking in {len(my_assets)} assets aborted.")
+            raise typer.Exit()
+
+    failed = []
+    for asset in my_assets:
+        if not _check_in_asset(snipeit_api, asset["id"]):
+            failed.append(asset)
+
+    if failed:
+        print(f"Failed to check-in {len(failed)} assets: {failed}")
+    else:
+        print(f"{len(my_assets)} assets checked in successfully.")
+
+
+@snipeit_t.command("user_add")
+def user_add(
+    first_name: Annotated[
+        str,
+        Option("--first-name", help="User First Name", metavar="FIRST_NAME"),
+    ],
+    last_name: Annotated[
+        str, Option("--last-name", help="User Last Name", metavar="LAST_NAME")
+    ],
+    company_name: Annotated[
+        str,
+        Option("--company-name", help="Company Name", metavar="COMPANY_NAME"),
+    ] = "3mdeb",
+):
+    """Add a new user by providing user First Name, Last Name and Company Name"""
+    apis.get_or_create_snipeit().user_add(first_name, last_name, company_name)
+
+
+@snipeit_t.command("user_del")
+def user_del(
+    first_name: Annotated[
+        str,
+        Option("--first-name", help="User First Name", metavar="FIRST_NAME"),
+    ],
+    last_name: Annotated[
+        str, Option("--last-name", help="User Last Name", metavar="LAST_NAME")
+    ],
+):
+    """Delete new user by providing user First Name and Last Name"""
+    apis.get_or_create_snipeit().user_del(first_name, last_name)
+
+
+## rte commands
+def setup_rte_subcommand(
+    rte_ip: str, model: str | None, skip_snipeit: bool
+) -> tuple[bool, int | None]:
+    """Validate arguments, setup needed resources
+
+    Sets up snipeit, sonoff, and rte in `apis`, checks out asset if required
 
     Args:
-        args (object): Arguments that may contain additional parameters:
-        args.list (bool): List known regions and exit
-        args.rom (str): Flash image file path & name
-        args.dry_mecheck (bool): runs osfv.libs.flash_image in dry run mode;
-                                 exit status is always positive
-        args.verbosity (bool): increases osfv.libs.flash_image verbosity
-        args.regions_to_check [str]: list of regions to check
-        args.regions_to_dump [str]: list of regions to dump to separate files
+        rte_ip (str): RTE IP Address
+        model (str | None): Model name, used if skipping snipeit
+        skip_snipeit (bool): Whether to skip snipeit requests
+
+    Raises:
+        typer.Exit: When setup/checkout fails
+
+    Returns:
+        tuple[bool, str]: (asset was checked_out?, asset_id)
+    """
+    snipeit_api: SnipeIT | None = None
+    asset_id: int | None = None
+    dut_model_name: str | None = None
+    if not skip_snipeit:
+        snipeit_api = apis.get_or_create_snipeit()
+        asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
+        if asset_id is None:
+            print(f"No asset found with RTE IP: {rte_ip}")
+            raise typer.Exit(1)
+    if model:
+        print("DUT model retrieved from cmdline, skipping Snipe-IT query")
+        dut_model_name = model
+    else:
+        if not skip_snipeit:
+            status, dut_model_name = apis.snipeit_api.get_asset_model_name(
+                asset_id
+            )
+            if status:
+                print(f"DUT model retrieved from snipeit: {dut_model_name}")
+            else:
+                print(
+                    "failed to retrieve model name from snipe-it. check "
+                    "again arguments, or try providing model manually."
+                )
+                raise typer.Exit(1)
+        else:
+            print("`--model MODEL` is required when skipping snipeit.")
+            raise typer.Exit(1)
+    # TODO: Add sonoff ip argument
+    apis._sonoff_api, _ = utils.init_sonoff(None, rte_ip, snipeit_api)
+    apis._rte_api = RTE(rte_ip, dut_model_name, apis._sonoff_api)
+
+    if not skip_snipeit:
+        assert isinstance(asset_id, int)
+        print(
+            "Using rte command is invasive action, checking first if the "
+            "device is not used..."
+        )
+        already_checked_out = _check_out_asset(
+            apis.snipeit_api, cast(int, asset_id)
+        )
+        return not already_checked_out, asset_id
+    return False, None
+
+
+@rte_t.callback()
+def rte_options(
+    ctx: Context,
+    rte_ip: Annotated[
+        str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ],
+    model: Annotated[
+        str | None,
+        Option(
+            "--model",
+            help="DUT model. If not given, will attempt to query from Snipe-IT.",
+            metavar="MODEL",
+        ),
+    ] = None,
+    skip_snipeit: Annotated[
+        bool,
+        Option(
+            "--skip-snipeit",
+            help="Skips Snipe-IT related actions like checkout and check-in. Useful for OSFV homelab.",
+        ),
+    ] = False,
+):
+    ctx.obj = Hooks(
+        setup=partial(setup_rte_subcommand, rte_ip, model, skip_snipeit),
+        cleanup=check_in_cleanup,
+    )
+
+
+@rte_t.command("serial")
+@with_setup
+def open_dut_serial(ctx: Context):
+    """Open DUT serial via telnet
+
+    Open a Telnet session to interact with the DUT serial interface.
+    """
+    host = apis.rte_api.rte_ip
+    port = 13541
+
+    print(f"Opening telnet session with: {host}:{port}")
+    print("Press Ctrl+] to exit")
+    # Connect to the Telnet server
+    tn = pexpect.spawn(f"telnet {host} {port}")
+
+    # Enter the interactive shell
+    tn.interact()
+
+
+## rte rel commands
+@rte_rel.command("tgl")
+@with_setup
+def relay_toggle(ctx: Context):
+    """Toggle relay state"""
+    rte = apis.rte_api
+    state_str = rte.relay_get()
+    if state_str == RTE.PSU_STATE_OFF:
+        new_state_str = RTE.PSU_STATE_ON
+    else:
+        new_state_str = RTE.PSU_STATE_OFF
+    rte.relay_set(new_state_str)
+    state = rte.relay_get()
+    print(f"Relay state toggled. New state: {state}")
+
+
+@rte_rel.command("get")
+@with_setup
+def relay_get(ctx: Context):
+    """Get relay state"""
+    state = apis.rte_api.relay_get()
+    print(f"Relay state: {state}")
+
+
+@rte_rel.command("set")
+@with_setup
+def relay_set(
+    ctx: Context,
+    state: Annotated[Literal["on", "off"], Argument(help="Relay state")],
+):
+    """Set relay state"""
+    rte = apis.rte_api
+    rte.relay_set(state)
+    current_state = rte.relay_get()
+    print(f"Relay state set to {current_state}")
+
+
+## rte gpio commands
+@rte_gpio.command("get")
+@with_setup
+def gpio_get(
+    ctx: Context, gpio_no: Annotated[int, Argument(help="GPIO number")]
+):
+    """Get GPIO state"""
+    state = apis.rte_api.gpio_get(gpio_no)
+    print(f"GPIO {gpio_no} state: {state}")
+
+
+@rte_gpio.command("set")
+@with_setup
+def gpio_set(
+    ctx: Context,
+    gpio_no: Annotated[int, Argument(help="GPIO number")],
+    state: Annotated[
+        Literal["high", "low", "high-z"], Argument(help="GPIO state")
+    ],
+):
+    """Set GPIO state"""
+    rte = apis.rte_api
+    rte.gpio_set(gpio_no, state)
+    state = rte.gpio_get(gpio_no)
+    print(f"GPIO {gpio_no} state set to {state}")
+
+
+@rte_gpio.command("list")
+@with_setup
+def gpio_list(ctx: Context):
+    """List GPIO states"""
+    response = json.dumps(apis.rte_api.gpio_list(), indent=4)
+    print("GPIO list")
+    print(response)
+
+
+## rte pwr commands
+@rte_pwr.command("on")
+@with_setup
+def power_on(
+    ctx: Context,
+    time: Annotated[
+        int,
+        Option(
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
+        ),
+    ] = 1,
+):
+    """Short power button press, to power on DUT"""
+    rte = apis.rte_api
+    state = rte.psu_get()
+    if state != rte.PSU_STATE_ON:
+        print(f"Power supply state: {state} !")
+        print(
+            "If you wanted to power on the DUT, you need to enable power suppl"
+            'y first ("pwr psu on"), pushing the power button is not enough!'
+        )
+    print("Powering on...")
+    rte.power_on(time)
+
+
+@rte_pwr.command("on_ex")
+@with_setup
+def power_on_ex(
+    ctx: Context,
+    time: Annotated[
+        int,
+        Option(
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
+        ),
+    ] = 1,
+):
+    """Short power button press, to power on DUT, and verify if power LED did turn on"""
+    power_on(ctx, time)
+    for _ in range(20):
+        if check_pwr_led(ctx) == "high":
+            print("Power on successful.")
+            return True
+        sleep(0.25)
+    print("Power on failed.")
+    return False
+
+
+@rte_pwr.command("off")
+@with_setup
+def power_off(
+    ctx: Context,
+    time: Annotated[
+        int,
+        Option(
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
+        ),
+    ] = 6,
+):
+    """Long power button press, to power off DUT"""
+    print("Powering off...")
+    apis.rte_api.power_off(time)
+
+
+@rte_pwr.command("off_ex")
+@with_setup
+def power_off_ex(
+    ctx: Context,
+    time: Annotated[
+        int,
+        Option(
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
+        ),
+    ] = 6,
+):
+    """Long power button press, to power off DUT, and verify if power LED did turn off"""
+    power_off(ctx, time)
+    for _ in range(20):
+        if check_pwr_led(ctx) == "low":
+            print("Power off successful.")
+            raise typer.Exit()
+        sleep(0.25)
+    print("Power off failed.")
+    raise typer.Exit(1)
+
+
+@rte_pwr.command()
+@with_setup
+def reset(
+    ctx: Context,
+    time: Annotated[
+        int,
+        Option(
+            "--time",
+            help="Power button press time in seconds",
+            metavar="TIME",
+            min=1,
+        ),
+    ] = 1,
+):
+    """Reset button press, to reset DUT"""
+    print("Pressing reset button...")
+    apis.rte_api.reset(time)
+
+
+@rte_pwr.command("pwr_led")
+@with_setup
+def check_pwr_led(ctx: Context):
+    """Check the state of the DUT power LED"""
+    rte = apis.rte_api
+    state = rte.gpio_get(RTE.GPIO_PWR_LED)
+    polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
+    if polarity and polarity == "active low":
+        if state == "high":
+            state = "low"
+        else:
+            state = "high"
+
+    print(f"Power LED state: {'ON' if state == 'high' else 'OFF'}")
+    return state
+
+
+@rte_pwr.command("reset_cmos")
+@with_setup
+def reset_cmos(ctx: Context):
+    """Reset the DUT CMOS"""
+    print("Clearing CMOS...")
+    apis.rte_api.reset_cmos()
+
+
+## rte pwr psu commands
+@rte_pwr_psu.command("on")
+@with_setup
+def psu_on(ctx: Context):
+    """Turn the power supply on"""
+    print("Enabling power supply...")
+    apis.rte_api.psu_on()
+
+
+@rte_pwr_psu.command("off")
+@with_setup
+def psu_off(ctx: Context):
+    """Turn the power supply off"""
+    print("Disabling power supply...")
+    apis.rte_api.psu_off()
+
+
+@rte_pwr_psu.command("get")
+@with_setup
+def psu_get(ctx: Context):
+    """Display information on DUT's power state"""
+    state = apis.rte_api.psu_get()
+    print(f"Power supply state: {state}")
+
+
+## rte spi commands
+@rte_spi.command("on")
+@with_setup
+def spi_on(ctx: Context):
+    """Enable SPI lines"""
+    print("Enabling SPI...")
+    apis.rte_api.spi_enable()
+
+
+@rte_spi.command("off")
+@with_setup
+def spi_off(ctx: Context):
+    """Disable SPI lines"""
+    print("Disabling SPI...")
+    apis.rte_api.spi_disable()
+
+
+## rte flash commands
+@rte_flash.command("probe")
+@with_setup
+def flash_probe(ctx: Context):
+    """Flash probe with flashrom"""
+    print("Probing flash...")
+    apis.rte_api.flash_probe()
+
+
+@rte_flash.command("read")
+@with_setup
+def flash_read(
+    ctx: Context,
+    rom: Annotated[
+        Path,
+        Option(
+            "--rom",
+            help="Path to read firmware file",
+            metavar="ROM",
+            dir_okay=False,
+            writable=True,
+        ),
+    ] = Path("read.rom"),
+):
+    """Read from DUT flash with flashrom"""
+    print("Reading from flash...")
+    apis.rte_api.flash_read(rom)
+    print(f"Read flash content saved to {rom}")
+
+
+@rte_flash.command("write")
+@with_setup
+def flash_write(
+    ctx: Context,
+    rom: Annotated[
+        Path,
+        Option(
+            "--rom",
+            help="Path to read firmware file",
+            metavar="ROM",
+            exists=True,
+            dir_okay=False,
+        ),
+    ] = Path("write.rom"),
+    bios: Annotated[
+        bool,
+        Option(
+            "--bios", "-b", help='Adds "-i bios --ifd" to flashrom command'
+        ),
+    ] = False,
+    dry_mecheck: Annotated[
+        bool,
+        Option(
+            "--dry-mecheck",
+            "-x",
+            help="Failed flash region checks won't change exit status",
+        ),
+    ] = False,
+    verbosity: Annotated[
+        bool,
+        Option(
+            "--verbosity",
+            "-V",
+            help="Increase osfv.libs.flash_image verbosity",
+        ),
+    ] = False,
+):
+    """Write to DUT flash with flashrom"""
+    if utils.check_flash_image_regions(rom, dry_mecheck, verbosity) == False:
+        print(
+            "FATAL: Image could not be loaded, or some image's regions are empty, despite being defined in the flash descriptor. "
+            "Flashing full image in this form on Intel platform will result in a bricked platform. "
+            "If you wish to continue anyway (e.g. when using AMD platform), pass the -x option to skip the check. "
+            "When using Intel platform, you probably also want to pass the -b option to flash BIOS region only, "
+            "leaving other regions in platform's flash (such as ME) intact."
+        )
+        raise typer.Exit(1)
+    print(f"Writing {rom} to flash...")
+    rc = apis.rte_api.flash_write(rom, bios)
+    if rc == 0:
+        print("Flash written successfully")
+    else:
+        print(f"Flash write failed with code {rc}")
+
+
+@rte_flash.command("erase")
+@with_setup
+def flash_erase(ctx):
+    """Erase DUT flash with flashrom"""
+    print("Erasing DUT flash...")
+    apis.rte_api.flash_erase()
+    print("Flash erased")
+
+
+## sonoff commands
+
+
+def sonoff_setup(
+    sonoff_ip: str | None, rte_ip: str | None
+) -> tuple[bool, int]:
+    if not sonoff_ip:
+        if not rte_ip:
+            print("Either sonoff_ip or rte_ip is required")
+            raise typer.Exit(1)
+        sonoff_ip = apis.get_or_create_snipeit().get_sonoff_ip_by_rte_ip(
+            rte_ip
+        )
+        if not sonoff_ip:
+            print(f"No Sonoff Device found with RTE IP: {rte_ip}")
+            raise typer.Exit(1)
+
+    asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(
+        sonoff_ip
+    )
+    if asset_id is None:
+        print(f"No asset found with Sonoff IP: {sonoff_ip}")
+        raise typer.Exit(1)
+
+    print(
+        "Using rte command is invasive action, checking first if the "
+        "device is not used..."
+    )
+    already_checked_out = _check_out_asset(apis.snipeit_api, asset_id)
+    apis._sonoff_api = SonoffDevice(sonoff_ip)
+    return not already_checked_out, asset_id
+
+
+@sonoff_t.callback()
+def sonoff_options(
+    ctx: Context,
+    sonoff_ip: Annotated[
+        str | None,
+        Option("--sonoff_ip", help="Sonoff IP address", metavar="SONOFF_IP"),
+    ] = None,
+    rte_ip: Annotated[
+        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ] = None,
+):
+    ctx.obj = Hooks(
+        setup=partial(sonoff_setup, sonoff_ip, rte_ip),
+        cleanup=check_in_cleanup,
+    )
+
+
+@sonoff_t.command("on")
+@with_setup
+def sonoff_on(ctx: Context):
+    """Turn Sonoff ON"""
+    print("Turning on Sonoff power switch...")
+    try:
+        response = apis.sonoff_api.turn_on()
+        print(response)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to turn on Sonoff power switch. Error: {e}")
+
+
+@sonoff_t.command("off")
+@with_setup
+def sonoff_off(ctx: Context):
+    """Turn Sonoff OFF"""
+    print("Turning off Sonoff power switch...")
+    try:
+        response = apis.sonoff_api.turn_off()
+        print(response)
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to turn off Sonoff power switch. Error: {e}")
+
+
+@sonoff_t.command("tgl")
+@with_setup
+def sonoff_tgl(ctx: Context):
+    """Toggle Sonoff state"""
+    print("Toggling Sonoff power switch state...")
+    try:
+        sonoff_api = apis.sonoff_api
+        current_state = sonoff_api.get_state()
+
+        if current_state == "ON":
+            _response = sonoff_api.turn_off()
+            print("Sonoff power switch state toggled off.")
+        elif current_state == "OFF":
+            _response = sonoff_api.turn_on()
+            print("Sonoff power switch state toggled on.")
+        else:
+            print(f"Unexpected Sonoff power switch state: {current_state}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to toggle Sonoff power switch state. Error: {e}")
+
+
+@sonoff_t.command("get")
+@with_setup
+def sonoff_get(ctx: Context):
+    """Get Sonoff state"""
+    print("Getting Sonoff power switch state...")
+    try:
+        state = apis.sonoff_api.get_state()
+        print(f"Sonoff power switch state: {state}")
+    except requests.exceptions.RequestException as e:
+        print(f"Failed to get Sonoff power switch state. Error: {e}")
+
+
+def validate_and_return_asset_id(
+    snipeit_api: SnipeIT, asset_id: int | None, rte_ip: str | None
+) -> int:
+    """Check which argument is set and return asset_id based on it
+
+    If both arguments are the same (None or str) then raise typer.Exit, else
+    return asset_id or try to turn rte_ip to assed_id and return it.
+    Raise typer.Exit if cannot turn rte_ip to asset_id.
+
+    Args:
+        snipeit_api (SnipeIT): SnipeIT instance
+        asset_id (str | None): Asset ID
+        rte_id (str | None): RTE IP address
+
+    Returns:
+        str: Found asset_id or None
+    """
+    if isinstance(asset_id, int) and isinstance(rte_ip, str):
+        print("Only asset_id or rte_ip is allowed, not both")
+        raise typer.Exit(1)
+    if asset_id is None and rte_ip is None:
+        print("Either asset_id or rte_ip is required")
+        raise typer.Exit(1)
+
+    if rte_ip is not None:
+        asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
+        if asset_id is None:
+            print(f"No asset found with RTE IP: {rte_ip}")
+            raise typer.Exit(1)
+    assert asset_id is not None
+    return asset_id
+
+
+def _check_out_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
+    """Check out an asset by providing the Asset ID
+
+    It checks if the asset is already checked out by the user.
+
+    Args:
+        snipeit_api (SnipeIT): SnipeIT instance
+        asset_id (str): Asset ID to check-out
+
+    Raises:
+        typer.Exit: If check-out failed
+
+    Returns:
+        bool: True if asset was already checked-out
+    """
+    success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
+
+    if already_checked_out:
+        print(f"Asset {asset_id} is already checked out by you")
+        return already_checked_out
+
+    if success:
+        print(f"Asset {asset_id} successfully checked out.")
+    else:
+        print(f"Error checking out asset {asset_id}")
+        print(f"Response data: {data}")
+        print(
+            "Exiting to avoid conflict. Check who is working on this device"
+            " and contact them first."
+        )
+        raise typer.Exit(1)
+
+    return already_checked_out
+
+
+def _check_in_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
+    """Check in an asset by providing the Asset ID
+
+    This method attempts to check in the specified asset identified by `asset_id` by making an HTTP POST request.
+    If the check-in is successful, it returns True.
+    If the check-in fails, it returns False and prints the error message from the API.
+    Args:
+        snipeit_api (SnipeIT): SnipeIT instance
+        asset_id (str): Asset ID to check-in
+
+    Returns:
+        bool: Whether check-in succeeded
+    """
+    success, data = snipeit_api.check_in_asset(asset_id)
+
+    if success:
+        print(f"Asset {asset_id} successfully checked in.")
+        return True
+    else:
+        print(f"Error checking in asset {asset_id}")
+        print(f"Response data: {data}")
+        return False
+
+
+def get_my_assets(snipeit_api: SnipeIT):
+    """
+    Gets a list of assets assigned to the current user
+
+    Args:
+        snipeit_api: The API client used to interact with the Snipe-IT API.
+
+    Returns:
+        List of assets assigned to the current user
+    """
+    all_assets = snipeit_api.get_all_assets()
+    used_assets = [
+        asset for asset in all_assets if asset["assigned_to"] is not None
+    ]
+    return [
+        asset
+        for asset in used_assets
+        if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
+    ]
+
+
+def print_asset_details(asset):
+    """
+    Prints details of a given asset, including its basic information, assigned user (if any),
+    and custom fields.
+
+    Args:
+        asset (dict): Dictionary containing asset details.
+
+    Returns:
+        None
+    """
+
+    print(
+        f"Asset Tag: {asset['asset_tag']}, Asset ID: {asset['id']},"
+        f"Name: {asset['name']}, Serial: {asset['serial']}"
+    )
+
+    if asset["assigned_to"]:
+        print(f"Assigned to: {asset['assigned_to']['name']}")
+
+    custom_fields = asset.get("custom_fields", {})
+    if custom_fields:
+        for field_name, field_data in custom_fields.items():
+            field_value = field_data.get("value")
+            print(f"{field_name}: {field_value}")
+
+    print()
+
+
+def get_zabbix_compatible_assets_from_asset(asset):
+    """
+    Extracts an asset to zabbix assets.
+
+    Args:
+        asset (dict): Dictionary containing asset details.
+
+    Returns:
+        The dictionary with asset tags as keys and asset data as value.
+    """
+    result = {}
+    custom_fields = asset.get("custom_fields", {})
+    if custom_fields:
+        for field_name, field_data in custom_fields.items():
+            if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
+                field_value = field_data.get("value")
+                if field_value:
+                    key = f"{asset['asset_tag']}_{field_name}".replace(
+                        " ", "_"
+                    )
+                    result[key] = field_value
+    return result
+
+
+def print_asset_details_for_zabbix(asset):
+    """
+    Print asset details formatted as an input for Zabbix import script.
+
+    Args:
+        asset (dict): Dictionary containing asset details.
 
     Returns:
         None.
     """
-
-    regions_to_check = ["me"]
-
-    if args.list:
-        print("Known flash regions:")
-        for reg_name in utils.get_list_of_known_image_regions():
-            print(reg_name)
-        exit()
-    if args.regions_to_check:
-        regions_to_check = args.regions_to_check
-    if args.regions_to_dump:
-        utils.dump_flash_image_regions(
-            args.rom, args.verbosity, args.regions_to_dump
-        )
-    if (
-        utils.check_flash_image_regions(
-            args.rom, args.dry_mecheck, args.verbosity, regions_to_check
-        )
-        == False
-    ):
-        exit(
-            "Do not flash full image, unless you are skipping empty regions, and know what you are doing!"
-        )
+    assets = get_zabbix_compatible_assets_from_asset(asset)
+    for key in assets:
+        print(f"{key}: {assets[key]}")
 
 
-def reset_cmos(rte, args):
+def ask_to_proceed(message="Do you want to proceed (y/n): "):
     """
-    Resets the CMOS of the Device Under Test (DUT).
+    Prompts the user with a yes/no question and returns the user's choice.
+
     Args:
-        rte (object): The object representing the relay control and power supply interface.
-        args (object): Arguments that may contain additional parameters (not used in this function).
+        message (str, optional): The prompt message to display. Defaults to "Do you want to proceed (y/n): ".
+
     Returns:
-        None
+        bool: True if the user enters 'y', False if the user enters 'n'.
     """
-    print(f"Clearing CMOS...")
-    rte.reset_cmos()
-
-
-# Main function
-def main():
-    parser = argparse.ArgumentParser(
-        description="Open Source Firmware Validation CLI"
-    )
-    parser.add_argument(
-        "-v", "--version", action="version", version=metadata.version("osfv")
-    )
-
-    parser.add_argument(
-        "-j",
-        "--json",
-        action="store_true",
-        help="Output as JSON (if applicable)",
-    )
-
-    subparsers = parser.add_subparsers(
-        title="commands", dest="command", help="Command to execute"
-    )
-
-    snipeit_parser = subparsers.add_parser("snipeit", help="Snipe-IT commands")
-
-    rte_parser = subparsers.add_parser("rte", help="RTE commands")
-    sonoff_parser = subparsers.add_parser("sonoff", help="Sonoff commands")
-    list_models_parser = subparsers.add_parser(
-        "list_models", help="List of supported models"
-    )
-
-    # Sonoff subcommands
-    sonoff_group = sonoff_parser.add_mutually_exclusive_group(required=True)
-    sonoff_group.add_argument(
-        "--sonoff_ip", type=str, help="Sonoff IP address"
-    )
-    sonoff_group.add_argument("--rte_ip", type=str, help="RTE IP address")
-    sonoff_subparsers = sonoff_parser.add_subparsers(
-        title="subcommands", dest="sonoff_cmd", help="Sonoff subcommands"
-    )
-
-    sonoff_subparsers.add_parser("on", help="Turn Sonoff ON")
-    sonoff_subparsers.add_parser("off", help="Turn Sonoff OFF")
-    sonoff_subparsers.add_parser("tgl", help="Toggle Sonoff state")
-    sonoff_subparsers.add_parser("get", help="Get Sonoff state")
-
-    # Snipe-IT subcommands
-    snipeit_subparsers = snipeit_parser.add_subparsers(
-        title="subcommands", dest="snipeit_cmd", help="Snipe-IT subcommands"
-    )
-
-    list_used_parser = snipeit_subparsers.add_parser(
-        "list_used", help="List all already used assets"
-    )
-
-    list_my_parser = snipeit_subparsers.add_parser(
-        "list_my", help="List all my used assets"
-    )
-
-    list_unused_parser = snipeit_subparsers.add_parser(
-        "list_unused", help="List all unused assets"
-    )
-
-    list_all_parser = snipeit_subparsers.add_parser(
-        "list_all", help="List all assets"
-    )
-
-    list_zabbix_parser = snipeit_subparsers.add_parser(
-        "list_for_zabbix",
-        help="List assets in a format suitable for Zabbix integration",
-    )
-
-    update_zabbix_assets_parser = snipeit_subparsers.add_parser(
-        "update_zabbix",
-        help="Syncs Zabbix assets with SnipeIT ones",
-    )
-
-    check_out_parser = snipeit_subparsers.add_parser(
-        "check_out",
-        help="Check out an asset by providing the Asset ID or RTE IP",
-    )
-    check_out_group = check_out_parser.add_mutually_exclusive_group(
-        required=True
-    )
-    check_out_group.add_argument("--asset_id", type=int, help="Asset ID")
-    check_out_group.add_argument("--rte_ip", type=str, help="RTE IP")
-    check_out_parser = snipeit_subparsers.add_parser(
-        "user_add",
-        help="Add a new user by providing user First Name and Last Name",
-    )
-    check_out_parser.add_argument(
-        "--first-name", type=str, help="User First Name", required=True
-    )
-    check_out_parser.add_argument(
-        "--last-name", type=str, help="User Last Name", required=True
-    )
-    check_out_parser.add_argument(
-        "--company-name", type=str, default="3mdeb", help="Company Name"
-    )
-    check_out_parser = snipeit_subparsers.add_parser(
-        "user_del",
-        help="Delete new user by providing user First Name and Last Name",
-    )
-    check_out_parser.add_argument(
-        "--first-name", type=str, help="User First Name", required=True
-    )
-    check_out_parser.add_argument(
-        "--last-name", type=str, help="User Last Name", required=True
-    )
-
-    check_in_parser = snipeit_subparsers.add_parser(
-        "check_in",
-        help="Check in an asset by providing the Asset ID or RTE IP",
-    )
-    check_in_group = check_in_parser.add_mutually_exclusive_group(
-        required=True
-    )
-    check_in_group.add_argument("--asset_id", type=int, help="Asset ID")
-    check_in_group.add_argument("--rte_ip", type=str, help="RTE IP address")
-
-    check_in_my_parser = snipeit_subparsers.add_parser(
-        "check_in_my", help="Check in all my used assets, except work laptops"
-    )
-    check_in_my_parser.add_argument(
-        "-y", "--yes", action="store_true", help="Skips the confirmation"
-    )
-
-    # RTE subcommands
-    rte_parser.add_argument(
-        "--rte_ip", type=str, help="RTE IP address", required=True
-    )
-    rte_parser.add_argument(
-        "--model",
-        type=str,
-        help="DUT model. If not given, will attempt to query from Snipe-IT.",
-        required=False,
-    )
-    rte_parser.add_argument(
-        "--skip-snipeit",
-        action="store_true",
-        help=(
-            f"Skips Snipe-IT related actions like checkout and check-in. "
-            f"Useful for OSFV homelab."
-        ),
-    )
-    rte_subparsers = rte_parser.add_subparsers(
-        title="subcommands", dest="rte_cmd", help="RTE subcommands"
-    )
-    rel_parser = rte_subparsers.add_parser("rel", help="Control RTE relay")
-    gpio_parser = rte_subparsers.add_parser("gpio", help="Control RTE GPIO")
-    pwr_parser = rte_subparsers.add_parser(
-        "pwr", help="Control DUT power via RTE"
-    )
-    spi_parser = rte_subparsers.add_parser(
-        "spi", help="Control SPI lines of RTE"
-    )
-    serial_parser = rte_subparsers.add_parser(
-        "serial", help="Open DUT serial via telnet"
-    )
-    flash_parser = rte_subparsers.add_parser(
-        "flash", help="DUT flash operations"
-    )
-
-    # Power subcommands
-    pwr_subparsers = pwr_parser.add_subparsers(
-        title="subcommands", dest="pwr_cmd"
-    )
-    power_on_parser = pwr_subparsers.add_parser(
-        "on", help="Short power button press, to power on DUT"
-    )
-    power_on_parser.add_argument(
-        "--time",
-        type=int,
-        default=1,
-        help="Power button press time in seconds (default: 1)",
-    )
-    power_on_ex_parser = pwr_subparsers.add_parser(
-        "on_ex", help="Short power button press, to power on DUT"
-    )
-    power_on_ex_parser.add_argument(
-        "--time",
-        type=int,
-        default=1,
-        help="Power button press time in seconds (default: 1) AND verify if power LED did light up",
-    )
-
-    power_off_parser = pwr_subparsers.add_parser(
-        "off_ex", help="Long power button press, to power off DUT"
-    )
-    power_off_parser.add_argument(
-        "--time",
-        type=int,
-        default=6,
-        help="Power button press time in seconds (default: 6)",
-    )
-    power_off_ex_parser = pwr_subparsers.add_parser(
-        "off",
-        help="Long power button press, to power off DUT and verify if power LED did turn off",
-    )
-    power_off_ex_parser.add_argument(
-        "--time",
-        type=int,
-        default=6,
-        help="Power button press time in seconds (default: 6)",
-    )
-
-    reset_parser = pwr_subparsers.add_parser(
-        "reset", help="Reset button press, to reset DUT"
-    )
-    reset_parser.add_argument(
-        "--time",
-        type=int,
-        default=1,
-        help="Reset button press time in seconds (default: 1)",
-    )
-    psu_parser = pwr_subparsers.add_parser(
-        "psu", help="Generic control interface of the power supply"
-    )
-    psu_subparsers = psu_parser.add_subparsers(
-        title="Power supply commands", dest="psu_cmd"
-    )
-    psu_subparsers.add_parser("on", help="Turn the power supply on")
-    psu_subparsers.add_parser("off", help="Turn the power supply off")
-    psu_subparsers.add_parser(
-        "get", help="Display information on DUT's power state"
-    )
-    check_pwr_led_parser = pwr_subparsers.add_parser(
-        "pwr_led", help="Check the state of the DUT power LED"
-    )
-
-    cmos_reset_subparser = pwr_subparsers.add_parser(
-        "reset_cmos", help="Reset the DUT CMOS"
-    )
-
-    # GPIO subcommands
-    gpio_subparsers = gpio_parser.add_subparsers(
-        title="subcommands", dest="gpio_cmd"
-    )
-    get_gpio_parser = gpio_subparsers.add_parser("get", help="Get GPIO state")
-    get_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
-    set_gpio_parser = gpio_subparsers.add_parser("set", help="Set GPIO state")
-    set_gpio_parser.add_argument("gpio_no", type=int, help="GPIO number")
-    set_gpio_parser.add_argument(
-        "state", choices=["high", "low", "high-z"], help="GPIO state"
-    )
-    set_gpio_parser = gpio_subparsers.add_parser(
-        "list", help="List GPIO states"
-    )
-
-    # Relay subcommands
-    rel_subparsers = rel_parser.add_subparsers(
-        title="subcommands", dest="rel_cmd"
-    )
-    tgl_rel_parser = rel_subparsers.add_parser(
-        "tgl", help="Toggle relay state"
-    )
-    get_rel_parser = rel_subparsers.add_parser("get", help="Get relay state")
-    set_rel_parser = rel_subparsers.add_parser("set", help="Set relay state")
-    set_rel_parser.add_argument(
-        "state",
-        choices=[
-            "on",
-            "off",
-        ],
-        help="Relay state",
-    )
-
-    # RTE SPI subcommands
-    spi_subparsers = spi_parser.add_subparsers(
-        title="subcommands", dest="spi_cmd"
-    )
-    spi_on_parser = spi_subparsers.add_parser("on", help="Enable SPI lines")
-    spi_on_parser.add_argument(
-        "--voltage",
-        type=str,
-        default="1.8V",
-        help="SPI voltage (default: 1.8V)",
-    )
-    spi_off_parser = spi_subparsers.add_parser("off", help="Disable SPI lines")
-
-    # RTE flash subcommands
-    flash_subparsers = flash_parser.add_subparsers(
-        title="subcommands", dest="flash_cmd"
-    )
-    flash_probe_parser = flash_subparsers.add_parser(
-        "probe", help="Flash probe with flashrom"
-    )
-    flash_read_parser = flash_subparsers.add_parser(
-        "read", help="Read from DUT flash with flashrom"
-    )
-    flash_read_parser.add_argument(
-        "--rom",
-        type=str,
-        default="read.rom",
-        help="Path to read firmware file (default: read.rom)",
-    )
-    flash_write_parser = flash_subparsers.add_parser(
-        "write", help="Write to DUT flash with flashrom"
-    )
-    flash_write_parser.add_argument(
-        "--rom",
-        type=str,
-        default="write.rom",
-        help="Path to read firmware file (default: write.rom)",
-    )
-    flash_write_parser.add_argument(
-        "-b",
-        "--bios",
-        action="store_true",
-        help='Adds "-i bios --ifd" to flashrom command',
-    )
-    flash_write_parser.add_argument(
-        "-x",
-        "--dry-mecheck",
-        help="Failed flash region checks won't forbid flashing",
-        action="store_true",
-    )
-    flash_write_parser.add_argument(
-        "-V",
-        "--verbosity",
-        help="Increase osfv.libs.flash_image verbosity",
-        action="store_true",
-    )
-    flash_erase_parser = flash_subparsers.add_parser(
-        "erase", help="Erase DUT flash with flashrom"
-    )
-
-    flash_image_check_parser = subparsers.add_parser(
-        "flash_image_check",
-        help="Check flash image completeness: descriptor & ME region existence",
-    )
-    flash_image_check_parser.add_argument(
-        "--rom",
-        type=str,
-        required=True,
-        help="Path to read firmware file (default: write.rom)",
-    )
-    flash_image_check_parser.add_argument(
-        "-x",
-        "--dry-mecheck",
-        help="Failed flash region checks won't change exit status",
-        action="store_true",
-    )
-    flash_image_check_parser.add_argument(
-        "-V",
-        "--verbosity",
-        help="Increase osfv.libs.flash_image verbosity",
-        action="store_true",
-    )
-    flash_image_check_parser.add_argument(
-        "-l",
-        "--list",
-        help="list known region names and exit",
-        action="store_true",
-        dest="list",
-    )
-    flash_image_check_parser.add_argument(
-        "-c",
-        "--check",
-        help="check named flash region",
-        action="append",
-        type=str,
-        dest="regions_to_check",
-    )
-    flash_image_check_parser.add_argument(
-        "-d",
-        "--dump",
-        help="dump named flash region",
-        action="append",
-        type=str,
-        dest="regions_to_dump",
-    )
-
-    args = parser.parse_args()
-
-    snipeit_api = SnipeIT()
-
-    if args.command == "snipeit":
-        if args.snipeit_cmd == "list_used":
-            list_used_assets(snipeit_api, args)
-        elif args.snipeit_cmd == "list_my":
-            list_my_assets(snipeit_api, args)
-        elif args.snipeit_cmd == "list_unused":
-            list_unused_assets(snipeit_api, args)
-        elif args.snipeit_cmd == "list_all":
-            list_all_assets(snipeit_api, args)
-        elif args.snipeit_cmd == "list_for_zabbix":
-            list_for_zabbix(snipeit_api, args)
-        elif args.snipeit_cmd == "check_out":
-            if args.asset_id:
-                check_out_asset(snipeit_api, args.asset_id)
-            elif args.rte_ip:
-                asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
-                if asset_id:
-                    check_out_asset(snipeit_api, asset_id)
-                else:
-                    print(f"No asset found with RTE IP: {args.rte_ip}")
-        elif args.snipeit_cmd == "check_in":
-            if args.asset_id:
-                check_in_asset(snipeit_api, args.asset_id)
-            elif args.rte_ip:
-                asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
-                if asset_id:
-                    check_in_asset(snipeit_api, asset_id)
-                else:
-                    print(f"No asset found with RTE IP: {args.rte_ip}")
-        elif args.snipeit_cmd == "check_in_my":
-            check_in_my(snipeit_api, args)
-        elif args.snipeit_cmd == "user_add":
-            snipeit_api.user_add(
-                args.first_name, args.last_name, args.company_name
-            )
-        elif args.snipeit_cmd == "user_del":
-            snipeit_api.user_del(args.first_name, args.last_name)
-        elif args.snipeit_cmd == "update_zabbix":
-            update_zabbix_assets(snipeit_api)
-
-    elif args.command == "rte":
-        if not args.skip_snipeit:
-            asset_id = snipeit_api.get_asset_id_by_rte_ip(args.rte_ip)
-            if not asset_id:
-                print(f"No asset found with RTE IP: {args.rte_ip}")
-
-        if args.model:
-            print(f"DUT model retrieved from cmdline, skipping Snipe-IT query")
-            dut_model_name = args.model
+    print()
+    while True:
+        choice = input(message).lower()
+        if choice in ["y", "n"]:
+            return choice == "y"
         else:
-            if not args.skip_snipeit:
-                status, dut_model_name = snipeit_api.get_asset_model_name(
-                    asset_id
-                )
-                if status:
-                    print(
-                        f"DUT model retrieved from snipeit: {dut_model_name}"
-                    )
-                else:
-                    exit(
-                        f"failed to retrieve model name from snipe-it. check "
-                        f"again arguments, or try providing model manually."
-                    )
-            else:
-                exit(f"model name not present. check again arguments.")
-        sonoff, sonoff_ip = utils.init_sonoff(None, args.rte_ip, snipeit_api)
-        rte = RTE(args.rte_ip, dut_model_name, sonoff)
-
-        if not args.skip_snipeit:
-            print(
-                f"Using rte command is invasive action, checking first if the "
-                f"device is not used..."
-            )
-            already_checked_out = check_out_asset(snipeit_api, asset_id)
-
-        if args.rte_cmd == "rel":
-            # Handle RTE relay related commands
-            if args.rel_cmd == "tgl":
-                relay_toggle(rte, args)
-            elif args.rel_cmd == "get":
-                relay_get(rte, args)
-            elif args.rel_cmd == "set":
-                relay_set(rte, args)
-        elif args.rte_cmd == "gpio":
-            # Handle RTE GPIO related commands
-            if args.gpio_cmd == "get":
-                gpio_get(rte, args)
-            elif args.gpio_cmd == "set":
-                gpio_set(rte, args)
-            elif args.gpio_cmd == "list":
-                gpio_list(rte, args)
-        elif args.rte_cmd == "pwr":
-            # Handle RTE power related commands
-            if args.pwr_cmd == "on":
-                power_on(rte, args)
-            elif args.pwr_cmd == "off":
-                power_off(rte, args)
-            if args.pwr_cmd == "on_ex":
-                power_on_ex(rte, args)
-            elif args.pwr_cmd == "off_ex":
-                power_off_ex(rte, args)
-            elif args.pwr_cmd == "reset":
-                reset(rte, args)
-            elif args.pwr_cmd == "pwr_led":
-                check_pwr_led(rte, args)
-            elif args.pwr_cmd == "psu":
-                if args.psu_cmd == "on":
-                    psu_on(rte, args)
-                elif args.psu_cmd == "off":
-                    psu_off(rte, args)
-                elif args.psu_cmd == "get":
-                    psu_get(rte, args)
-            elif args.pwr_cmd == "reset_cmos":
-                reset_cmos(rte, args)
-        elif args.rte_cmd == "serial":
-            open_dut_serial(rte, args)
-        elif args.rte_cmd == "spi":
-            if args.spi_cmd == "on":
-                spi_on(rte, args)
-            elif args.spi_cmd == "off":
-                spi_off(rte, args)
-        elif args.rte_cmd == "flash":
-            if args.flash_cmd == "probe":
-                flash_probe(rte, args)
-            elif args.flash_cmd == "read":
-                flash_read(rte, args)
-            elif args.flash_cmd == "write":
-                flash_write(rte, args)
-            elif args.flash_cmd == "erase":
-                flash_erase(rte, args)
-
-        if not args.skip_snipeit:
-            if already_checked_out:
-                print(
-                    f"Since the asset {asset_id} has been checkout manually "
-                    f"by you prior running this script, it will NOT be checked "
-                    f"in automatically. Please return the device when work is "
-                    f"finished."
-                )
-            else:
-                print(
-                    f"Since the asset {asset_id} has been checkout "
-                    f"automatically by this script, it is automatically "
-                    f"checked in as well."
-                )
-                check_in_asset(snipeit_api, asset_id)
-    elif args.command == "sonoff":
-        sonoff_ip = ""
-
-        if args.sonoff_ip:
-            sonoff_ip = args.sonoff_ip
-        elif args.rte_ip:
-            sonoff_ip = snipeit_api.get_sonoff_ip_by_rte_ip(args.rte_ip)
-            if not sonoff_ip:
-                print(f"No Sonoff Device found with RTE IP: {args.rte_ip}")
-
-        asset_id = snipeit_api.get_asset_id_by_sonoff_ip(sonoff_ip)
-        if not asset_id:
-            print(f"No asset found with RTE IP: {args.rte_ip}")
-
-        print(
-            f"Using rte command is invasive action, checking first if the "
-            f"device is not used..."
-        )
-        already_checked_out = check_out_asset(snipeit_api, asset_id)
-
-        sonoff = SonoffDevice(sonoff_ip)
-
-        if args.sonoff_cmd == "on":
-            sonoff_on(sonoff, args)
-        if args.sonoff_cmd == "off":
-            sonoff_off(sonoff, args)
-        if args.sonoff_cmd == "get":
-            sonoff_get(sonoff, args)
-        if args.sonoff_cmd == "tgl":
-            sonoff_tgl(sonoff, args)
-
-        if already_checked_out:
-            print(
-                f"Since the asset {asset_id} has been checkout manually by "
-                f"you prior running this script, it will NOT be checked in "
-                f"automatically. Please return the device when work is "
-                f"finished."
-            )
-        else:
-            print(
-                f"Since the asset {asset_id} has been checkout automatically "
-                f"by this script, it is automatically checked in as well."
-            )
-            check_in_asset(snipeit_api, asset_id)
-    elif args.command == "flash_image_check":
-        flash_image_check(args)
-    elif args.command == "list_models":
-        list_models(args)
-    else:
-        parser.print_help()
+            print("Invalid input. Please enter 'y' or 'n'.")
 
 
 if __name__ == "__main__":

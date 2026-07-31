@@ -232,11 +232,14 @@ follows:
     flashrom.
     + `voltage` - required; chip supply voltage - most often "3.3V" or "1.8V";
     should be discovered in appropriate datasheet.
+    + `layout` - optional. Layout entries
+        - `name` - required, name of the layout entry
+        - `range` - required, range of this entry
 
 - `programmer`:
 
     + `name`- required; name of the programmer connected to the platform; supported
-    values: `rte_1_0`, `rte_1_1`, `ch341a`
+    values: `rte_1_0`, `rte_1_1`, `ch341a`, `dediprog`
 
 - `pwr_ctrl`:
 
@@ -245,6 +248,12 @@ follows:
     power control.
     + `flashing_power_state` - required; defines a power state the platform
     needs to be in for SPI flashing; supported values: `"S5"`, `"G3"`
+    + `discharge_psu` - optional; true or false (true by default), whether to
+      discharge PSU after powering it off.
+
+- `power-led`, optional:
+
+    + `polarity` - required, power LED GPIO polarity.
 
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.

@@ -232,11 +232,14 @@ follows:
     flashrom.
     + `voltage` - required; chip supply voltage - most often "3.3V" or "1.8V";
     should be discovered in appropriate datasheet.
+    + `layout` - optional. Layout entries
+        - `name` - required, name of the layout entry
+        - `range` - required, range of this entry
 
 - `programmer`:
 
     + `name`- required; name of the programmer connected to the platform; supported
-    values: `rte_1_0`, `rte_1_1`, `ch341a`
+    values: `rte_1_0`, `rte_1_1`, `ch341a`, `dediprog`
 
 - `pwr_ctrl`:
 
@@ -245,6 +248,12 @@ follows:
     power control.
     + `flashing_power_state` - required; defines a power state the platform
     needs to be in for SPI flashing; supported values: `"S5"`, `"G3"`
+    + `discharge_psu` - optional; true or false (true by default), whether to
+      discharge PSU after powering it off.
+
+- `pwr_led`, optional:
+
+    + `polarity` - required, power LED GPIO polarity, default: active high.
 
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.
@@ -273,22 +282,59 @@ unset SSH_AUTH_SOCK
 
 ## Development
 
-You can test local changes by running `poetry shell` first. Then, all
-`osfv_cli` calls will use the local files in repository, not installed package.
+Make sure to install `pre-commit` before committing any changes
 
-## Tests
+```sh
+pre-commit install
+```
+
+### Dependencies
+
+All commands except `pre-commit` should be run in activated virtual environment
+created in [Installation](#installation) step.
+
+Before starting development make sure to install `dev` and `test` dependencies
+
+```shell
+poetry install --all-groups
+```
+
+### Tests
 
 OSFV CLI tests can be found in the `test` directory.
 The tests are written in [Robot Framework](https://robotframework.org/),
 
-### Dependencies
+### Model schema
 
-Enter development shell with test dependencies:
+We are using
+[model_schema.yml](./src/osfv/models/schema/model_schema.yml) as our
+main YAML schema for flashing configuration. From this schema
+a [Python datamodel](./src/osfv/libs/models_gen.py) is generated and used
+in Python code and by type checker.
 
-```shell
-poetry install --with test
-poetry shell
+After modifying the schema, regenerate the Python one via:
+
+```sh
+make generate-schema
 ```
+
+and make sure all checks still pass after schema change:
+
+- Validate models with new schema
+
+    ```sh
+    make validate-schema
+    ```
+
+- Python linters and type checkers
+
+    ```sh
+    poetry ruff check
+    poetry ruff format
+    poetry ty
+    ```
+
+You can also run `pre-commit run -a` to run all checks (and more) automatically.
 
 ### Required configs
 

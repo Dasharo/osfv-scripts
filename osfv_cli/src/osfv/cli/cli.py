@@ -8,18 +8,20 @@ from functools import partial, wraps
 from importlib import metadata
 from pathlib import Path
 from time import sleep
-from typing import Annotated, Literal, cast
+from typing import Annotated, Literal
 
 import pexpect
 import requests
 import typer
+from typer import Argument, Context, Option
+
 from osfv.libs import utils
 from osfv.libs.models import Models
+from osfv.libs.models_gen import Polarity
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
-from typer import Argument, Context, Option
 
 
 class API:
@@ -461,9 +463,7 @@ def update_zabbix_assets():
             for s in forbidden_symbols:
                 new_key = new_key.replace(s, "_")
 
-            snipeit_assets[new_key] = snipeit_assets.pop(
-                snipeit_assets_keys[i]
-            )
+            snipeit_assets[new_key] = snipeit_assets.pop(snipeit_assets_keys[i])
 
     if snipeit_configuration_error:
         print(
@@ -486,9 +486,7 @@ def update_zabbix_assets():
     ):
         update_available = True
 
-    common_keys = set(snipeit_assets.keys()) & set(
-        current_zabbix_assets.keys()
-    )
+    common_keys = set(snipeit_assets.keys()) & set(current_zabbix_assets.keys())
 
     if keys_not_present_in_zabbix.__len__() > 0:
         print("Assets not present in Zabbix (these will be added):")
@@ -712,9 +710,7 @@ def setup_rte_subcommand(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
-        already_checked_out = _check_out_asset(
-            apis.snipeit_api, cast(int, asset_id)
-        )
+        already_checked_out = _check_out_asset(apis.snipeit_api, asset_id)
         return not already_checked_out, asset_id
     return False, None
 
@@ -961,8 +957,7 @@ def check_pwr_led(ctx: Context):
     """Check the state of the DUT power LED"""
     rte = apis.rte_api
     state = rte.gpio_get(RTE.GPIO_PWR_LED)
-    polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
-    if polarity and polarity == "active low":
+    if rte.dut_data.pwr_led.polarity == Polarity.active_low:
         if state == "high":
             state = "low"
         else:
@@ -1068,9 +1063,7 @@ def flash_write(
     ] = Path("write.rom"),
     bios: Annotated[
         bool,
-        Option(
-            "--bios", "-b", help='Adds "-i bios --ifd" to flashrom command'
-        ),
+        Option("--bios", "-b", help='Adds "-i bios --ifd" to flashrom command'),
     ] = False,
     dry_mecheck: Annotated[
         bool,
@@ -1119,23 +1112,17 @@ def flash_erase(ctx):
 ## sonoff commands
 
 
-def sonoff_setup(
-    sonoff_ip: str | None, rte_ip: str | None
-) -> tuple[bool, int]:
+def sonoff_setup(sonoff_ip: str | None, rte_ip: str | None) -> tuple[bool, int]:
     if not sonoff_ip:
         if not rte_ip:
             print("Either sonoff_ip or rte_ip is required")
             raise typer.Exit(1)
-        sonoff_ip = apis.get_or_create_snipeit().get_sonoff_ip_by_rte_ip(
-            rte_ip
-        )
+        sonoff_ip = apis.get_or_create_snipeit().get_sonoff_ip_by_rte_ip(rte_ip)
         if not sonoff_ip:
             print(f"No Sonoff Device found with RTE IP: {rte_ip}")
             raise typer.Exit(1)
 
-    asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(
-        sonoff_ip
-    )
+    asset_id = apis.get_or_create_snipeit().get_asset_id_by_sonoff_ip(sonoff_ip)
     if asset_id is None:
         print(f"No asset found with Sonoff IP: {sonoff_ip}")
         raise typer.Exit(1)
@@ -1382,9 +1369,7 @@ def get_zabbix_compatible_assets_from_asset(asset):
             if field_name in ["RTE IP", "Sonoff IP", "PiKVM IP"]:
                 field_value = field_data.get("value")
                 if field_value:
-                    key = f"{asset['asset_tag']}_{field_name}".replace(
-                        " ", "_"
-                    )
+                    key = f"{asset['asset_tag']}_{field_name}".replace(" ", "_")
                     result[key] = field_value
     return result
 

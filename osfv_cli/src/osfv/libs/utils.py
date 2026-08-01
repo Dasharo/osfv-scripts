@@ -1,7 +1,9 @@
-import os
-
 from osfv.libs.flash_image import FlashImage
 from osfv.libs.sonoff_api import SonoffDevice
+
+
+class OSFVException(Exception):
+    """Base osfv_cli exception class"""
 
 
 def init_sonoff(init_sonoff_ip, rte_ip, snipeit_api=None):
@@ -44,7 +46,7 @@ def get_list_of_known_image_regions():
 
 
 def check_flash_image_regions(
-    rom, dry_run=False, verbose=False, regions=["me"]
+    rom, dry_run=False, verbose=False, regions: list[str] | None = None
 ):
     """
     Use osfv.libs.flash_image library to verify existence of given regions
@@ -71,9 +73,10 @@ def check_flash_image_regions(
         print(
             "Failed to load image file. Cannot verify the presence of Intel regions."
         )
-        if dry_run:
-            return True
-        return False
+        return dry_run
+
+    if regions is None:
+        regions = ["me"]
 
     for check_region_name in regions:
         check_region_index = flash_image.get_region_index(check_region_name)
@@ -92,7 +95,9 @@ def check_flash_image_regions(
         return True
 
 
-def dump_flash_image_regions(rom, verbose=False, regions=[]):
+def dump_flash_image_regions(
+    rom, verbose=False, regions: list[str] | None = None
+):
     """
     Use osfv.libs.flash_image library to verify existence of given regions
     and data content of them (if described memory area is not filled with single
@@ -113,6 +118,10 @@ def dump_flash_image_regions(rom, verbose=False, regions=[]):
 
     print(f"Dumping flash image regions of {rom} ...")
     flash_image.load_image_file(rom)
+
+    if regions is None:
+        regions = []
+
     for dump_region_name in regions:
         dump_region_index = flash_image.get_region_index(dump_region_name)
         if dump_region_index == None:

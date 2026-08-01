@@ -307,10 +307,18 @@ The tests are written in [Robot Framework](https://robotframework.org/),
 ### Model schema
 
 We are using
-[model_schema.yml](./osfv_cli/src/osfv/models/schema/model_schema.yml) as our
-main YAML schema for flashing configuration.
+[model_schema.yml](./src/osfv/models/schema/model_schema.yml) as our
+main YAML schema for flashing configuration. From this schema
+a [Python datamodel](./src/osfv/libs/models_gen.py) is generated and used
+in Python code and by type checker.
 
-After modifying the schema make sure all checks still pass after schema change:
+After modifying the schema, regenerate the Python one via:
+
+```sh
+make generate-schema
+```
+
+and make sure all checks still pass after schema change:
 
 - Validate models with new schema
 

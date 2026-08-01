@@ -19,6 +19,7 @@ dependencies = [
     "importlib-resources (>=6.1.1,<7.0.0)",
     "voluptuous (>=0.15.2,<1.0.0)",
     "typer (>=0.27.0,<1.0.0)",
+    "pydantic (>=2.13.4,<3.0.0)",
 ]
 
 [dependency-groups]
@@ -30,6 +31,7 @@ dev = [
     "ruff (>=0.16.1,<0.17.0)",
     "ty (>=0.0.65,<0.0.66)",
     "check-jsonschema (>=0.37.4,<0.38.0)",
+    "datamodel-code-generator[ruff] (>=0.71.0,<0.72.0)",
 ]
 
 [project.scripts]
@@ -40,3 +42,16 @@ include = ["src/models/*.yml"]
 
 [tool.ruff]
 line-length = 80
+
+[tool.datamodel-codegen]
+input = "src/osfv/models/schema/model_schema.yml"
+output = "src/osfv/libs/models_gen.py"
+input-file-type = "jsonschema"
+output-model-type = "pydantic_v2.BaseModel"
+target-python-version = "3.13"
+use-schema-description = true
+use-field-description = true
+field-constraints = true
+disable-timestamp = true
+strict-nullable = true
+formatters = ["ruff-check", "ruff-format"]

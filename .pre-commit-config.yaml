@@ -103,3 +103,16 @@ repos:
         # model changes.
         files: ^osfv_cli/src/osfv/models/schema/.*\.yml$
         pass_filenames: false
+
+  - repo: https://github.com/koxudaxi/datamodel-code-generator
+    # Keep in sync with pyproject.toml otherwise manually generated model might
+    # differ
+    rev: 0.71.0
+    hooks:
+      - id: datamodel-code-generator
+        entry: "bash -c 'cd osfv_cli && datamodel-codegen'"
+        files: |
+          (?x)^(
+            osfv_cli/src/osfv/models/schema/.*\.yaml|
+            osfv_cli/src/osfv/libs/models_gen.py
+          )$

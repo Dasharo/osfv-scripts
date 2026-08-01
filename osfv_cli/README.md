@@ -251,7 +251,7 @@ follows:
     + `discharge_psu` - optional; true or false (true by default), whether to
       discharge PSU after powering it off.
 
-- `power-led`, optional:
+- `pwr_led`, optional:
 
     + `polarity` - required, power LED GPIO polarity.
 
@@ -282,22 +282,27 @@ unset SSH_AUTH_SOCK
 
 ## Development
 
-You can test local changes by running `poetry shell` first. Then, all
-`osfv_cli` calls will use the local files in repository, not installed package.
+Make sure to install `pre-commit` before committing any changes
 
-## Tests
-
-OSFV CLI tests can be found in the `test` directory.
-The tests are written in [Robot Framework](https://robotframework.org/),
+```sh
+pre-commit install
+```
 
 ### Dependencies
 
-Enter development shell with test dependencies:
+All commands except `pre-commit` should be run in activated virtual environment
+created in [Installation](#installation) step.
+
+Before starting development make sure to install `dev` and `test` dependencies
 
 ```shell
-poetry install --with test
-poetry shell
+poetry install --all-groups
 ```
+
+### Tests
+
+OSFV CLI tests can be found in the `test` directory.
+The tests are written in [Robot Framework](https://robotframework.org/),
 
 ### Required configs
 

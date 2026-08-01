@@ -20,4 +20,9 @@ clean:
 
 all: build install
 
+validate-schema:
+	poetry run check-jsonschema \
+		--schemafile "$(REPO_ROOT)/src/osfv/models/schema/model_schema.yml" \
+		"$(REPO_ROOT)"/src/osfv/models/*.yml
+
 .PHONY: install uninstall build clean

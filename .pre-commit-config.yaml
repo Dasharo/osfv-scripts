@@ -71,3 +71,35 @@ repos:
     hooks:
       - id: ty
         args: [--isolated, --group, test, --project, osfv_cli]
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.37.4
+    hooks:
+      - id: check-jsonschema
+        args: [
+          "--verbose",
+          "--schemafile",
+          "osfv_cli/src/osfv/models/schema/model_schema.yml",
+        ]
+        files: ^osfv_cli/src/osfv/models/.*\.yml$
+        # Validate models not the schema itself.
+        exclude: ^osfv_cli/src/osfv/models/schema/.*$
+
+  - repo: local
+    hooks:
+      - id: check-osfv-models
+        name: Validate all OSFV YAML models
+        # Use bash to expand glob
+        entry: bash -c 'check-jsonschema osfv_cli/src/osfv/models/*yml "$@"'
+        args: [
+          "--verbose",
+          "--schemafile",
+          "osfv_cli/src/osfv/models/schema/model_schema.yml"
+        ]
+        language: python
+        additional_dependencies:
+          - check-jsonschema
+        # Run only if schema changed. 'check-jsonschema' verifies singular
+        # model changes.
+        files: ^osfv_cli/src/osfv/models/schema/.*\.yml$
+        pass_filenames: false

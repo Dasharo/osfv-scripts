@@ -304,6 +304,30 @@ poetry install --all-groups
 OSFV CLI tests can be found in the `test` directory.
 The tests are written in [Robot Framework](https://robotframework.org/),
 
+### Model schema
+
+We are using
+[model_schema.yml](./osfv_cli/src/osfv/models/schema/model_schema.yml) as our
+main YAML schema for flashing configuration.
+
+After modifying the schema make sure all checks still pass after schema change:
+
+- Validate models with new schema
+
+    ```sh
+    make validate-schema
+    ```
+
+- Python linters and type checkers
+
+    ```sh
+    poetry ruff check
+    poetry ruff format
+    poetry ty
+    ```
+
+You can also run `pre-commit run -a` to run all checks (and more) automatically.
+
 ### Required configs
 
 To test some functionalities related to SnipeIT, it is required to

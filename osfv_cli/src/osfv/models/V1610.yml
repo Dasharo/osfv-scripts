@@ -1,4 +1,5 @@
 ---
+# $schema: ./schema/model_schema.yml
 flash_chip:
   voltage: "3.3V"
 

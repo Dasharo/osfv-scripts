@@ -1,9 +1,10 @@
 ---
+# $schema: ./schema/model_schema.yml
 flash_chip:
   # flash chip model to be used by flashrom (optional - if not given, no chip
   # parameter will be explicitelt added to flashrom)
   model: "MX25U6435E/F"
-    # flash chip voltage (required)
+  # flash chip voltage (required)
   voltage: "1.8V"
 
 programmer:

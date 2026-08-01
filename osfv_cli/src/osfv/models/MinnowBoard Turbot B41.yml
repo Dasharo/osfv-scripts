@@ -1,4 +1,5 @@
 ---
+# $schema: ./schema/model_schema.yml
 flash_chip:
   model: "W25Q64JV-.Q"
   voltage: "3.3V"

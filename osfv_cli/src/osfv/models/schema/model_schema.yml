@@ -1,0 +1,130 @@
+---
+
+$schema: "http://json-schema.org/draft-07/schema#"
+title: Flashing Configuration
+description: |-
+  Schema describing platform flashing configuration, including flash chip
+  identification, programmer selection, power control settings, and optional
+  post/pre-flash operations.
+type: object
+required:
+  - flash_chip
+  - programmer
+  - pwr_ctrl
+additionalProperties: false
+
+properties:
+  flash_chip:
+    type: object
+    description: Details about the SPI flash chip on the platform.
+    required:
+      - voltage
+    additionalProperties: false
+    properties:
+      model:
+        type: string
+        description: |-
+          Flash chip model, corresponding to the `-c` parameter used in
+          flashrom. Optional, but must be set if flashrom detects more than
+          one possible flash chip model.
+        default: ""
+      voltage:
+        type: string
+        description: |-
+          Chip supply voltage, as found in the appropriate datasheet.
+          Most commonly "3.3V" or "1.8V".
+        enum:
+          - "3.3V"
+          - "1.8V"
+      layout:
+        type: array
+        default: []
+        description: Layout entries, each identifying a name and its range.
+        items:
+          type: object
+          additionalProperties: false
+          required:
+            - name
+            - range
+          description: Layout entry describing a name and its range.
+          properties:
+            name:
+              type: string
+              description: Name of the layout entry.
+            range:
+              type: string
+              description: Range associated with this layout entry.
+
+  programmer:
+    type: object
+    description: The programmer connected to the platform.
+    required:
+      - name
+    additionalProperties: false
+    properties:
+      name:
+        type: string
+        description: Name of the programmer connected to the platform.
+        enum:
+          - rte_1_0
+          - rte_1_1
+          - ch341a
+          - dediprog
+
+  pwr_ctrl:
+    type: object
+    description: Power control configuration for flashing.
+    required:
+      - sonoff
+      - relay
+      - flashing_power_state
+    additionalProperties: false
+    properties:
+      sonoff:
+        type: boolean
+        description: Whether Sonoff power control is used.
+      relay:
+        type: boolean
+        description: Whether onboard RTE relay power control is used.
+      flashing_power_state:
+        type: string
+        description:
+          The power state the platform needs to be in for SPI flashing.
+        enum:
+          - "S5"
+          - "G3"
+      discharge_psu:
+        type: boolean
+        default: true
+        description: Whether to discharge PSU after powering it off.
+
+  pwr_led:
+    type: object
+    required:
+      - polarity
+    description: Power LED configuration
+    default:
+      polarity: "active high"
+    properties:
+      polarity:
+        type: string
+        description: |-
+          Power LED GPIO polarity. 'active low' means platform is ON
+          if GPIO is low.
+        enum:
+          - "active low"
+          - "active high"
+
+  reset_cmos:
+    type: boolean
+    default: false
+    description: |-
+      Whether a CMOS reset is required after flashing. Optional; defaults
+      to false.
+
+  disable_wp:
+    type: boolean
+    default: false
+    description: |-
+      Whether flash write-protect (WP) needs to be disabled before
+      flashing. Optional; defaults to false.

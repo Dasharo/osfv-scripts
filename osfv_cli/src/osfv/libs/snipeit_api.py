@@ -496,7 +496,7 @@ class SnipeIT:
             )
         return self.assets_cache[asset_id]
 
-    def get_asset_model_name(self, asset_id):
+    def get_asset_model_name(self, asset_id) -> tuple[bool, str]:
         """
         Retrieve the model name of an asset by calling the get_asset method.
 
@@ -504,8 +504,9 @@ class SnipeIT:
             asset_id (str): The unique identifier of the asset.
 
         Returns:
-            tuple: A tuple where the first element is a boolean indicating the success (True/False),
-                and the second element is either the model name or an error message.
+            tuple[bool, str]: first element indicates the asset model name
+            retrieval success, the second name is either model name or an error
+            message.
         """
         status, data = self.get_asset(asset_id)
 

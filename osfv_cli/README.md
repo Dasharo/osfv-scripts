@@ -253,7 +253,7 @@ follows:
 
 - `pwr_led`, optional:
 
-    + `polarity` - required, power LED GPIO polarity.
+    + `polarity` - required, power LED GPIO polarity, default: active high.
 
 - `reset_cmos`: - optional; true or false (false by default), whether CMOS reset
   is required after flashing.

@@ -7,6 +7,7 @@ import requests
 
 from osfv.libs.models import Models
 from osfv.libs.rtectrl_api import rtectrl
+from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.utils import OSFVException
 
 
@@ -37,11 +38,11 @@ class RTE(rtectrl):
     FLASHROM_CMD = "flashrom -p {programmer} {args}"
     FLASHROM_LAYOUT_PATH = "/tmp/board_layout.txt"
 
-    def __init__(self, rte_ip, dut_model, sonoff):
+    def __init__(self, rte_ip: str, dut_model: str, sonoff: SonoffDevice):
         self.models = Models()
         self.rte_ip = rte_ip
         self.dut_model = dut_model
-        self.dut_data = self.models.load_model_data(self.dut_model)[1]
+        self.dut_data = self.models.load_model_data(self.dut_model)
         self.sonoff = sonoff
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
@@ -156,7 +157,7 @@ class RTE(rtectrl):
         Returns:
             None.
         """
-        voltage = self.dut_data["flash_chip"]["voltage"]
+        voltage = self.dut_data.flash_chip.voltage
 
         if voltage == "1.8V":
             state = "high-z"
@@ -196,12 +197,12 @@ class RTE(rtectrl):
         Returns:
             None.
         """
-        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+        if self.dut_data.pwr_ctrl.sonoff:
             self.sonoff.turn_on()
             state = self.sonoff.get_state()
             if state != self.PSU_STATE_ON:
                 raise OSFVException("Failed to power control ON")
-        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+        elif self.dut_data.pwr_ctrl.relay:
             self.relay_set(self.PSU_STATE_ON)
             state = self.relay_get()
             if state != self.PSU_STATE_ON:
@@ -220,12 +221,12 @@ class RTE(rtectrl):
             None.
         """
         # TODO: rework using abstract interfaces for power control?
-        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+        if self.dut_data.pwr_ctrl.sonoff:
             self.sonoff.turn_off()
             state = self.sonoff.get_state()
             if state != self.PSU_STATE_OFF:
                 raise OSFVException("Failed to power control OFF")
-        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+        elif self.dut_data.pwr_ctrl.relay:
             self.relay_set(self.PSU_STATE_OFF)
             state = self.relay_get()
             if state != self.PSU_STATE_OFF:
@@ -244,9 +245,9 @@ class RTE(rtectrl):
             or None if no valid PSU state is found.
         """
         state = None
-        if self.dut_data["pwr_ctrl"]["sonoff"] is True:
+        if self.dut_data.pwr_ctrl.sonoff:
             state = self.sonoff.get_state()
-        elif self.dut_data["pwr_ctrl"]["relay"] is True:
+        elif self.dut_data.pwr_ctrl.relay:
             state = self.relay_get()
         return state
 
@@ -297,7 +298,7 @@ class RTE(rtectrl):
         elif power_state == "G3":
             # Turn off the PSU/AC brick to put device into G3
             self.psu_off()
-            if self.dut_data["pwr_ctrl"].get("discharge_psu", True):
+            if self.dut_data.pwr_ctrl.discharge_psu:
                 self.discharge_psu()
         else:
             sys.exit(
@@ -328,7 +329,7 @@ class RTE(rtectrl):
         import tempfile
 
         # Get layout from model file
-        layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+        layout_data = self.dut_data.flash_chip.layout
 
         if not layout_data:
             raise ValueError("Layout data is missing - this should not happen")
@@ -336,7 +337,7 @@ class RTE(rtectrl):
         # Build layout from model file data
         layout_content = ""
         for region in layout_data:
-            layout_content += f"{region['range']} {region['name']}\n"
+            layout_content += f"{region.range} {region.name}\n"
 
         # Create temporary file
         with tempfile.NamedTemporaryFile(
@@ -357,12 +358,12 @@ class RTE(rtectrl):
             write_file (str, optional): Path to the firmware file to be written to the DUT. Defaults to None.
 
         Returns:
-            None.
+            int: flashrom return code.
         """
         try:
             self.pwr_ctrl_before_flash(
-                self.dut_data["programmer"]["name"],
-                self.dut_data["pwr_ctrl"]["flashing_power_state"],
+                self.dut_data.programmer.name,
+                self.dut_data.pwr_ctrl.flashing_power_state,
             )
         except requests.exceptions.ConnectionError as e:
             print(f"Failed to change power state while flashing: {e}")
@@ -384,7 +385,7 @@ class RTE(rtectrl):
             scp = ssh.open_sftp()
 
             # Transfer layout file if needed (only for write operations)
-            layout_data = self.dut_data.get("flash_chip", {}).get("layout")
+            layout_data = self.dut_data.flash_chip.layout
             if layout_data and write_file:
                 local_layout_path = self.create_layout_file()
                 remote_layout_path = self.FLASHROM_LAYOUT_PATH
@@ -399,9 +400,9 @@ class RTE(rtectrl):
             scp.close()
 
             # Execute the flashrom command
-            if self.dut_data["programmer"]["name"] == "ch341a":
+            if self.dut_data.programmer.name == "ch341a":
                 flashrom_programmer = self.PROGRAMMER_CH341A
-            elif self.dut_data["programmer"]["name"] == "dediprog":
+            elif self.dut_data.programmer.name == "dediprog":
                 flashrom_programmer = self.PROGRAMMER_DEDIPROG
             else:
                 flashrom_programmer = self.PROGRAMMER_RTE
@@ -410,7 +411,11 @@ class RTE(rtectrl):
                 programmer=flashrom_programmer, args=args
             )
             print(f"Executing command: {command}")
-            channel = ssh.get_transport().open_session()
+            transport = ssh.get_transport()
+            assert transport is not None, (
+                "Failed to get SSHClient Transport object"
+            )
+            channel = transport.open_session()
             channel.exec_command(command)
 
             # Print the command output in real-time
@@ -450,7 +455,7 @@ class RTE(rtectrl):
                 scp.close()
 
         finally:
-            self.pwr_ctrl_after_flash(self.dut_data["programmer"]["name"])
+            self.pwr_ctrl_after_flash(self.dut_data.programmer.name)
 
             # Close the SSH connection
             ssh.close()
@@ -474,11 +479,8 @@ class RTE(rtectrl):
         args = ""
 
         # Set chip explicitly, if defined in model configuration
-        if (
-            "flash_chip" in self.dut_data
-            and "model" in self.dut_data["flash_chip"]
-        ):
-            args = " ".join(["-c", self.dut_data["flash_chip"]["model"]])
+        if self.dut_data.flash_chip.model:
+            args = f"-c {self.dut_data.flash_chip.model}"
 
         if extra_args:
             args = f"{args} {extra_args}"
@@ -536,14 +538,14 @@ class RTE(rtectrl):
         Returns:
             The return code from the flashrom command execution.
         """
-        if "disable_wp" in self.dut_data:
+        if self.dut_data.disable_wp:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
 
         # Check if this board needs layout file (from model file)
-        use_layout = self.dut_data.get("flash_chip", {}).get("layout", False)
-
-        if use_layout:
+        layout = self.dut_data.flash_chip.layout
+        # TODO: this ignores layout items specified in model file
+        if layout:
             args = self.flash_create_args(
                 f"-i bios -N -w {self.FW_PATH_WRITE} --layout {self.FLASHROM_LAYOUT_PATH}"
             )
@@ -557,10 +559,7 @@ class RTE(rtectrl):
         rc = self.flash_cmd(args, write_file=write_file)
         time.sleep(2)
 
-        if (
-            "reset_cmos" in self.dut_data
-            and self.dut_data["reset_cmos"] == True
-        ):
+        if self.dut_data.reset_cmos:
             self.reset_cmos()
         return rc
 
@@ -574,7 +573,7 @@ class RTE(rtectrl):
         Returns:
             bool: True if the Sonoff is not used or the Sonoff IP is available; False otherwise.
         """
-        return not self.dut_data["pwr_ctrl"]["sonoff"] or self.sonoff.sonoff_ip
+        return not self.dut_data.pwr_ctrl.sonoff or self.sonoff.sonoff_ip
 
 
 class SPIWrongVoltage(Exception):

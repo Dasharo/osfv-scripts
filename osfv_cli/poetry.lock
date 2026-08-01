@@ -1729,19 +1729,7 @@ h2 = ["h2 (>=4,<5)"]
 socks = ["pysocks (>=1.5.6,!=1.5.7,<2.0)"]
 zstd = ["zstandard (>=0.18.0)"]
 
-[[package]]
-name = "voluptuous"
-version = "0.15.2"
-description = "Python data validation library"
-optional = false
-python-versions = ">=3.9"
-groups = ["main"]
-files = [
-    {file = "voluptuous-0.15.2-py3-none-any.whl", hash = "sha256:016348bc7788a9af9520b1764ebd4de0df41fe2138ebe9e06fa036bf86a65566"},
-    {file = "voluptuous-0.15.2.tar.gz", hash = "sha256:6ffcab32c4d3230b4d2af3a577c87e1908a714a11f6f95570456b1849b0279aa"},
-]
-
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.13"
-content-hash = "fd8f363cec1a9cd04f9c4462be4b3c3300e4fc52bd6b4783633399c2d0298f9c"
+content-hash = "547abcf387794d3b4f4ef8c4b741dc58e50b142d8cf636f734ac31a543feb758"

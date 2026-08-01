@@ -17,6 +17,7 @@ from typer import Argument, Context, Option
 
 from osfv.libs import utils
 from osfv.libs.models import Models
+from osfv.libs.models_gen import Polarity
 from osfv.libs.rte import RTE
 from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
@@ -956,8 +957,7 @@ def check_pwr_led(ctx: Context):
     """Check the state of the DUT power LED"""
     rte = apis.rte_api
     state = rte.gpio_get(RTE.GPIO_PWR_LED)
-    polarity = rte.dut_data.get("pwr_led", {}).get("polarity")
-    if polarity and polarity == "active low":
+    if rte.dut_data.pwr_led.polarity == Polarity.active_low:
         if state == "high":
             state = "low"
         else:

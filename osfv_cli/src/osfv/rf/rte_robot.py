@@ -362,8 +362,7 @@ class RobotRTE:
     @keyword(types=None)
     def rte_check_power_led(self):
         state = self.rte.gpio_get(RTE.GPIO_PWR_LED)
-        polarity = self.rte.dut_data.get("pwr_led", {}).get("polarity")
-        if polarity and polarity == "active low":
+        if self.rte.dut_data.pwr_led.polarity == "active low":
             if state == "high":
                 state = "low"
             else:

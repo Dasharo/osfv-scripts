@@ -1,11 +1,10 @@
-import os
-import sys
-from pathlib import Path
+from pathlib import PurePath
 
-import voluptuous
 import yaml
 from importlib_resources import files
-from voluptuous import Any, Optional, Required, Schema
+from pydantic_core import ValidationError
+
+from osfv.libs.models_gen import FlashingConfiguration
 
 
 class Models:
@@ -14,121 +13,57 @@ class Models:
 
     def list_models(self):
         print("Supported DUT models:")
-        file_path = os.path.join(files("osfv"), "models")
+        file_path = files("osfv") / "models"
 
-        for roots, dirs, filenames in os.walk(file_path):
-            name_field_len = len(max(filenames, key=len)) + 2
-            row_form = "{model_name: <" + str(name_field_len) + "}{status}"
-            print(
-                row_form.format(
-                    model_name="model name", status="configuration file state"
-                )
+        name_field_len = (
+            len(max(file_path.iterdir(), key=lambda path: len(path.name)).name)
+            + 2
+        )
+        row_form = f"{{model_name: <{name_field_len}}}{{status}}"
+        print(
+            row_form.format(
+                model_name="model name", status="configuration file state"
             )
-            for file in filenames:
-                file_name_body = Path(file).stem
-                if self.load_model_data(file_name_body, False)[0]:
-                    model_status = "VERIFIED"
-                else:
-                    model_status = "INCOMPLETE"
-                print(
-                    row_form.format(
-                        model_name=file_name_body, status=model_status
-                    )
-                )
+        )
+        for filename in file_path.iterdir():
+            if not filename.is_file():
+                continue
+            file_name_body = PurePath(filename.name).stem
+            model_status = "INCOMPLETE"
+            try:
+                self.load_model_data(file_name_body)
+                model_status = "VERIFIED"
+            except (UnsupportedDUTModel, ValidationError):
+                pass
+            print(
+                row_form.format(model_name=file_name_body, status=model_status)
+            )
 
-    def load_model_data(self, dut_model, exit_on_failure=True):
-        model_YML_status = True
+    def load_model_data(self, dut_model: str) -> FlashingConfiguration:
+        """Load the DUT YAML model and return typed Python object
 
-        file_path = os.path.join(files("osfv"), "models", f"{dut_model}.yml")
+        Args:
+            dut_model (str): name of the DUT model
+
+        Raises:
+            UnsupportedDUTModel: No YAML model for DUT exists
+            ValidationError: Loaded YAML model failed to validate
+
+        Returns:
+            FlashingConfiguration: loaded model
+        """
+        file_path = files("osfv") / "models" / f"{dut_model}.yml"
         # Check if the file exists
-        if not os.path.isfile(file_path):
-            if exit_on_failure:
-                raise UnsupportedDUTModel(
-                    f"The {dut_model} model is not yet supported"
-                )
-            else:
-                model_YML_status = False
+        if not file_path.is_file():
+            raise UnsupportedDUTModel(
+                f"The {dut_model} model is not yet supported"
+            )
 
         # Load the YAML file
-        with open(file_path, "r") as file:
+        with file_path.open("r") as file:
             data = yaml.safe_load(file)
 
-        voltage_validator = Any("1.8V", "3.3V")
-        programmer_name_validator = Any(
-            "rte_1_1", "rte_1_0", "ch341a", "dediprog"
-        )
-        flashing_power_state_validator = Any("G3", "S5")
-        pwr_led_validator = Any("active low", "active high")
-
-        schema = Schema(
-            {
-                Required("programmer"): {
-                    Required("name"): programmer_name_validator,
-                },
-                Required("flash_chip"): {
-                    Required("voltage"): voltage_validator,
-                    Optional("model"): str,
-                    Optional("layout"): [
-                        {
-                            Required("name"): str,
-                            Required("range"): str,
-                        }
-                    ],
-                },
-                Required("pwr_ctrl"): {
-                    Required("sonoff"): bool,
-                    Required("relay"): bool,
-                    Required(
-                        "flashing_power_state"
-                    ): flashing_power_state_validator,
-                    Optional("discharge_psu", default=True): bool,
-                },
-                Optional("pwr_led"): {
-                    Required("polarity"): pwr_led_validator,
-                },
-                Optional("reset_cmos", default=False): bool,
-                Optional("disable_wp", default=False): bool,
-            }
-        )
-
-        try:
-            schema(data)
-        except voluptuous.Error as e:
-            if exit_on_failure:
-                sys.exit(f"Model file is invalid: {e}")
-            else:
-                model_YML_status = False
-
-        # Check if required fields are present
-        required_fields = [
-            "pwr_ctrl",
-            "pwr_ctrl.sonoff",
-            "pwr_ctrl.relay",
-            "flash_chip",
-            "flash_chip.voltage",
-            "programmer",
-            "programmer.name",
-        ]
-        for field in required_fields:
-            current_field = data
-            keys = field.split(".")
-            for key in keys:
-                if key in current_field:
-                    current_field = current_field[key]
-                else:
-                    if exit_on_failure:
-                        sys.exit(
-                            f"Required field '{field}' is missing in model config."
-                        )
-                    else:
-                        model_YML_status = False
-
-        # Return the loaded data
-        return model_YML_status, data
-
-
-class IncompleteModelData(Exception):
-    pass
+        return FlashingConfiguration(**data)
 
 
 class UnsupportedDUTModel(Exception):

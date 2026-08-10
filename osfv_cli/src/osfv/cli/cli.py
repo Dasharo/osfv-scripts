@@ -74,10 +74,24 @@ class API:
 
 
 @dataclass
+class Checkout:
+    """What setup has checked out so far.
+
+    setup fills this in the moment it checks the asset out, rather than
+    returning it at the end, so cleanup knows what to check back in even when
+    setup raises partway through.
+    """
+
+    checked_out: bool = False
+    asset_id: int | None = None
+
+
+@dataclass
 class Hooks:
-    setup: Callable[[], tuple[bool, int | None]]
-    cleanup: Callable[[bool, int | None], None]
+    setup: Callable[[Checkout], None]
+    cleanup: Callable[[Checkout], None]
     _already_ran: bool = field(default=False, init=False)
+    _checkout: Checkout = field(default_factory=Checkout, init=False)
 
 
 def with_setup(func):
@@ -101,11 +115,15 @@ def with_setup(func):
     def wrapper(ctx: Context, *args, **kwargs):
         try:
             if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
-                ctx.obj._already_ran = True
-                checked_out, asset_id = ctx.obj.setup()
-                ctx.call_on_close(
-                    partial(ctx.obj.cleanup, checked_out, asset_id)
-                )
+                hooks = ctx.obj
+                hooks._already_ran = True
+                # Registered before setup runs, not after it returns: setup
+                # checks the asset out partway through its work, so a failure
+                # after that point still has to check it back in. Cleanup
+                # reads the shared record and does nothing if setup never got
+                # as far as checking anything out.
+                ctx.call_on_close(partial(hooks.cleanup, hooks._checkout))
+                hooks.setup(hooks._checkout)
             return func(ctx, *args, **kwargs)
         except OSFVError as e:
             # Report the problem rather than letting a traceback reach the
@@ -117,9 +135,9 @@ def with_setup(func):
     return wrapper
 
 
-def check_in_cleanup(checked_out: bool, asset_id: int | None):
-    if checked_out and asset_id is not None:
-        _check_in_asset(apis.get_or_create_snipeit(), asset_id)
+def check_in_cleanup(checkout: Checkout):
+    if checkout.checked_out and checkout.asset_id is not None:
+        _check_in_asset(apis.get_or_create_snipeit(), checkout.asset_id)
 
 
 apis = API()
@@ -668,8 +686,8 @@ def user_del(
 
 ## rte commands
 def setup_rte_subcommand(
-    rte_ip: str, model: str | None, skip_snipeit: bool
-) -> tuple[bool, int | None]:
+    rte_ip: str, model: str | None, skip_snipeit: bool, checkout: Checkout
+) -> None:
     """Validate arguments, setup needed resources
 
     Sets up snipeit, sonoff, and rte in `apis`, checks out asset if required
@@ -678,12 +696,11 @@ def setup_rte_subcommand(
         rte_ip (str): RTE IP Address
         model (str | None): Model name, used if skipping snipeit
         skip_snipeit (bool): Whether to skip snipeit requests
+        checkout (Checkout): Record to note the checked out asset in, so it
+            gets checked back in even if this function raises afterwards
 
     Raises:
         typer.Exit: When setup/checkout fails
-
-    Returns:
-        tuple[bool, str]: (asset was checked_out?, asset_id)
     """
     snipeit_api: SnipeIT | None = None
     asset_id: int | None = None
@@ -723,11 +740,11 @@ def setup_rte_subcommand(
             "Using rte command is invasive action, checking first if the "
             "device is not used..."
         )
+        checkout.asset_id = asset_id
         already_checked_out = _check_out_asset(
             apis.snipeit_api, cast(int, asset_id)
         )
-        return not already_checked_out, asset_id
-    return False, None
+        checkout.checked_out = not already_checked_out
 
 
 @rte_t.callback()
@@ -1171,8 +1188,19 @@ def flash_erase(ctx, target: FlashTarget = None):
 
 
 def sonoff_setup(
-    sonoff_ip: str | None, rte_ip: str | None
-) -> tuple[bool, int]:
+    sonoff_ip: str | None, rte_ip: str | None, checkout: Checkout
+) -> None:
+    """Validate arguments, check out the asset and set up sonoff in `apis`
+
+    Args:
+        sonoff_ip (str | None): Sonoff IP address
+        rte_ip (str | None): RTE IP address, used to look the Sonoff up
+        checkout (Checkout): Record to note the checked out asset in, so it
+            gets checked back in even if this function raises afterwards
+
+    Raises:
+        typer.Exit: When setup/checkout fails
+    """
     if not sonoff_ip:
         if not rte_ip:
             print("Either sonoff_ip or rte_ip is required")
@@ -1195,9 +1223,10 @@ def sonoff_setup(
         "Using rte command is invasive action, checking first if the "
         "device is not used..."
     )
+    checkout.asset_id = asset_id
     already_checked_out = _check_out_asset(apis.snipeit_api, asset_id)
+    checkout.checked_out = not already_checked_out
     apis._sonoff_api = SonoffDevice(sonoff_ip)
-    return not already_checked_out, asset_id
 
 
 @sonoff_t.callback()

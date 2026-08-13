@@ -239,7 +239,8 @@ follows:
 - `spi_mux`: - optional; true or false (false by default), whether the RTE has
   the SPI mux extension, which routes its SPI bus to one flash at a time. Every
   flash then names the mux branch it sits on, and the RTE closes that branch's
-  load switch for the flash it addresses. See
+  load switch for the flash it addresses. The extension is an add-on for RTE
+  v1.1.0 and later, so it goes with the `rte_1_1` programmer and no other. See
   [SPI mux extension](#spi-mux-extension).
 
 - `gpio`: - optional; pin assignments that differ from the defaults, as
@@ -248,10 +249,12 @@ follows:
   [GPIO header](https://docs.dasharo.com/transparent-validation/rte/v1.1.0/specification/#gpio-header-3).
   Known lines are `relay`, `reset`, `power`, `cmos`, `pwr_led`, `spi_lines`,
   `spi_voltage`, `spi_vcc`, plus `mux_enable`, `mux_select`, `spi_1_power` and
-  `spi_2_power` with `spi_mux`. Lines the driver has to drive both high and low
-  (`relay`, `pwr_led` and all four mux lines) need a push-pull pin, id 0 or
-  13-19; ids 1-12 are open-collector. Assigning two lines to one pin, or a name
-  the RTE has no such line for, is refused.
+  `spi_2_power` with `spi_mux`. Which ids a line can take follows from how the
+  driver drives it, and both ways round are refused: lines driven both high and
+  low (`relay`, `pwr_led` and all four mux lines) need a push-pull pin, id 0 or
+  13-19, and the rest, which are pulled low and released, need an
+  open-collector one, id 1-12. Assigning two lines to one pin, or a name the RTE
+  has no such line for, is refused as well.
 
   ```yaml
   gpio:
@@ -266,8 +269,8 @@ follows:
   > which are how a BenchRack is wired; a bench matching it needs no `gpio`
   > block at all.
 
-- `flash_chip`: - the flashes the RTE can reach. List them explicitly, one entry
-  per flash:
+- `flash_chip`: - the flashes the RTE can reach, at least one. List them
+  explicitly, one entry per flash:
 
     + `target` - required; the name flash commands address this flash by
     (`--target`), e.g. `host` or `bmc`. The first entry is the default.
@@ -335,7 +338,9 @@ Most RTEs in the lab are wired to a single DUT flash on their SPI header. An RTE
 fitted with the SPI mux extension reaches two, one per SPI header, through a 2:1
 SPI mux it drives itself — the arrangement a BenchRack uses to reach both a
 host boot flash and a BMC flash. A model config turns it on with `spi_mux: true`
-and names the header each flash is wired to.
+and names the header each flash is wired to. The extension is an add-on PCB for
+RTE v1.1.0 and later, so such a config names `rte_1_1` as its programmer;
+pairing it with any other is refused as hardware that cannot exist.
 
 Such an RTE differs from a plain one in that:
 

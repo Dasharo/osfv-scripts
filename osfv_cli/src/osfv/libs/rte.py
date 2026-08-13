@@ -44,6 +44,11 @@ class RTE(rtectrl):
     # rather than something to ignore.
     SUPPORTS_SPI_MUX = False
 
+    # The only programmer the SPI mux extension goes with: it is an add-on PCB
+    # for RTE v1.1.0 and later, so a config pairing it with anything else
+    # describes hardware that does not exist.
+    MUX_PROGRAMMER = "rte_1_1"
+
     # Pins a model config may reassign through its `gpio` block, mapped to the
     # attribute holding the default. What is wired where is a property of the
     # bench, not of the RTE, so anything on a header can be moved.
@@ -60,7 +65,9 @@ class RTE(rtectrl):
 
     # Pins that must be push-pull, because the driver writes "high"/"low" to
     # them rather than pulling them low and releasing them. Ids 0 and 13-19 are
-    # push-pull, 1-12 are open-collector.
+    # push-pull, 1-12 are open-collector. Every other line is the other way
+    # round: the driver writes "high-z" to it, which only an open-collector pin
+    # takes, so the two sets are checked against each other.
     PUSH_PULL_PINS = ("relay", "pwr_led")
 
     def apply_gpio_config(self):
@@ -77,8 +84,8 @@ class RTE(rtectrl):
 
         Raises:
             InvalidGPIOAssignment: If a pin name is unknown to this driver, the
-            id is out of range, or a pin the driver drives push-pull is given an
-            open-collector id.
+            id is out of range, or the id is of the wrong kind for how the
+            driver drives that line.
         """
         for name, gpio_no in self.dut_data.get("gpio", {}).items():
             attribute = self.GPIO_CONFIG_PINS.get(name)
@@ -93,11 +100,18 @@ class RTE(rtectrl):
                     f"GPIO {gpio_no} assigned to '{name}' is outside the "
                     f"RTE's range {self.GPIO_MIN}-{self.GPIO_MAX}"
                 )
-            if name in self.PUSH_PULL_PINS and 1 <= gpio_no <= 12:
+            open_collector = 1 <= gpio_no <= 12
+            if name in self.PUSH_PULL_PINS and open_collector:
                 raise InvalidGPIOAssignment(
                     f"GPIO {gpio_no} assigned to '{name}' is open-collector, "
                     f"but that line has to be driven high and low, so it needs "
                     f"a push-pull pin (0, 13-19)"
+                )
+            if name not in self.PUSH_PULL_PINS and not open_collector:
+                raise InvalidGPIOAssignment(
+                    f"GPIO {gpio_no} assigned to '{name}' is push-pull, but "
+                    f"that line is pulled low and released, so it needs an "
+                    f"open-collector pin (1-12)"
                 )
             setattr(self, attribute, gpio_no)
 
@@ -121,7 +135,8 @@ class RTE(rtectrl):
         self.dut_data = self.models.load_model_data(self.dut_model)[1]
         self.sonoff = sonoff
         # Flashes this RTE can address, keyed by target name. The first one
-        # the model config lists is the default.
+        # the model config lists is the default; the schema rejects a config
+        # that lists none, so there is always one to fall back on.
         self.flash_targets = self.models.flash_targets(self.dut_data)
         self.flash_target = next(iter(self.flash_targets))
         self.apply_gpio_config()
@@ -133,6 +148,18 @@ class RTE(rtectrl):
                 f"Model {self.dut_model} puts its flashes behind an SPI mux, "
                 f"which this driver has no mux control for. An RTE with the "
                 f"SPI mux extension needs 'spi_mux: true' in its config"
+            )
+        programmer = self.dut_data["programmer"]["name"]
+        if muxed and programmer != self.MUX_PROGRAMMER:
+            # The mux is an add-on PCB for RTE v1.1.0 and later, so no other
+            # programmer can be driving one. The schema accepts every
+            # programmer name for every board, so this is where the pairing is
+            # checked.
+            raise UnsupportedSPIMux(
+                f"Model {self.dut_model} puts its flashes behind the SPI mux "
+                f"extension, which only an RTE v1.1.0 or later has, but names "
+                f"'{programmer}' as its programmer rather than "
+                f"'{self.MUX_PROGRAMMER}'"
             )
         if not self.sonoff_sanity_check():
             raise SonoffNotFound(
@@ -747,6 +774,10 @@ class UnknownMuxBranch(OSFVError):
 
 
 class PowerStateTimeout(OSFVError):
+    pass
+
+
+class UnsupportedPowerState(OSFVError):
     pass
 
 

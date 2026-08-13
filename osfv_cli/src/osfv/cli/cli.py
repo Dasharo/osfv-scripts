@@ -113,24 +113,17 @@ def with_setup(func):
 
     @wraps(func)
     def wrapper(ctx: Context, *args, **kwargs):
-        try:
-            if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
-                hooks = ctx.obj
-                hooks._already_ran = True
-                # Registered before setup runs, not after it returns: setup
-                # checks the asset out partway through its work, so a failure
-                # after that point still has to check it back in. Cleanup
-                # reads the shared record and does nothing if setup never got
-                # as far as checking anything out.
-                ctx.call_on_close(partial(hooks.cleanup, hooks._checkout))
-                hooks.setup(hooks._checkout)
-            return func(ctx, *args, **kwargs)
-        except OSFVError as e:
-            # Report the problem rather than letting a traceback reach the
-            # user. The cleanup registered above still runs on tear down, so
-            # the asset is checked in either way.
-            print(f"{e}")
-            raise typer.Exit(1)
+        if isinstance(ctx.obj, Hooks) and not ctx.obj._already_ran:
+            hooks = ctx.obj
+            hooks._already_ran = True
+            # Registered before setup runs, not after it returns: setup
+            # checks the asset out partway through its work, so a failure
+            # after that point still has to check it back in. Cleanup
+            # reads the shared record and does nothing if setup never got
+            # as far as checking anything out.
+            ctx.call_on_close(partial(hooks.cleanup, hooks._checkout))
+            hooks.setup(hooks._checkout)
+        return func(ctx, *args, **kwargs)
 
     return wrapper
 
@@ -176,7 +169,16 @@ rte_pwr_psu = add_typer(
 
 
 def main():
-    app()
+    try:
+        app()
+    except OSFVError as e:
+        # Report a bad configuration or an uncooperative device rather than
+        # letting a traceback reach the user, wherever in a command it comes
+        # from. Click closes the context inside app(), so anything a command
+        # registered for tear down, the asset check-in included, has already
+        # run by the time this is reached.
+        print(f"{e}")
+        raise SystemExit(1)
 
 
 def print_version(version: bool):

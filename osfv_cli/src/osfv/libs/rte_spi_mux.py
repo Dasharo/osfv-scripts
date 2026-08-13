@@ -5,6 +5,7 @@ from osfv.libs.rte import (
     PowerStateTimeout,
     SPIWrongVoltage,
     UnknownMuxBranch,
+    UnsupportedPowerState,
 )
 
 
@@ -88,6 +89,10 @@ class SPIMuxRTE(RTE):
     # Delay after energizing SPI Vcc, and again after the lines, to let the
     # rail settle before flashrom talks to the chip.
     SETTLE_SECS = 2
+
+    # Power states there is a flashing sequence for, as a model config's
+    # `pwr_ctrl.flashing_power_state` names them.
+    FLASHING_POWER_STATES = ("S5", "G3")
 
     POWER_POLL_INTERVAL_SECS = 1
     POWER_POLL_TIMEOUT_SECS = 60
@@ -338,12 +343,29 @@ class SPIMuxRTE(RTE):
         must be off first, confirmed through the power LED rather than assumed.
 
         Args:
-            programmer (str): The programmer name from the model config.
+            programmer (str): The programmer name from the model config, unused
+            here. The base class energizes the flash only for the `rte_1_1`
+            programmer; the mux extension is an add-on that only fits an RTE
+            v1.1.0 or later, so on this driver there is no other programmer to
+            tell apart and the SPI step always applies.
             power_state (str): "S5" (soft off) or "G3" (mains removed).
 
         Returns:
             None.
+
+        Raises:
+            UnsupportedPowerState: If the model config asks for a power state
+            there is no flashing sequence for.
         """
+        # Checked before anything is switched, so a typo in the model config
+        # says so rather than power-cycling the DUT and then failing.
+        if power_state not in self.FLASHING_POWER_STATES:
+            raise UnsupportedPowerState(
+                f"Model {self.dut_model} asks to be flashed in the "
+                f"'{power_state}' power state, which is not one this RTE can "
+                f"put it into ({', '.join(self.FLASHING_POWER_STATES)})"
+            )
+
         self.ensure_idle()
         # Always start from the same state (mains applied), so the power button
         # has an effect and the LED readback is meaningful.
@@ -354,12 +376,8 @@ class SPIMuxRTE(RTE):
         if power_state == "G3":
             print("Removing mains to put the DUT into G3...")
             self.psu_off()
-            self.discharge_psu()
-        elif power_state != "S5":
-            exit(
-                f"Power state: '{power_state}' is not supported. Please check "
-                f"model config."
-            )
+            if self.dut_data["pwr_ctrl"].get("discharge_psu", True):
+                self.discharge_psu()
 
         self.spi_enable()
         time.sleep(3)
@@ -369,7 +387,9 @@ class SPIMuxRTE(RTE):
         Isolates the flash bus again once flashing is done.
 
         Args:
-            programmer (str): The programmer name from the model config.
+            programmer (str): The programmer name from the model config, unused
+            here for the same reason as in pwr_ctrl_before_flash: the mux only
+            exists on an rte_1_1, so the SPI step always applies.
 
         Returns:
             None.

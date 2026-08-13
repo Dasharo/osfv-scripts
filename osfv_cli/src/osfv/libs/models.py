@@ -6,7 +6,7 @@ from pathlib import Path
 import yaml
 from importlib_resources import files
 from osfv.libs.errors import OSFVError
-from voluptuous import Any, Optional, Required, Schema
+from voluptuous import All, Any, Length, Optional, Required, Schema
 
 
 class Models:
@@ -70,18 +70,24 @@ class Models:
         ]
         # An RTE wired to several flashes lists them explicitly, one entry per
         # flash. An RTE with a single flash may keep the older mapping form,
-        # which describes that one flash.
-        flash_list_schema = [
-            {
-                Required("target"): str,
-                Required("voltage"): voltage_validator,
-                Optional("model"): str,
-                Optional("size"): int,
-                Optional("mux"): int,
-                Optional("power"): bool,
-                Optional("layout"): layout_schema,
-            }
-        ]
+        # which describes that one flash. Either way it has to describe at
+        # least one flash: an empty list satisfies "a list of flash chips" with
+        # nothing in it to check, and leaves the drivers with no flash to
+        # address.
+        flash_list_schema = All(
+            [
+                {
+                    Required("target"): str,
+                    Required("voltage"): voltage_validator,
+                    Optional("model"): str,
+                    Optional("size"): int,
+                    Optional("mux"): int,
+                    Optional("power"): bool,
+                    Optional("layout"): layout_schema,
+                }
+            ],
+            Length(min=1),
+        )
         flash_mapping_schema = {
             Required("voltage"): voltage_validator,
             Optional("model"): str,

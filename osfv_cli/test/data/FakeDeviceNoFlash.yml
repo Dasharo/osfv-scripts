@@ -1,0 +1,12 @@
+---
+# A config that names no flash chip at all: the RTE has nothing to address, so
+# the file is not a usable model.
+flash_chip: []
+
+programmer:
+  name: rte_1_0
+
+pwr_ctrl:
+  sonoff: false
+  relay: true
+  flashing_power_state: "S5"

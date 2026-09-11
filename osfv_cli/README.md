@@ -449,9 +449,9 @@ uv sync --group test
 
 To test some functionalities related to SnipeIT, it is required to
 use a configuration of a second SnipeIT user. The configuration
-should be located at `~/.osfv-robot/snipeit.yaml`.
+should be located at `~/.osfv-robot/snipeit.yml`.
 The API key and User ID must be valid, and different
-from the one at `~/.osfv/snipeit.yaml`.
+from the one at `~/.osfv/snipeit.yml`.
 For details on SnipeIT configuration see [Customize the configuration](#customize-the-configuration).
 
 ### Running tests

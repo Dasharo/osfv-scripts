@@ -342,11 +342,7 @@ def list_my_assets(
         print("No used assets found.")
         return False
 
-    if dump_json:
-        print(json.dumps(my_assets))
-    else:
-        for asset in my_assets:
-            print_asset_details(asset)
+    print_assets(my_assets, dump_json)
     return True
 
 
@@ -623,23 +619,38 @@ def check_in_my(
 ):
     """
     Lists all assets assigned to the current user, checks in all of them
-    except those which are in a category listed in `categories_to_ignore`.
+    except those whose name or category contains a marker listed in
+    `markers_to_ignore`.
     """
-    categories_to_ignore = ["Employee Laptop"]
+    markers_to_ignore = {"employee laptop"}
     snipeit_api = apis.get_or_create_snipeit()
-    my_assets = get_my_assets(snipeit_api)
 
-    my_assets = [
-        asset
-        for asset in my_assets
-        if not set(asset["category"].values()) & set(categories_to_ignore)
-    ]
-    if not list_my_assets(dump_json):
+    my_assets = []
+    ignored_assets = []
+    for asset in get_my_assets(snipeit_api):
+        category = ((asset.get("category") or {}).get("name") or "").lower()
+        name = (asset.get("name") or "").lower()
+        if any(
+            marker in name or marker in category
+            for marker in markers_to_ignore
+        ):
+            ignored_assets.append(asset)
+        else:
+            my_assets.append(asset)
+
+    if ignored_assets and not dump_json:
+        names = ", ".join(asset["name"] for asset in ignored_assets)
+        print(f"Skipping {len(ignored_assets)} ignored assets: {names}")
+
+    if not my_assets:
+        print("No assets to check in.")
         raise typer.Exit()
+
+    print_assets(my_assets, dump_json)
 
     if not yes:
         choice = typer.confirm(
-            f"Are you sure you want to check in {len(my_assets)} assets? [y/N]"
+            f"Are you sure you want to check in {len(my_assets)} assets?"
         )
 
         if not choice:
@@ -1426,6 +1437,25 @@ def get_my_assets(snipeit_api: SnipeIT):
         for asset in used_assets
         if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
     ]
+
+
+def print_assets(assets, dump_json):
+    """
+    Prints a list of assets, as JSON or as human readable details.
+
+    Args:
+        assets (list): Dictionaries containing asset details.
+        dump_json (bool): Print the whole list as JSON instead of details.
+
+    Returns:
+        None
+    """
+    if dump_json:
+        print(json.dumps(assets))
+        return
+
+    for asset in assets:
+        print_asset_details(asset)
 
 
 def print_asset_details(asset):

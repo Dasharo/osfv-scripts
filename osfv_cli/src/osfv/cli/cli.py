@@ -1435,7 +1435,7 @@ def get_my_assets(snipeit_api: SnipeIT):
     return [
         asset
         for asset in used_assets
-        if asset["assigned_to"]["id"] is snipeit_api.cfg_user_id
+        if asset["assigned_to"]["id"] == snipeit_api.cfg_user_id
     ]
 
 

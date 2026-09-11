@@ -2,3 +2,6 @@ __pycache__/
 dist/
 snipeit_cli.egg-info/
 *.rom
+log.html
+output.xml
+report.html

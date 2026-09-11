@@ -10,39 +10,70 @@ as such, may not fit for other needs.
 
 ## Installation
 
-1. Clone the repository to your local machine:
+These steps install `osfv_cli` as a user-wide command, so it is on your
+`PATH` in every shell.
+
+1. Clone the repository and enter it:
 
    ```shell
    git clone https://github.com/dasharo/osfv-scripts.git
-   ```
-
-1. Create virtual environment and activate it:
-
-   ```shell
-   virtualenv venv
-   ```
-
-   ```shell
-   source venv/bin/activate
-   ```
-
-1. Navigate to the cloned repository:
-
-   ```shell
    cd osfv-scripts/osfv_cli
    ```
 
-1. Install poetry:
-
-   ```shell
-   pip install poetry
-   ```
-
-1. Build and install utility:
+1. Install the utility:
 
    ```shell
    make install
    ```
+
+   The target installs the package with [uv](https://docs.astral.sh/uv/),
+   which keeps the dependencies in a virtual environment of its own and links
+   the `osfv_cli` command into the uv tool binary directory, `~/.local/bin` by
+   default, which has to be on your `PATH`. It also creates
+   `~/.osfv/snipeit.yml` and `~/.osfv/zabbix.yml` when they are missing. Repeat
+   it after a `git pull` to upgrade, and run `make uninstall` to remove the
+   utility.
+
+### Installing with pipx
+
+[pipx](https://pipx.pypa.io/) isolates the dependencies and links the command
+into `~/.local/bin` the same way `uv` does:
+
+```shell
+pipx install --force .
+```
+
+### Installing into the user site
+
+This needs nothing but `pip`, which builds the wheel on its own:
+
+```shell
+pip install --user --force-reinstall .
+```
+
+Run it with no virtual environment active. The dependencies land in your user
+site-packages, next to every other package installed there.
+
+### Installing into a virtual environment
+
+`pip` installs into whichever environment is active, so the `osfv_cli`
+command works only while that environment is active:
+
+```shell
+python3 -m venv venv
+source venv/bin/activate
+pip install .
+```
+
+### Configuration files
+
+Only `make install` creates the configuration files. After one of the
+alternatives above, create them from the `osfv_cli` directory:
+
+```shell
+install -D -m 644 snipeit.yml ~/.osfv/snipeit.yml
+install -D -m 644 zabbix.yml ~/.osfv/zabbix.yml
+```
 
 ## Usage
 
@@ -51,8 +82,7 @@ as such, may not fit for other needs.
 
 ### Customize the configuration
 
-> The `~/.osfv/snipeit.yml` should be created automatically upon installing
-> the utility as shown above.
+> The installation steps above create `~/.osfv/snipeit.yml`.
 
 - Open `~/.osfv/snipeit.yml` and provide your Snipe-IT API URL, API token, and
   user ID

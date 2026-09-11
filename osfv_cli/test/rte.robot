@@ -86,7 +86,7 @@ Test Flash Probe - Asset Checked Out By Someone Else
     ${probe_result}=    Run Process    osfv_cli    rte    --rte_ip    ${RTE_IP_APU2}    flash    probe
     Should Match    ${probe_result.stdout}    *Error checking out asset ${ASSET_ID_APU2}*
     Should Match
-    ...    ${probe_result.stderr}
+    ...    ${probe_result.stdout}
     ...    *Exiting to avoid conflict. Check who is working on this device and contact them first.*
 
     # Device should not be checked out on me

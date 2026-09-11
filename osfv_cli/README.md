@@ -423,8 +423,14 @@ unset SSH_AUTH_SOCK
 
 ## Development
 
-You can test local changes by running `poetry shell` first. Then, all
-`osfv_cli` calls will use the local files in repository, not installed package.
+Install the utility in editable mode, from the `osfv_cli` directory:
+
+```shell
+uv tool install --force --editable .
+```
+
+Every `osfv_cli` call then runs the files in the repository. Run `make install`
+to go back to a regular installation.
 
 ## Tests
 
@@ -433,11 +439,10 @@ The tests are written in [Robot Framework](https://robotframework.org/),
 
 ### Dependencies
 
-Enter development shell with test dependencies:
+Install the test dependencies:
 
 ```shell
-poetry install --with test
-poetry shell
+uv sync --group test
 ```
 
 ### Required configs
@@ -454,5 +459,5 @@ For details on SnipeIT configuration see [Customize the configuration](#customiz
 When all the prerequisites are met, the test can be run:
 
 ```shell
-robot test
+uv run robot test
 ```

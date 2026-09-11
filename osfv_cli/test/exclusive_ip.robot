@@ -31,9 +31,8 @@ ${UNIT_01_PIKVM_IP}=        127.200.1.1
 ${UNIT_02_PIKVM_IP}=        127.200.1.1
 ${UNIT_03_PIKVM_IP}=        127.200.1.1
 
-${BY_RTE_FAILURE_PRE}=      SEPARATOR=    osfv.libs.snipeit_api.SnipeIT.
-...                         DuplicatedIpException: FATAL: You are trying to access an asset with
-${BY_RTE_FAILURE_POST}=     SEPARATOR=    which is not exclusive. Please check Snipe-IT data.
+${BY_RTE_FAILURE_PRE}=      *FATAL: You are trying to access an asset with
+${BY_RTE_FAILURE_POST}=     which is not exclusive. Please check Snipe-IT data.*
 
 
 *** Test Cases ***    ***
@@ -43,7 +42,7 @@ Check Out By RTE IP Negative failing on RTE IP
 
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    RTE IP:    ${UNIT_00_RTE_IP}    ${BY_RTE_FAILURE_POST}
-    Should Match    ${checkout_result.stderr}    ${expected}
+    Should Match    ${checkout_result.stdout}    ${expected}
 
 Check Out By RTE Negative failing on Sonoff IP
     [Documentation]    Should fail due to Sonoff IP non-exclusivity
@@ -52,7 +51,7 @@ Check Out By RTE Negative failing on Sonoff IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    Sonoff IP:    ${UNIT_02_SONOFF_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${checkout_result.stderr}    ${expected}
+    Should Match    ${checkout_result.stdout}    ${expected}
 
 Check Out By ID Negative failing on PiKVM IP
     [Documentation]    Should fail due to PiKVM IP non-exclusivity
@@ -61,7 +60,7 @@ Check Out By ID Negative failing on PiKVM IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    PiKVM IP:    ${UNIT_02_PIKVM_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${checkout_result.stderr}    ${expected}
+    Should Match    ${checkout_result.stdout}    ${expected}
 
 Check Out By ID Negative failing on Sonoff IP
     [Documentation]    Should fail due to Sonoff IP non-exclusivity
@@ -70,7 +69,7 @@ Check Out By ID Negative failing on Sonoff IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    Sonoff IP:    ${UNIT_03_SONOFF_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${checkout_result.stderr}    ${expected}
+    Should Match    ${checkout_result.stdout}    ${expected}
 
 Flash Probe Negative by RTE IP failing on RTE IP
     [Documentation]    Should fail due to RTE IP non-exclusivity
@@ -80,7 +79,7 @@ Flash Probe Negative by RTE IP failing on RTE IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    RTE IP:    ${UNIT_00_RTE_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${probe_result.stderr}    ${expected}
+    Should Match    ${probe_result.stdout}    ${expected}
 
 Flash Probe Negative by RTE IP failing on Sonoff IP
     ${probe_result}=    Run Process    osfv_cli    rte    --rte_ip
@@ -89,7 +88,7 @@ Flash Probe Negative by RTE IP failing on Sonoff IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    Sonoff IP:    ${UNIT_02_SONOFF_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${probe_result.stderr}    ${expected}
+    Should Match    ${probe_result.stdout}    ${expected}
 
 Sonoff Get Negative by Sonoff IP failing on PiKVM IP
     [Documentation]    Should fail due to PiKVM IP non-exclusivity
@@ -99,7 +98,7 @@ Sonoff Get Negative by Sonoff IP failing on PiKVM IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    PiKVM IP:    ${UNIT_01_PIKVM_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${probe_result.stderr}    ${expected}
+    Should Match    ${probe_result.stdout}    ${expected}
 
 Snoff Get Negative by RTE IP failing on Sonoff IP
     [Documentation]    Should fail due to PiKVM IP non-exclusivity
@@ -109,4 +108,4 @@ Snoff Get Negative by RTE IP failing on Sonoff IP
     ${expected}=    Catenate    SEPARATOR=${SPACE}    ${BY_RTE_FAILURE_PRE}
     ...    Sonoff IP:    ${UNIT_02_SONOFF_IP}    ${BY_RTE_FAILURE_POST}
 
-    Should Match    ${probe_result.stderr}    ${expected}
+    Should Match    ${probe_result.stdout}    ${expected}

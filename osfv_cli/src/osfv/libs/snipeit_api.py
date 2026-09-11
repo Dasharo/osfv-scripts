@@ -1,18 +1,18 @@
 import os
 import secrets
 import string
-import sys
 import time
 
 import requests
 import unidecode
 import yaml
+from osfv.libs.errors import OSFVError
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
 
 class SnipeIT:
-    class DuplicatedIpException(Exception):
+    class DuplicatedIpException(OSFVError):
         def __init__(self, counts, field_name, expected_ip):
             # filling some data and composing an error message
             self.count = int(counts[field_name])
@@ -26,8 +26,6 @@ class SnipeIT:
                 + " which is not exclusive. Please check Snipe-IT data."
             )
 
-            # disabling traceback, this is intentional failure.
-            sys.tracebacklimit = 0
             super().__init__(self.message)
 
         def __str__(self):

@@ -1,9 +1,53 @@
+import logging
+import time
+
 import requests
+
+# Healthy Sonoffs answer within ~0.3 s (worst seen ~3.5 s), ones on a poor
+# Wi-Fi link within ~12 s. Without a timeout a response stalled mid-body
+# blocks forever, so bound every request and retry; the commands are
+# idempotent.
+SONOFF_TIMEOUT = (5, 15)  # (connect, read) in seconds
+SONOFF_RETRIES = 3
+SONOFF_RETRY_DELAY = 2
 
 
 class SonoffDevice:
     def __init__(self, sonoff_ip):
         self.sonoff_ip = sonoff_ip
+
+    def _request(self, method, endpoint):
+        """
+        Send a request to a specified endpoint on a Sonoff device, retrying
+        on connection errors and timeouts.
+
+        Args:
+            method (str): HTTP method to use.
+            endpoint (str): The endpoint to which the request should be sent.
+
+        Returns:
+            Response: The HTTP response object.
+        """
+        url = f"http://{self.sonoff_ip}{endpoint}"
+        for attempt in range(1, SONOFF_RETRIES + 1):
+            try:
+                response = requests.request(
+                    method, url, timeout=SONOFF_TIMEOUT
+                )
+                # Raise an exception for 4xx and 5xx status codes
+                response.raise_for_status()
+                return response
+            except (
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout,
+            ) as e:
+                logging.warning(
+                    f"Sonoff {method} {url} failed "
+                    f"(attempt {attempt}/{SONOFF_RETRIES}): {e}"
+                )
+                if attempt == SONOFF_RETRIES:
+                    raise
+                time.sleep(SONOFF_RETRY_DELAY)
 
     def _get_request(self, endpoint):
         """
@@ -15,11 +59,7 @@ class SonoffDevice:
         Returns:
             dict: The parsed JSON response from the Sonoff device.
         """
-        url = f"http://{self.sonoff_ip}{endpoint}"
-        response = requests.request("GET", url)
-        # Raise an exception for non-2xx responses (4xx and 5xx status codes)
-        response.raise_for_status()
-        return response.json()
+        return self._request("GET", endpoint).json()
 
     def _post_request(self, endpoint):
         """
@@ -31,12 +71,8 @@ class SonoffDevice:
         Returns:
             int: The HTTP status code of the response.
         """
-        url = f"http://{self.sonoff_ip}{endpoint}"
-        response = requests.request("POST", url)
-        # Raise an exception for non-2xx responses (4xx and 5xx status codes)
-        response.raise_for_status()
         # Sonoff POST requests return no data
-        return response.status_code
+        return self._request("POST", endpoint).status_code
 
     def turn_on(self):
         """

@@ -26,6 +26,7 @@ model_dict = {
     "novacustom-v560tne": "V560TNE",
     "novacustom-nuc_box-125H": "NUC BOX-125H",
     "novacustom-nuc_box-155H": "NUC BOX-155H",
+    "odroid-h5": "H5",
     "odroid-h4-plus": "H4-PLUS",
     "odroid-h4-ultra": "H4-ULTRA",
     "pcengines-apu2": "APU2",

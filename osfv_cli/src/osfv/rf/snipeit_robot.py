@@ -4,11 +4,12 @@ from osfv.libs.snipeit_api import SnipeIT
 snipeit_api = SnipeIT()
 
 
-def snipeit_checkout(rte_ip):
+def snipeit_checkout(rte_ip, strict=False):
     """
     Check out an asset by its rte_ip.
     Args:
         rte_ip (str): The IP address of the RTE device connected to a DUT.
+        strict (bool): Whether to require the asset not being already checked out
 
     Returns:
         Information that the asset has already been checked out.
@@ -18,6 +19,12 @@ def snipeit_checkout(rte_ip):
     """
     asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
     success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
+    if already_checked_out:
+        msg = f"Asset {asset_id} already checked out to you."
+        if strict:
+            raise AssertionError(msg + " Refusing to reuse it (strict==True).")
+        robot.api.logger.info(f"Asset {asset_id} already checked out to you.")
+        return True
     if success:
         robot.api.logger.info(f"Asset {asset_id} successfully checked out.")
         return already_checked_out

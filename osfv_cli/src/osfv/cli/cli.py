@@ -702,14 +702,19 @@ def user_del(
 
 ## rte commands
 def setup_rte_subcommand(
-    rte_ip: str, model: str | None, skip_snipeit: bool, checkout: Checkout
+    rte_ip: str | None,
+    asset_id: int | None,
+    model: str | None,
+    skip_snipeit: bool,
+    checkout: Checkout,
 ) -> None:
     """Validate arguments, setup needed resources
 
     Sets up snipeit, sonoff, and rte in `apis`, checks out asset if required
 
     Args:
-        rte_ip (str): RTE IP Address
+        rte_ip (str | None): RTE IP Address
+        asset_id (int | None): Asset ID, used to look the RTE IP up instead
         model (str | None): Model name, used if skipping snipeit
         skip_snipeit (bool): Whether to skip snipeit requests
         checkout (Checkout): Record to note the checked out asset in, so it
@@ -719,14 +724,33 @@ def setup_rte_subcommand(
         typer.Exit: When setup/checkout fails
     """
     snipeit_api: SnipeIT | None = None
-    asset_id: int | None = None
     dut_model_name: str | None = None
+    if asset_id is not None and rte_ip is not None:
+        print("Only asset_id or rte_ip is allowed, not both")
+        raise typer.Exit(1)
+    if asset_id is None and rte_ip is None:
+        print("Either asset_id or rte_ip is required")
+        raise typer.Exit(1)
+    if asset_id is not None and skip_snipeit:
+        print(
+            "`--asset_id` is looked up in Snipe-IT, so it cannot be used "
+            "with `--skip-snipeit`. Use `--rte_ip` instead."
+        )
+        raise typer.Exit(1)
     if not skip_snipeit:
         snipeit_api = apis.get_or_create_snipeit()
-        asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
-        if asset_id is None:
-            print(f"No asset found with RTE IP: {rte_ip}")
-            raise typer.Exit(1)
+        if asset_id is not None:
+            rte_ip = snipeit_api.get_rte_ip_by_asset_id(asset_id)
+            if rte_ip is None:
+                print(f"No RTE IP found for asset ID: {asset_id}")
+                raise typer.Exit(1)
+            print(f"RTE IP retrieved from snipeit: {rte_ip}")
+        else:
+            asset_id = snipeit_api.get_asset_id_by_rte_ip(rte_ip)
+            if asset_id is None:
+                print(f"No asset found with RTE IP: {rte_ip}")
+                raise typer.Exit(1)
+    assert rte_ip is not None
     if model:
         print("DUT model retrieved from cmdline, skipping Snipe-IT query")
         dut_model_name = model
@@ -767,8 +791,16 @@ def setup_rte_subcommand(
 def rte_options(
     ctx: Context,
     rte_ip: Annotated[
-        str, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
-    ],
+        str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
+    ] = None,
+    asset_id: Annotated[
+        int | None,
+        Option(
+            "--asset_id",
+            help="Snipe-IT asset ID, to look the RTE IP up in Snipe-IT",
+            metavar="ASSET_ID",
+        ),
+    ] = None,
     model: Annotated[
         str | None,
         Option(
@@ -786,7 +818,9 @@ def rte_options(
     ] = False,
 ):
     ctx.obj = Hooks(
-        setup=partial(setup_rte_subcommand, rte_ip, model, skip_snipeit),
+        setup=partial(
+            setup_rte_subcommand, rte_ip, asset_id, model, skip_snipeit
+        ),
         cleanup=check_in_cleanup,
     )
 

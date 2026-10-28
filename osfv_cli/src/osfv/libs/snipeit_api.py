@@ -323,6 +323,35 @@ class SnipeIT:
         # No asset found with matching RTE IP
         return None
 
+    def get_rte_ip_by_asset_id(self, asset_id):
+        """
+        Retrieves the RTE IP of the asset with a given asset ID.
+
+        Runs the same exclusivity check as get_asset_id_by_rte_ip, so an RTE IP
+        shared with another asset is rejected whichever way it is looked up.
+
+        Args:
+            asset_id (int): The asset ID to look up.
+
+        Returns:
+            str or None: The RTE IP if the asset exists and has one set,
+            otherwise None.
+
+        Raises:
+            DuplicatedIpException: If an IP of the asset appears more than once
+            across all assets.
+        """
+        status, asset_data = self.get_asset(asset_id)
+        if not status:
+            return None
+
+        rte_ip = self.__retieve_custom_field_value(
+            asset_data.get("custom_fields") or {}, "RTE IP"
+        )
+        if rte_ip:
+            self.check_asset_for_ip_exclusivity_by_id(asset_id)
+        return rte_ip
+
     def get_asset_id_by_sonoff_ip(self, rte_ip):
         """
         Retrieves the asset ID associated with a given Sonoff IP.

@@ -237,6 +237,16 @@ just some examples.
   > Replace `<rte_ip_address>` with the actual RTE IP address connected with
   > the DUT.
 
+- Select the device by its Snipe-IT asset ID instead of the RTE IP:
+
+  ```bash
+  osfv_cli rte --asset_id 123 flash write --rom <path_to_fw_file>
+  ```
+
+  > `--asset_id` works with every `rte` subcommand. The RTE IP is read from the
+  > asset's "RTE IP" custom field, so it cannot be combined with `--rte_ip` or
+  > `--skip-snipeit`.
+
 - Flash the BMC flash on an RTE wired to more than one flash chip:
 
   ```bash

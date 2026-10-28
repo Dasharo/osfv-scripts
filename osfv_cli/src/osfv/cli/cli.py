@@ -583,6 +583,9 @@ def check_out_asset(
     rte_ip: Annotated[
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
     ] = None,
+    strict: Annotated[
+        bool, Option("--strict", help="Don't allow the asset to be already checked out by you")
+    ] = False,
 ):
     """Check out an asset by providing the Asset ID or RTE IP
 
@@ -590,7 +593,7 @@ def check_out_asset(
     """
     snipeit_api = apis.get_or_create_snipeit()
     asset_id = validate_and_return_asset_id(snipeit_api, asset_id, rte_ip)
-    _check_out_asset(snipeit_api, asset_id)
+    _check_out_asset(snipeit_api, asset_id, strict)
 
 
 @snipeit_t.command("check_in")
@@ -1338,7 +1341,7 @@ def validate_and_return_asset_id(
     return asset_id
 
 
-def _check_out_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
+def _check_out_asset(snipeit_api: SnipeIT, asset_id: int, strict: bool = False) -> bool:
     """Check out an asset by providing the Asset ID
 
     It checks if the asset is already checked out by the user.
@@ -1346,6 +1349,9 @@ def _check_out_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
     Args:
         snipeit_api (SnipeIT): SnipeIT instance
         asset_id (str): Asset ID to check-out
+        strict (bool): If True, do not accept an asset already being checked
+            out by you. Useful when one account is used in parallel threads
+            to avoid collisions.
 
     Raises:
         typer.Exit: If check-out failed
@@ -1356,8 +1362,12 @@ def _check_out_asset(snipeit_api: SnipeIT, asset_id: int) -> bool:
     success, data, already_checked_out = snipeit_api.check_out_asset(asset_id)
 
     if already_checked_out:
-        print(f"Asset {asset_id} is already checked out by you")
-        return already_checked_out
+        if strict:
+            print(f"Asset {asset_id} is already checked out by you, refusing to reuse it")
+            raise typer.Exit(1)
+        else:
+            print(f"Asset {asset_id} is already checked out by you")
+            return already_checked_out
 
     if success:
         print(f"Asset {asset_id} successfully checked out.")

@@ -453,7 +453,7 @@ class SnipeIT:
         if asset_data["assigned_to"]:
             assigned_to_id = asset_data["assigned_to"]["id"]
             if assigned_to_id == self.cfg_user_id:
-                return True, None, True
+                return False, None, True
 
         data = {
             "asset_id": asset_id,

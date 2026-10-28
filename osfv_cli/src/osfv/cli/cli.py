@@ -22,6 +22,8 @@ from osfv.libs.snipeit_api import SnipeIT
 from osfv.libs.sonoff_api import SonoffDevice
 from osfv.libs.zabbix import Zabbix
 from typer import Argument, Context, Option
+from typer._click.exceptions import NoArgsIsHelpError, UsageError
+from typer.core import TyperGroup
 
 
 class API:
@@ -138,13 +140,73 @@ apis = API()
 ## Intermediate subcommands
 
 
+def _print_help_on_usage_error(
+    error: UsageError, ctx: typer.Context | None
+) -> None:
+    """Print the full help of the command a usage error is about
+
+    Args:
+        error (UsageError): The error, printed by Typer once it propagates
+        ctx (typer.Context | None): Context of the command the error is about,
+            used when the error does not carry one itself
+
+    Clears error.ctx afterwards: the help already starts with the usage line,
+    so Typer then prints just the error rather than the usage again and a hint
+    to rerun with -h.
+    """
+    if getattr(error, "help_shown", False) or isinstance(
+        error, NoArgsIsHelpError
+    ):
+        return
+    ctx = error.ctx or ctx
+    if ctx is None:
+        return
+    help_text = ctx.get_help()
+    # Typer prints the help itself when rich is installed and returns nothing
+    if help_text:
+        typer.echo(help_text)
+    error.ctx = None
+    # The enclosing groups see the error on its way up, print it only once
+    error.help_shown = True  # type: ignore[attr-defined]
+
+
+class HelpOnUsageErrorGroup(TyperGroup):
+    """Show the full help on a mistyped option or command
+
+    parse_args covers the options of the group itself, and invoke covers its
+    subcommands, as a group parses the arguments of a subcommand there.
+    """
+
+    def parse_args(self, ctx, args):
+        try:
+            return super().parse_args(ctx, args)
+        except UsageError as e:
+            _print_help_on_usage_error(e, ctx)
+            raise
+
+    def invoke(self, ctx):
+        try:
+            return super().invoke(ctx)
+        except UsageError as e:
+            # The parser raises some errors, like an option missing its value,
+            # without a context, so build one for the subcommand being parsed
+            sub_ctx = None
+            name = ctx.invoked_subcommand
+            cmd = self.get_command(ctx, name) if name else None
+            if cmd is not None:
+                sub_ctx = cmd.context_class(cmd, info_name=name, parent=ctx)
+            _print_help_on_usage_error(e, sub_ctx)
+            raise
+
+
 def add_typer(help: str, name: str, target_typer: typer.Typer):
-    new_typer = typer.Typer(help=help)
+    new_typer = typer.Typer(help=help, cls=HelpOnUsageErrorGroup)
     target_typer.add_typer(new_typer, name=name)
     return new_typer
 
 
 app = typer.Typer(
+    cls=HelpOnUsageErrorGroup,
     no_args_is_help=True,
     help="Open Source Firmware Validation CLI",
     context_settings={"help_option_names": ["-h", "--help"]},

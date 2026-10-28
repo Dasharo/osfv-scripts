@@ -4,7 +4,7 @@ build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "osfv"
-version = "1.0.0"
+version = "1.1.0"
 description = "Open Source Firmware Validation Command Line Interface Tool"
 authors = [
     {name = "Maciej Pijanowski", email="Maciej.Pijanowski@3mdeb.com"}

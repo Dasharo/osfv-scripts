@@ -237,6 +237,16 @@ just some examples.
   > Replace `<rte_ip_address>` with the actual RTE IP address connected with
   > the DUT.
 
+- Write or read only some regions of the FMAP found in the flash chip:
+
+  ```bash
+  osfv_cli rte --rte_ip <rte_ip_address> flash write --fmap-region COREBOOT --fmap-region FMAP --rom <path_to_fw_file>
+  ```
+
+  > This passes `--fmap -i <region>` to flashrom, once per region. It can't be
+  > combined with `--bios`, nor used with a model whose config defines a
+  > flash `layout`.
+
 - Select the device by its Snipe-IT asset ID instead of the RTE IP:
 
   ```bash

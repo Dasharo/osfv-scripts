@@ -661,6 +661,21 @@ class RTE(rtectrl):
 
         return args
 
+    def flash_fmap_args(self, fmap_regions):
+        """
+        Creates flashrom arguments limiting the operation to the given
+        regions of the FMAP found in the flash chip.
+
+        Args:
+            fmap_regions (list[str]): Names of the FMAP regions to operate on.
+
+        Returns:
+            str: The generated flashrom arguments as a string.
+        """
+        return " ".join(
+            ["--fmap"] + [f"-i {region}" for region in fmap_regions]
+        )
+
     def flash_probe(self):
         """
         Execute flashrom with platform-specific programmer without
@@ -675,17 +690,22 @@ class RTE(rtectrl):
         args = self.flash_create_args()
         return self.flash_cmd(args)
 
-    def flash_read(self, read_file):
+    def flash_read(self, read_file, fmap_regions=None):
         """
         Executes the flashrom command to read the firmware from the DUT.
 
         Args:
             read_file (str): The file path where the firmware should be saved.
+            fmap_regions (list[str], optional): Read only these FMAP regions.
+                The rest of the read file is left unfilled. Defaults to None.
 
         Returns:
             int: The return code from the flashrom command execution.
         """
-        args = self.flash_create_args(f"-r {self.FW_PATH_READ}")
+        extra_args = f"-r {self.FW_PATH_READ}"
+        if fmap_regions:
+            extra_args = f"{self.flash_fmap_args(fmap_regions)} {extra_args}"
+        args = self.flash_create_args(extra_args)
         return self.flash_cmd(args, read_file=read_file)
 
     def flash_erase(self):
@@ -701,25 +721,37 @@ class RTE(rtectrl):
         args = self.flash_create_args(f"-E")
         return self.flash_cmd(args)
 
-    def flash_write(self, write_file, bios=False):
+    def flash_write(self, write_file, bios=False, fmap_regions=None):
         """
         Executes the flashrom command to write firmware to the DUT.
 
         Args:
             write_file (str): The path to the firmware file to write.
             bios (bool, optional): If True, writes the BIOS image using the specific option. Defaults to False.
+            fmap_regions (list[str], optional): Write only these FMAP regions,
+                as laid out by the FMAP in the flash chip. Defaults to None.
 
         Returns:
             The return code from the flashrom command execution.
+
+        Raises:
+            ConflictingFlashRegions: When fmap_regions is combined with bios,
+                or with a model whose config defines a flash layout
         """
+        # Check if this board needs layout file (from model file)
+        use_layout = self.flash_target_data().get("layout", False)
+
+        if fmap_regions and (bios or use_layout):
+            raise ConflictingFlashRegions(
+                "FMAP regions can't be combined with flashing the BIOS region"
+                " or a model with a flash layout"
+            )
+
         self.check_image_size(write_file)
 
         if "disable_wp" in self.dut_data:
             args = self.flash_create_args("--wp-disable --wp-range=0x0,0x0")
             self.flash_cmd(args)
-
-        # Check if this board needs layout file (from model file)
-        use_layout = self.flash_target_data().get("layout", False)
 
         if use_layout:
             args = self.flash_create_args(
@@ -728,6 +760,10 @@ class RTE(rtectrl):
         elif bios:
             args = self.flash_create_args(
                 f"-i bios -N --ifd -w {self.FW_PATH_WRITE}"
+            )
+        elif fmap_regions:
+            args = self.flash_create_args(
+                f"{self.flash_fmap_args(fmap_regions)} -N -w {self.FW_PATH_WRITE}"
             )
         else:
             args = self.flash_create_args(f"-w {self.FW_PATH_WRITE}")
@@ -782,6 +818,10 @@ class UnsupportedPowerState(OSFVError):
 
 
 class FlashImageSizeMismatch(OSFVError):
+    pass
+
+
+class ConflictingFlashRegions(OSFVError):
     pass
 
 

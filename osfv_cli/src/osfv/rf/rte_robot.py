@@ -143,35 +143,37 @@ class RobotRTE:
         robot.api.logger.info(f"Flash target set to {target}")
 
     @keyword(types=None)
-    def rte_flash_read(self, fw_file):
+    def rte_flash_read(self, fw_file, fmap_regions=None):
         """
         Reads DUT flash chip content into the specified ``fw_file`` path.
 
         Args:
             fw_file (str): The file path where the flash content will be saved.
+            fmap_regions (list[str], optional): Read only these FMAP regions (default is None).
 
         Returns:
             int: The result code from the flash_read method of the rte object.
         """
         robot.api.logger.info(f"Reading from flash...")
-        rc = self.rte.flash_read(fw_file)
+        rc = self.rte.flash_read(fw_file, fmap_regions)
         robot.api.logger.info(f"Read flash content saved to {fw_file}")
         return rc
 
     @keyword(types=None)
-    def rte_flash_write(self, fw_file, bios=False):
+    def rte_flash_write(self, fw_file, bios=False, fmap_regions=None):
         """
         Writes file from ``fw_file`` path into DUT flash chip.
 
         Args:
             fw_file (str): The file path containing the firmware to be written to the flash chip.
             bios (bool, optional): Whether to write the BIOS (default is False).
+            fmap_regions (list[str], optional): Write only these FMAP regions (default is None).
 
         Returns:
             int: The result code from the flash_write method of the rte object.
         """
         robot.api.logger.info(f"Writing {fw_file} to flash...")
-        rc = self.rte.flash_write(fw_file, bios)
+        rc = self.rte.flash_write(fw_file, bios, fmap_regions)
         if rc == 0:
             robot.api.logger.info(f"Flash written successfully")
         else:

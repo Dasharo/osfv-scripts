@@ -642,7 +642,11 @@ def check_out_asset(
         str | None, Option("--rte_ip", help="RTE IP address", metavar="RTE_IP")
     ] = None,
     strict: Annotated[
-        bool, Option("--strict", help="Don't allow the asset to be already checked out by you")
+        bool,
+        Option(
+            "--strict",
+            help="Don't allow the asset to be already checked out by you",
+        ),
     ] = False,
 ):
     """Check out an asset by providing the Asset ID or RTE IP
@@ -1197,6 +1201,19 @@ def spi_off(ctx: Context):
 
 
 ## rte flash commands
+# Limits a read or write to the named regions of the FMAP found in the flash
+# chip, as `flashrom --fmap -i <region>` does.
+FmapRegions = Annotated[
+    list[str] | None,
+    Option(
+        "--fmap-region",
+        "-f",
+        help="FMAP region to operate on, can be given multiple times",
+        metavar="REGION",
+    ),
+]
+
+
 @rte_flash.command("probe")
 @with_setup
 def flash_probe(ctx: Context, target: FlashTarget = None):
@@ -1221,11 +1238,12 @@ def flash_read(
         ),
     ] = Path("read.rom"),
     target: FlashTarget = None,
+    fmap_regions: FmapRegions = None,
 ):
     """Read from DUT flash with flashrom"""
     select_flash_target(target)
     print("Reading from flash...")
-    apis.rte_api.flash_read(rom)
+    apis.rte_api.flash_read(rom, fmap_regions)
     print(f"Read flash content saved to {rom}")
 
 
@@ -1266,8 +1284,13 @@ def flash_write(
         ),
     ] = False,
     target: FlashTarget = None,
+    fmap_regions: FmapRegions = None,
 ):
     """Write to DUT flash with flashrom"""
+    if bios and fmap_regions:
+        raise typer.BadParameter(
+            "--bios and --fmap-region are mutually exclusive"
+        )
     select_flash_target(target)
     if utils.check_flash_image_regions(rom, dry_mecheck, verbosity) == False:
         print(
@@ -1279,7 +1302,7 @@ def flash_write(
         )
         raise typer.Exit(1)
     print(f"Writing {rom} to flash...")
-    rc = apis.rte_api.flash_write(rom, bios)
+    rc = apis.rte_api.flash_write(rom, bios, fmap_regions)
     if rc == 0:
         print("Flash written successfully")
     else:
@@ -1448,7 +1471,9 @@ def validate_and_return_asset_id(
     return asset_id
 
 
-def _check_out_asset(snipeit_api: SnipeIT, asset_id: int, strict: bool = False) -> bool:
+def _check_out_asset(
+    snipeit_api: SnipeIT, asset_id: int, strict: bool = False
+) -> bool:
     """Check out an asset by providing the Asset ID
 
     It checks if the asset is already checked out by the user.
@@ -1470,7 +1495,9 @@ def _check_out_asset(snipeit_api: SnipeIT, asset_id: int, strict: bool = False) 
 
     if already_checked_out:
         if strict:
-            print(f"Asset {asset_id} is already checked out by you, refusing to reuse it")
+            print(
+                f"Asset {asset_id} is already checked out by you, refusing to reuse it"
+            )
             raise typer.Exit(1)
         else:
             print(f"Asset {asset_id} is already checked out by you")
